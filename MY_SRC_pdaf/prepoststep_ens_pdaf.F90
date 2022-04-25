@@ -222,7 +222,7 @@ subroutine prepoststep_ens_pdaf(step, dim_p, dim_ens, dim_ens_p, dim_obs_p, &
             call write_field_mv(state_tmp, dim_p, trim(file_PDAF_variance)//'_'//trim(ndastp_str)//'.nc', &
                  titleVar, 1.0, nsteps, writestep_var)
          else
-            call write_field_mv(state_tmp, dim_p, trim(file_PDAF_variance)//'_'//trim(ndastp_str)//')_ini.nc', &
+            call write_field_mv(state_tmp, dim_p, trim(file_PDAF_variance)//'_'//trim(ndastp_str)//'_ini.nc', &
                  titleVar, 1.0, nsteps, writestep_var)
          end if
          if (forana/='ini') writestep_var = writestep_var + 1
