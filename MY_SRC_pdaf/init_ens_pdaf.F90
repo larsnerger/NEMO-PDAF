@@ -52,15 +52,6 @@ subroutine init_ens_pdaf(filtertype, dim_p, dim_ens, state_p, Uinv, &
 ! *** Read ensemble from files ***
 ! ********************************
 
-
-!  if (mype_filter==0) write (*,*) 'NOTE: file names for ensemble init are still hardcoded in init_ens_pdaf!'
-
-!  path_ens = '../ORCA401/'
-!  path_inistate = '../ORCA401/'
-
-!  file_iniens_date1 = '00010101'
-!  file_ini_date2 = '00011231'
-
   if (type_ens_init == 0) then
 
      ! Read ensemble states as model snapshots from a single file
@@ -81,7 +72,7 @@ subroutine init_ens_pdaf(filtertype, dim_p, dim_ens, state_p, Uinv, &
 
      if (mype_filter==0) write (*,'(1x,a)') 'Initialize ensemble from output files'
 
-     CALL gen_ens_mv(1.0, ens_datelist, path_ens, dim_p, dim_ens, ens_p)
+     CALL gen_ens_mv(1.0, .true., ens_datelist, path_ens, dim_p, dim_ens, ens_p)
 
   end if
 

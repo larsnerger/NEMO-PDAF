@@ -67,7 +67,7 @@ contains
 
     integer :: i, j, k
     integer :: cnt, cnt_all, cnt_layers
-    real :: lim_coords(2,2)      ! Limiting coordinates of sub-domain
+    real(pwp) :: lim_coords(2,2)      ! Limiting coordinates of sub-domain
     
 ! *** set dimension of 2d and 3d fields in state vector ***
 
@@ -153,12 +153,12 @@ contains
   
     if (use_wet_state==1) then
        ! State vector contains full columns when surface grid point is wet
-       sdim3d = nwet*jpk
-       sdim2d = nwet
+       sdim3d = abs(nwet)*jpk
+       sdim2d = abs(nwet)
     elseif (use_wet_state==2) then
        ! State vector only contains wet grid points
-       sdim3d = nwet3d
-       sdim2d = nwet
+       sdim3d = abs(nwet3d)
+       sdim2d = abs(nwet)
     else
        ! State vector contains 2d/3d grid box
        sdim3d = dim_3d_p
@@ -170,11 +170,11 @@ contains
 ! *** Specify domain limits to limit observations to sub-domains ***
 ! ******************************************************************
 
-    lim_coords(1,1) = glamt(istart, jstart) * deg2rad
-    lim_coords(1,2) = glamt(istart + ni_p-1, jstart) * deg2rad
-    lim_coords(2,1) = gphit(istart + ni_p-1, jstart + nj_p-1) * deg2rad
-    lim_coords(2,2) = gphit(istart, jstart) * deg2rad
-
+    lim_coords(1,1) = glamt(i0 + 1, j0 + 1) * deg2rad
+    lim_coords(1,2) = glamt(i0 + ni_p, j0 + 1) * deg2rad
+    lim_coords(2,1) = gphit(i0 + ni_p, j0 + nj_p) * deg2rad
+    lim_coords(2,2) = gphit(i0 + 1, j0 + 1) * deg2rad
+write (*,*) 'lim_coords', lim_coords
     call PDAFomi_set_domain_limits(lim_coords)
 
   end subroutine set_nemo_grid

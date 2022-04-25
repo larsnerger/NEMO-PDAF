@@ -186,6 +186,7 @@ CONTAINS
       nc_step = nc_step + delt_obs
 
       nc_step = 200
+IF (mype_filter == 0) write (*,*) 'NEMO-PDAF:    Warning: reading step ', nc_step, 'is hard-coded'
       pos = (/1, 1, nc_step/)
       cnt = (/jpiglo, jpjglo, 1/)
 

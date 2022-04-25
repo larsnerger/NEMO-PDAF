@@ -218,9 +218,13 @@ subroutine prepoststep_ens_pdaf(step, dim_p, dim_ens, dim_ens_p, dim_obs_p, &
 
          titleVar='Ensemble variance'
 
-         call write_field_mv(state_tmp, dim_p, trim(file_PDAF_variance)//'_'//trim(ndastp_str)//'.nc', &
-              titleVar, 1.0, nsteps, writestep_var)
-
+         if (forana/='ini') then
+            call write_field_mv(state_tmp, dim_p, trim(file_PDAF_variance)//'_'//trim(ndastp_str)//'.nc', &
+                 titleVar, 1.0, nsteps, writestep_var)
+         else
+            call write_field_mv(state_tmp, dim_p, trim(file_PDAF_variance)//'_'//trim(ndastp_str)//')_ini.nc', &
+                 titleVar, 1.0, nsteps, writestep_var)
+         end if
          if (forana/='ini') writestep_var = writestep_var + 1
 
       elseif (writestep_var>1 .and. (trim(save_var_time)=='ana' .or. trim(save_var_time)=='both')) then
@@ -258,7 +262,11 @@ subroutine prepoststep_ens_pdaf(step, dim_p, dim_ens, dim_ens_p, dim_obs_p, &
       ! Write separate files for forecast and analysis
 !      call write_field_mv(state_tmp, dim_p, trim(file_PDAF_state)//'_'//forana//'.nc', titleState, 1.0, 1, 1)
       ! Write forecast and analysis into the same file
-      call write_field_mv(state_tmp, dim_p, trim(file_PDAF_state)//'_'//trim(ndastp_str)//'.nc', titleState, 1.0, 2, writestep_state)
+      if (forana/='ini') then
+         call write_field_mv(state_tmp, dim_p, trim(file_PDAF_state)//'_'//trim(ndastp_str)//'.nc', titleState, 1.0, 2, writestep_state)
+      else
+         call write_field_mv(state_tmp, dim_p, trim(file_PDAF_state)//'_'//trim(ndastp_str)//'_ini.nc', titleState, 1.0, 2, writestep_state)
+      end if
    endif
 
 

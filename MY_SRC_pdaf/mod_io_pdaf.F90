@@ -350,7 +350,7 @@ contains
 
 !> Initialie ensemble array from a list of NEMO output files
 !!
-  subroutine gen_ens_mv(flate, infilelist, inpath, dim_p, dim_ens, ens)
+  subroutine gen_ens_mv(flate, zeromean, infilelist, inpath, dim_p, dim_ens, ens)
 
   implicit none
   
@@ -360,6 +360,7 @@ contains
   character(len=*),   intent(in)    :: inpath       !< Path to input files
   integer(4),         intent(in)    :: dim_p        !< State dimension
   integer(4),         intent(in)    :: dim_ens      !< Ensemble size
+  logical,            intent(in)    :: zeromean     !< Remove mean value
   real(8),            intent(inout) :: ens(:, :)    !< Ensemble array
 
 ! *** Local variables ***
@@ -373,7 +374,7 @@ contains
 ! *** Read ensemble from files ***
 
   if (verbose>0 .and. mype==0) &
-       write(*,'(/1x,a)') "*** Generating ensemble from output files ***"
+       write(*,'(/a,1x,a)') 'NEMO-PDAF', '*** Generating ensemble from output files ***'
 
   open (unit=10,file=trim(infilelist),iostat=ios)
   if (ios /= 0) write(*,*) 'Could not open file ',infilelist 
@@ -387,7 +388,7 @@ contains
 
      do k =1, ntimec
         iens = iens + 1
-        if (verbose>0 .and. mype==0) write (*,*) '--- Read ensemble member', iens
+        if (verbose>0 .and. mype==0) write (*,'(a,1x,a,i8)') 'NEMO-PDAF', '--- Read ensemble member', iens
         call read_ens_mv(inpath, indate, indate, dim_p, k, ens(:,iens))
      enddo
 
@@ -407,22 +408,29 @@ contains
  
 ! *** Subtract ensemble mean and inflate ensemble perturbations ***
 
-  invsteps = 1.0/real(dim_ens)
+  if (zeromean) then
+
+     if (verbose>0 .and. mype==0) &
+          write(*,'(a,1x,a)') 'NEMO-PDAF', '--- Subtract mean of ensemble snapshots'
+
+
+     invsteps = 1.0/real(dim_ens)
 
 
 !$OMP PARALLEL DO private(k, ens_mean)
-  do k=1,dim_p
-     ens_mean = 0.0
-     do i=1,dim_ens
-        ens_mean = ens_mean + invsteps*ens(k,i)
-     end do
+     do k=1,dim_p
+        ens_mean = 0.0
+        do i=1,dim_ens
+           ens_mean = ens_mean + invsteps*ens(k,i)
+        end do
 
-     do i=1,dim_ens
-        ens(k,i) = flate*(ens(k,i)-ens_mean)
+        do i=1,dim_ens
+           ens(k,i) = flate*(ens(k,i)-ens_mean)
+        end do
      end do
-  end do
 !$OMP END PARALLEL DO
 
+  end if
 
 end subroutine gen_ens_mv
 
@@ -452,8 +460,10 @@ end subroutine gen_ens_mv
     character(len=50) :: filename  ! Full file name
     character(len=17) :: dates     ! Combined date string of file
 
-    if (verbose>1) &
-         write(*,*) "*** Ensemble: Read model output at time step: ", itime
+    if (verbose>0 .and. mype==0) &
+         write(*,'(a,4x,a,i8)') 'NEMO-PDAF','*** Ensemble: Read model output at time step: ', itime
+
+    if (.not. allocated(tmp_4d)) allocate(tmp_4d(ni_p, nj_p, nk_p, 1))
 
     ! Initialize state
     state = 0.0
@@ -467,9 +477,10 @@ end subroutine gen_ens_mv
        end if
        filename = trim(sfields(i)%file)//trim(dates)//trim(sfields(i)%file_post)//'.nc'
 
-       if (verbose>1) then
-          write(*,*) trim(path)//trim(filename)
-          write (*,*) i, 'Variable: ',trim(sfields(i)%variable), ',  offset', sfields(i)%off
+       if (verbose>1 .and. mype==0) then 
+          write(*,'(a,2x,a)') 'NEMO-PDAF', trim(path)//trim(filename)
+          write (*,'(a,i5,1x,a,a,a,i10)') &
+               'NEMO-PDAF', i, 'Variable: ',trim(sfields(i)%variable), ',  offset', sfields(i)%off
        end if
 
        ! Open the file
@@ -477,6 +488,9 @@ end subroutine gen_ens_mv
 
        !  Read field
        call check( nf90_inq_varid(ncid, trim(sfields(i)%variable), varid) )
+
+       ! Read missing value
+       call check( nf90_get_att(ncid, varid, 'missing_value', missing_value) )
 
        if (sfields(i)%ndims == 3) then
           call check( nf90_get_var(ncid, varid, tmp_4d, &
@@ -497,7 +511,7 @@ end subroutine gen_ens_mv
     ! Potentially transform fields
     call transform_field_mv(1, state)
 
-    if (verbose>1) then
+    if (verbose>2) then
        do i = 1, n_fields
           write(*,*) 'Min and max for ',trim(sfields(i)%variable),' :     ',              &
                minval(state(sfields(i)%off+1:sfields(i)%off+sfields(i)%dim)), &
@@ -763,7 +777,7 @@ end subroutine gen_ens_mv
        tmp_4d = 1.0e20
        call state2field(state, tmp_4d, sfields(i)%off, sfields(i)%ndims)
 
-       if (verbose>1) &
+       if (verbose>1 .and. mype==0) &
             write (*,'(5x,a,a)') '--- write variable: ', trim(sfields(i)%variable)
        call check( nf90_inq_varid(ncid, trim(sfields(i)%variable), id_field) )
 !       call check( nf90_VAR_PAR_ACCESS(NCID, id_field, NF90_COLLECTIVE) )

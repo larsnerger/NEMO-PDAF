@@ -240,7 +240,7 @@ contains
 ! **********************************
 ! *** Prepare ensemble forecasts ***
 ! **********************************
-       
+
     call PDAF_get_state(steps, timenow, doexit, next_observation_pdaf, &
          distribute_state_init_pdaf, prepoststep_ens_pdaf, status_pdaf)
 
