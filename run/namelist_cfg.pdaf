@@ -1,0 +1,24 @@
+&tasks_nml
+  tasks=10
+  screen=0
+/
+
+&state_vector
+  screen=1
+  sv_ssh=.true.
+  sv_temp=.true.
+  sv_salt=.true.
+  sv_uvel=.true.
+  sv_vvel=.true.
+/
+
+&pdaf_nml
+  screen=1
+  delt_obs=160
+  ensscale = 0.05
+  lradius = 300000.0
+  assim_ssh_mgrid = .true.
+  forget=0.95
+/
+
+

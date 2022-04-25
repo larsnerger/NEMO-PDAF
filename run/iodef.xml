@@ -1,0 +1,45 @@
+<?xml version="1.0"?>
+<simulation>
+
+<!-- ============================================================================================ -->
+<!-- XIOS context                                                                                 -->
+<!-- ============================================================================================ -->
+
+  <context id="xios" >
+
+      <variable_definition>
+
+          <variable id="info_level"                type="int">10</variable>
+          <variable id="using_server"              type="bool">false</variable>
+          <variable id="using_oasis"               type="bool">false</variable>
+          <variable id="oasis_codes_id"            type="string" >oceanx</variable>
+
+      </variable_definition>
+  </context>
+
+<!-- ============================================================================================ -->
+<!-- NEMO  CONTEXT add and suppress the components you need                                       -->
+<!-- ============================================================================================ -->
+
+  <context id="nemo_001" src="./context_nemo.xml"/>       <!--  NEMO       -->
+  <context id="nemo_002" src="./context_nemo.xml"/>       <!--  NEMO       -->
+  <context id="nemo_003" src="./context_nemo.xml"/>       <!--  NEMO       -->
+  <context id="nemo_004" src="./context_nemo.xml"/>       <!--  NEMO       -->
+  <context id="nemo_005" src="./context_nemo.xml"/>       <!--  NEMO       -->
+  <context id="nemo_006" src="./context_nemo.xml"/>       <!--  NEMO       -->
+  <context id="nemo_007" src="./context_nemo.xml"/>       <!--  NEMO       -->
+  <context id="nemo_008" src="./context_nemo.xml"/>       <!--  NEMO       -->
+  <context id="nemo_009" src="./context_nemo.xml"/>       <!--  NEMO       -->
+  <context id="nemo_010" src="./context_nemo.xml"/>       <!--  NEMO       -->
+  <context id="nemo_011" src="./context_nemo.xml"/>       <!--  NEMO       -->
+  <context id="nemo_012" src="./context_nemo.xml"/>       <!--  NEMO       -->
+  <context id="nemo_013" src="./context_nemo.xml"/>       <!--  NEMO       -->
+  <context id="nemo_014" src="./context_nemo.xml"/>       <!--  NEMO       -->
+  <context id="nemo_015" src="./context_nemo.xml"/>       <!--  NEMO       -->
+  <context id="nemo_016" src="./context_nemo.xml"/>       <!--  NEMO       -->
+  <context id="nemo_017" src="./context_nemo.xml"/>       <!--  NEMO       -->
+  <context id="nemo_018" src="./context_nemo.xml"/>       <!--  NEMO       -->
+  <context id="nemo_019" src="./context_nemo.xml"/>       <!--  NEMO       -->
+  <context id="nemo_020" src="./context_nemo.xml"/>       <!--  NEMO       -->
+
+</simulation>
