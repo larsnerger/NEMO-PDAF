@@ -174,7 +174,7 @@ contains
     lim_coords(1,2) = glamt(i0 + ni_p, j0 + 1) * deg2rad
     lim_coords(2,1) = gphit(i0 + ni_p, j0 + nj_p) * deg2rad
     lim_coords(2,2) = gphit(i0 + 1, j0 + 1) * deg2rad
-write (*,*) 'lim_coords', lim_coords
+
     call PDAFomi_set_domain_limits(lim_coords)
 
   end subroutine set_nemo_grid
