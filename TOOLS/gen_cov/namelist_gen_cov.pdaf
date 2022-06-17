@@ -1,0 +1,27 @@
+&n_statevector
+  nfields = 1 ! number of model fields to be read
+/
+&state_vector
+  ! variable names
+  sfields(1)%variable =  'zos'
+  ! sfields(2)%variable =  'thetao'
+  ! sfields(3)%variable =  'so'
+  ! sfields(4)%variable =  'uo'
+  ! sfields(5)%variable =  'vo'
+
+  ! input filenames
+  ! read from a file list
+  sfields(1)%read_from_list = .true.
+  sfields(1)%file='zos.dat'
+  ! sfields(2)%file='ORCA2_5d_00010101_00011231_grid_T.nc'
+  ! sfields(3)%file='ORCA2_5d_00010101_00011231_grid_T.nc'
+  ! sfields(4)%file='ORCA2_5d_00010101_00011231_grid_U.nc'
+  ! sfields(5)%file='ORCA2_5d_00010101_00011231_grid_V.nc'
+/
+&cov_options
+   maxtimes = 30
+   do_mv = 1
+   remove_mean = 0
+   limit = 1.0e-12
+   hwindow = 6
+/
