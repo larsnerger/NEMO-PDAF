@@ -1,6 +1,7 @@
 !> Module holding IO operations for NEMO-PDAF
 !!
 module mod_io_pdaf
+use mod_kind_pdaf
 use netcdf
 implicit none
 
@@ -49,39 +50,6 @@ contains
    ! ===================================================================================
 
 
-   !> Read spatial dimension size from NEMO file
-   !!
-   subroutine get_var_dims(filename, nlvls, ny, nx)
-      character(*), intent(in) :: filename
-      integer, intent(out) :: nlvls, ny, nx
-
-      integer :: ncid
-      integer :: dimid
-
-      print *, 'get_var_dims', filename
-      if (verbose>0) &
-         write(*,'(a,4x,a)') 'NEMO-PDAF', '*** Read model output dimensions'
-
-      print *, filename
-      call check( nf90_open(filename, nf90_nowrite, ncid) )
-      ! Get the dimension size of the vertical coordinate variables.
-      call check( nf90_inq_dimid(ncid, 'deptht', dimid) )
-      call check( nf90_inquire_dimension(ncid, dimid, len=nlvls) )
-      if (verbose>0) &
-         write(*,'(a,4x,a,a,i3,a)') 'NEMO-PDAF', filename, ' contains ', nlvls, ' levels'  
-      ! Get the dimension size of the longitude coordinate variables.
-      call check( nf90_inq_dimid(ncid, 'x', dimid) )
-      call check( nf90_inquire_dimension(ncid, dimid,  len=nx) )
-      ! Get the dimension size of the latitude coordinate variables.
-      call check( nf90_inq_dimid(ncid, 'y', dimid) )
-      call check( nf90_inquire_dimension(ncid, dimid, len=ny) )
-      call check( nf90_close(ncid) )
-      if (verbose>0) &
-         write(*,'(a,4x,a,a,i3,a,i3,a)') 'NEMO-PDAF', filename, ' contains ', nx, 'x', ny, ' grid'  
-   end subroutine get_var_dims
-   ! ===================================================================================
-
-
    !> Read total time steps of NEMO files in a directory
    !> Here we assume all variables have the same length
    !!
@@ -103,20 +71,21 @@ contains
 
    !> Read fields from NEMO file into a state vector
    !!
-   subroutine read_state_mv(filename, varname, ndims, field, nt)
+   subroutine read_state_mv(filename, varname, ndims, field, nx, ny, nlvls, nt)
       character(len = *), intent(in) :: filename  !< filename
       character(len = *), intent(in) :: varname   !< variable name
       integer(4), intent(in) :: ndims             !< number of dimensions
+      integer(4), intent(in) :: nx, ny, nlvls     !< size of spatial dimension
       integer(4), optional, intent(in) :: nt      !< number of time steps for read
-      real(8), intent(out)   :: field(:, :, :, :) !< field
+      real(pdp), intent(out)   :: field(:, :, :, :) !< field
 
       ! ! Local variables 
       integer(4) :: it              ! Counters
       integer(4) :: nt_             ! number of time steps
-      integer(4) :: nx, ny, nlvls   ! size of spatial dimension
+      
       integer(4) :: varid           ! Variable ID
       integer(4) :: ncid            ! NC file id
-      real(8) :: missing_value      ! missing value
+      real(pdp) :: missing_value      ! missing value
       
 
       if (verbose>0) &
@@ -132,7 +101,7 @@ contains
 
       call check( nf90_inq_varid(ncid, varname, varid) )
 
-      missing_value=0.0
+      missing_value=0.0_pdp
       if (nf90_inquire_attribute(ncid, varid, 'missing_value') == nf90_noerr) &
          call check( nf90_get_att(ncid, varid, 'missing_value', missing_value) )
 
@@ -142,7 +111,6 @@ contains
          nt_ = get_steps(filename)
       end if
 
-      call get_var_dims(filename, nlvls, ny, nx)
       do it = 1, nt_
          ! Read variable
          if (ndims == 3) then
@@ -177,9 +145,9 @@ contains
       character(*), dimension(:), intent(in) ::varnames
       integer, intent(in) :: ndims(:)
       integer, intent(in) :: off(:)
-      real(8), intent(in) :: svals(:)
-      real(8), intent(in) :: run_meanstate(:, :)
-      real(8), intent(in) :: svdu(:, :)
+      real(pdp), intent(in) :: svals(:)
+      real(pdp), intent(in) :: run_meanstate(:, :)
+      real(pdp), intent(in) :: svdu(:, :)
       integer, intent(in) :: do_mv
       integer, intent(in) :: rank
       integer, intent(in) :: n2d

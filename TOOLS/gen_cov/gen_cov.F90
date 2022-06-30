@@ -2,7 +2,6 @@
 !BOP
 !Modified by QT 2017-12-12 ---- for AWI-CM
 !Modified again by TQ 2017-12-19
-!Modified by YC 2022-06-17
 
 ! !Program: generate_covar --- Compute covariance matrix from state trajectory
 PROGRAM generate_covar
@@ -245,7 +244,7 @@ contains
 
    subroutine read_statevector(sfields, nfields, steps, maxsteps, states)
       use mod_statevector_pdaf, only: state_field, get_filename
-      use mod_io_pdaf, only: get_var_dims, get_steps, read_state_mv
+      use mod_io_pdaf, only: get_steps, read_state_mv
       integer, intent(in) :: nfields
       type(state_field), intent(in) :: sfields(nfields)
       integer, intent(in) :: steps
@@ -261,7 +260,6 @@ contains
       integer :: file_steps  ! cumulative steps in previous files
       integer :: off  ! offset in state vectors
       integer :: dim  ! size of field
-      integer :: nx, ny, nlvls  ! spatial dimension of the field
       integer :: nt  ! number of time steps read from a single file
 
       real(pdp), allocatable :: field(:, :, :, :)  ! model field from output file
@@ -270,9 +268,8 @@ contains
       write (*,'(/1x,a)') '------- Read trajectory -------------'
       
       ! Initialize state
-      states = 0.0
-      call get_var_dims(trim(get_filename(sfields(1), .true.)), nlvls, ny, nx)
-      allocate(field(nx, ny, nlvls, maxsteps))
+      states = 0.0_pdp
+      allocate(field(maxval(sfields%nx), maxval(sfields%ny), maxval(sfields%nlvls), maxsteps))
 
       ! loop over fields at the same time step
       do i = 1, nfields
@@ -286,7 +283,8 @@ contains
             if (do_exit) exit readfile
 
             call read_state_mv(trim(filename), trim(sfields(i)%variable), &
-                               sfields(i)%ndims, field)
+                               sfields(i)%ndims, field, &
+                               sfields(i)%nx, sfields(i)%ny, sfields(i)%nlvls)
 
             ! convert field to state
             nt = get_steps(trim(filename))
@@ -316,7 +314,7 @@ contains
       integer :: i, j ! counter
 
       do i = 1, maxtimes
-         meanstate = 0.0
+         meanstate = 0.0_pdp
 
          if (i > hwindow .and. i <= (maxtimes - hwindow)) then
             do j = i - hwindow, i + hwindow
@@ -340,7 +338,7 @@ contains
             end do
          end if
 
-         meanstate = meanstate / (2 * hwindow + 1)
+         meanstate = meanstate / (2._pdp * hwindow + 1)
          run_meanstate (:, i) = meanstate
       end do
    end subroutine compute_running_mean
