@@ -14,6 +14,7 @@
 !!
 module mod_statevector_pdaf
 
+  use mod_kind_pdaf
   implicit none
   save
 
@@ -32,23 +33,23 @@ module mod_statevector_pdaf
 
   ! Declare Fortran type holding the definitions for model fields
   type state_field
-     integer :: ndims                  ! Number of field dimensions (2 or 3)
-     integer :: dim                    ! Dimension of the field
-     integer :: off                    ! Offset of field in state vector
-     character(len=10) :: variable     ! Name of field
-     character(len=20) :: name_incr    ! Name of field in increment file
-     character(len=20) :: name_rest_n  ! Name of field in restart file (n-field)
-     character(len=20) :: name_rest_b  ! Name of field in restart file (b-field)
-     character(len=30) :: file=''      ! File name stub to read field from
-     character(len=30) :: file_post='' ! File name part after dates
-     character(len=30) :: rst_file     ! Name of restart file
-     character(len=20) :: unit         ! Unit of variable
-     integer :: transform = 0          ! Type of variable transformation
-     real :: trafo_shift = 0.0         ! Constant to shift value in transformation
-     integer :: limit = 0              ! Whether to limit the value of the variable
+     integer :: ndims = 0                  ! Number of field dimensions (2 or 3)
+     integer :: dim = 0                    ! Dimension of the field
+     integer :: off = 0                    ! Offset of field in state vector
+     character(len=10) :: variable = ''    ! Name of field
+     character(len=20) :: name_incr = ''   ! Name of field in increment file
+     character(len=20) :: name_rest_n = '' ! Name of field in restart file (n-field)
+     character(len=20) :: name_rest_b = '' ! Name of field in restart file (b-field)
+     character(len=50) :: file = ''        ! File name stub to read field from
+     character(len=50) :: file_state = ''  ! File name stub to read field from
+     character(len=30) :: rst_file = ''    ! Name of restart file
+     character(len=20) :: unit = ''        ! Unit of variable
+     integer :: transform = 0              ! Type of variable transformation
+     real(pwp) :: trafo_shift = 0.0_pwp    ! Constant to shift value in transformation
+     integer :: limit = 0                  ! Whether to limit the value of the variable
                      ! 0: no limits, 1: lower limit, 2: upper limit, 3: both limits
-     real :: max_limit = 0.0           ! Upper limit of variable
-     real :: min_limit = 0.0           ! Lower limit of variable
+     real(pwp) :: max_limit = 0.0_pwp      ! Upper limit of variable
+     real(pwp) :: min_limit = 0.0_pwp      ! Lower limit of variable
   end type state_field
 
 
@@ -150,6 +151,7 @@ contains
 ! *** Local variables *** 
     integer :: id_var            ! Index of a variable in state vector
 
+    namelist /sfields_nml/ sfields
 ! *** Specifications for each model field in state vector ***
 
     ! SSH
@@ -162,7 +164,6 @@ contains
        sfields(id_var)%name_rest_n = 'sshn'
        sfields(id_var)%name_rest_b = 'sshb'
        sfields(id_var)%file = 'ORCA2_1d_'
-       sfields(id_var)%file_post = '_grid_T'
        sfields(id_var)%rst_file = 'restart_in.nc'
        sfields(id_var)%unit = 'm'
     endif
@@ -177,7 +178,6 @@ contains
        sfields(id_var)%name_rest_n = 'tn'
        sfields(id_var)%name_rest_b = 'tb'
        sfields(id_var)%file = 'ORCA2_1d_'
-       sfields(id_var)%file_post = '_grid_T'
        sfields(id_var)%rst_file = 'restart_in.nc'
        sfields(id_var)%unit = 'degC'
     endif
@@ -192,7 +192,6 @@ contains
        sfields(id_var)%name_rest_n = 'sn'
        sfields(id_var)%name_rest_b = 'sb'
        sfields(id_var)%file = 'ORCA2_1d_'
-       sfields(id_var)%file_post = '_grid_T'
        sfields(id_var)%rst_file = 'restart_in.nc'
        sfields(id_var)%unit = '1e-3'
        sfields(id_var)%limit = 1             ! Apply lower limit
@@ -208,8 +207,6 @@ contains
        sfields(id_var)%name_incr = 'bckinu'
        sfields(id_var)%name_rest_n = 'un'
        sfields(id_var)%name_rest_b = 'ub'
-       sfields(id_var)%file = 'ORCA2_1d_'
-       sfields(id_var)%file_post = '_grid_U'
        sfields(id_var)%rst_file = 'restart_in.nc'
        sfields(id_var)%unit = 'm/s'
     endif
@@ -223,12 +220,23 @@ contains
        sfields(id_var)%name_incr = 'bckinv'
        sfields(id_var)%name_rest_n = 'vn'
        sfields(id_var)%name_rest_b = 'vb'
-       sfields(id_var)%file = 'ORCA2_1d_'
-       sfields(id_var)%file_post = '_grid_V'
        sfields(id_var)%rst_file = 'restart_in.nc'
        sfields(id_var)%unit = 'm/s'
     endif
 
+    open (500,file='namelist_cfg.pdaf')
+    read (500,NML=sfields_nml)
+    close (500)
+
+    do id_var = 1, n_fields
+      if (sfields(id_var)%ndims == 2) then
+        sfields(id_var)%dim = sdim2d
+      else if (sfields(id_var)%ndims == 3) then
+        sfields(id_var)%dim = sdim3d
+      else
+        write (*, '(a,i2,a)') 'NEMO-PDAF: cannot handle', sfields(id_var)%ndims, ' number of dimensions.'
+      end if
+    end do
   end subroutine init_sfields
 ! ===================================================================================
 
@@ -250,8 +258,7 @@ contains
     integer, intent(out) :: dim_state_p  !< Local dimension of state vector
 
 ! *** Local variables *** 
-    integer :: i, cnt            ! Counters
-    integer :: dim_state         ! Global state dimension
+    integer :: i                 ! Counters
 
 
 ! ***********************************

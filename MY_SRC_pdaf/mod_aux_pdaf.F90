@@ -6,6 +6,7 @@ module mod_aux_pdaf
 ! - state transformations (log, etc.)
 
   ! Include dimension information for model grid
+  use mod_kind_pdaf
   use mod_nemo_pdaf, &
        only: nlvls=>jpk, nj_p, ni_p, nwet, wet_pts, use_wet_state
   use mod_statevector_pdaf, &
@@ -25,11 +26,11 @@ contains
     implicit none
 
 ! *** Arguments ***
-    real, intent(in)    :: field(:,:,:,:)   !< Model field
-    real, intent(inout) :: state(:)         !< State vector
+    real(pwp), intent(in)    :: field(:,:,:,:)   !< Model field
+    real(pwp), intent(inout) :: state(:)         !< State vector
     integer, intent(in) :: offset           !< Offset in state vector
     integer, intent(in) :: ndims            !< Number of dimensions in field
-    real, intent(in) :: missval             !< missing value
+    real(pwp), intent(in) :: missval             !< missing value
 
 ! *** Local variables ***
     integer :: i, j, k
@@ -89,10 +90,10 @@ contains
        do k = 1, n_levels
           do j = 1,nj_p
              do i = 1, ni_p
-                if (abs(field(i,j,k,1)- missval) > 0.1) then 
+                if (abs(field(i,j,k,1)- missval) > 0.1_pwp) then 
                    state(cnt) = field(i,j,k,1)
                 else
-                   state(cnt) = 0.0
+                   state(cnt) = 0.0_pwp
                 endif
                 cnt = cnt + 1
              enddo
@@ -111,8 +112,8 @@ contains
     implicit none
 
 ! *** Arguments ***
-    real, intent(in)    :: state(:)         !< State vector
-    real, intent(out)   :: field(:,:,:,:)   !< Model field
+    real(pwp), intent(in)    :: state(:)         !< State vector
+    real(pwp), intent(out)   :: field(:,:,:,:)   !< Model field
     integer, intent(in) :: offset           !< Offset in state vector
     integer, intent(in) :: ndims            !< Number of dimensions in field
 
@@ -192,8 +193,8 @@ contains
 
     integer, intent(in) :: type     !< Direction transformation
     integer, intent(in) :: trafo    !< Type of transformation
-    real, intent(in)    :: shift    !< constant for shifting value in transformation
-    real, intent(inout) :: state(:) !< State vector
+    real(pwp), intent(in)    :: shift    !< constant for shifting value in transformation
+    real(pwp), intent(inout) :: state(:) !< State vector
     integer, intent(in) :: dim      !< dimension of field in state vector
     integer, intent(in) :: off      !< Offset of field in state vector
     character(len=*),intent(in) :: var      !< Name of variable
@@ -249,18 +250,18 @@ contains
 
 ! *** Arguments ***
     integer, intent(in) :: type     !< Direction of transformation
-    real, intent(inout) :: state(:) !< State vector
+    real(pwp), intent(inout) :: state(:) !< State vector
 
 ! *** Local variables ***
-    integer :: i, j       ! Counters
+    integer :: i          ! Counters
     integer :: trafo      ! Type of transformation
-    real    :: shift      ! constant for shifting value in transformation
+    real(pwp)    :: shift      ! constant for shifting value in transformation
     integer :: dim        ! dimension of field in state vector
     integer :: off        ! Offset of field in state vector
     character(len=10) :: var      ! Name of variable
     integer :: dolimit    ! Whether to apply a min/max limit
-    real    :: max_limit  ! Maximum limiting value
-    real    :: min_limit  ! Minimum limiting value
+    real(pwp)    :: max_limit  ! Maximum limiting value
+    real(pwp)    :: min_limit  ! Minimum limiting value
 
 
     do i = 1, n_fields
@@ -334,7 +335,7 @@ contains
     implicit none
 
 ! *** Arguments ***
-    real, intent(inout) :: state(:) !< State vector
+    real(pwp), intent(inout) :: state(:) !< State vector
 
 ! *** Local variables ***
     integer :: i, j       ! Counters
@@ -342,8 +343,8 @@ contains
     integer :: off        ! Offset of field in state vector
     character(len=10) :: var      ! Name of variable
     integer :: dolimit    ! Whether to apply a min/max limit
-    real    :: max_limit  ! Maximum limiting value
-    real    :: min_limit  ! Minimum limiting value
+    real(pwp)    :: max_limit  ! Maximum limiting value
+    real(pwp)    :: min_limit  ! Minimum limiting value
 
 
     do i = 1, n_fields

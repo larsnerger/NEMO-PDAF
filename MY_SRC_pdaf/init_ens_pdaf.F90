@@ -22,12 +22,11 @@ subroutine init_ens_pdaf(filtertype, dim_p, dim_ens, state_p, Uinv, &
   use mod_parallel_pdaf, &
        only: mype_filter
   use mod_assimilation_pdaf, &
-       only:  screen, type_ens_init, type_central_state, ensscale
+       only:  type_ens_init, type_central_state, ensscale
   use mod_io_pdaf, &
-       only: path_inistate, file_inistate_date1, file_inistate_date2, &
-       path_ens, file_ens_date1, file_ens_date2, coupling_nemo, &
-       read_state_mv, read_ens_mv_loop, read_ens, gen_ens_mv, &
-       file_ens, ens_datelist
+       only: path_inistate, path_ens, file_ens, &
+             coupling_nemo, read_state_mv, &
+             read_ens_mv_loop, read_ens, gen_ens_mv
 
   implicit none
 
@@ -43,7 +42,7 @@ subroutine init_ens_pdaf(filtertype, dim_p, dim_ens, state_p, Uinv, &
   integer, intent(inout) :: flag                        !< PDAF status flag
 
 ! *** Local variables ***
-  integer :: i, k, member           ! Counters
+  integer :: i, member              ! Counters
   real(pwp) :: ens_mean             ! Ensemble mean value
   real(pwp) :: inv_dim_ens          ! Inverse ensemble size
 
@@ -58,13 +57,12 @@ subroutine init_ens_pdaf(filtertype, dim_p, dim_ens, state_p, Uinv, &
 
      if (mype_filter==0) write (*,'(1x,a)') 'Initialize ensemble from file holding model snapshots'
 
-     call read_ens_mv_loop(path_ens, file_ens_date1, file_ens_date2, dim_p, dim_ens, &
-          coupling_nemo, ens_p)
+     call read_ens_mv_loop(path_ens, dim_p, dim_ens, coupling_nemo, ens_p)
 
   elseif (type_ens_init == 1) then
      if (mype_filter==0) write (*,'(1x,a)') 'Initialize ensemble from single ensemble file'
 
-     call read_ens(trim(path_ens)//trim(file_ens), dim_p, dim_ens, ens_p)
+     call read_ens(trim(file_ens), dim_p, dim_ens, ens_p)
 
   elseif (type_ens_init == 2) then
      
@@ -72,7 +70,15 @@ subroutine init_ens_pdaf(filtertype, dim_p, dim_ens, state_p, Uinv, &
 
      if (mype_filter==0) write (*,'(1x,a)') 'Initialize ensemble from output files'
 
-     CALL gen_ens_mv(1.0, .true., ens_datelist, path_ens, dim_p, dim_ens, ens_p)
+     CALL gen_ens_mv(1.0_pwp, .true., path_ens, dim_p, dim_ens, ens_p)
+
+  elseif (type_ens_init == 3) then
+     
+     ! Real ensemble states as model snapshots from separate files
+
+     if (mype_filter==0) write (*,'(1x,a)') 'Initialize ensemble from sampling covariance matrix'
+
+     CALL gen_ens_from_cov(trim(file_ens), dim_p, dim_ens, ens_p)
 
   end if
 
@@ -83,8 +89,7 @@ subroutine init_ens_pdaf(filtertype, dim_p, dim_ens, state_p, Uinv, &
      ! Read ensemble central state vector state_p
      if (mype_filter==0) write (*,'(1x,a)') 'Read central model state of ensemble from file'
 
-     call read_state_mv(path_inistate, file_inistate_date1, file_inistate_date2, dim_p, 1, &
-          coupling_nemo, state_p)
+     call read_state_mv(path_inistate, dim_p, 1, coupling_nemo, state_p)
 
   elseif (type_central_state == 2) then
 
@@ -100,13 +105,13 @@ subroutine init_ens_pdaf(filtertype, dim_p, dim_ens, state_p, Uinv, &
 
      ! *** Replace ensemble mean and inflate ensemble perturbations ***
 
-     inv_dim_ens = 1.0/real(dim_ens)
+     inv_dim_ens = 1.0_pwp/real(dim_ens, kind=pwp)
 
      if (mype_filter==0) write (*,'(1x,a)') 'Set central state of ensemble'
 
 !$OMP PARALLEL DO private(k, ens_mean)
      do i = 1, dim_p
-        ens_mean = 0.0
+        ens_mean = 0.0_pwp
         do member = 1, dim_ens
            ens_mean = ens_mean + inv_dim_ens*ens_p(i, member)
         end do
@@ -119,4 +124,62 @@ subroutine init_ens_pdaf(filtertype, dim_p, dim_ens, state_p, Uinv, &
 
   end if
 
+contains
+! ===================================================================================
+
+!> Generate ensemble from reading covariance matrix from a file
+!!
+    subroutine gen_ens_from_cov(filename_cov, dim_p, dim_ens, ens_p)
+      use pdaf_interfaces_module, only: PDAF_SampleEns
+      use mod_io_pdaf, only: read_eof_cov
+      use mod_parallel_pdaf, &
+           only: mype=>mype_filter, abort_parallel
+! *** Arguments ***
+      character(*), intent(in) :: filename_cov          !< covariance filename
+      integer, intent(in)      :: dim_p                 !< dimension of local state vector
+      integer, intent(in)      :: dim_ens               !< ensemble size
+      real(pwp), intent(inout) :: ens_p(dim_p, dim_ens) !< ensemble vector
+
+! *** Local variables ***
+      integer :: rank
+      integer :: status_pdaf
+      real(pwp), allocatable :: eofV(:, :)
+      real(pwp), allocatable :: svals(:)
+      real(pwp), allocatable :: state_p(:)
+      ! *****************************************
+      ! *** Generate ensemble of model states ***
+      ! *****************************************
+
+      ! *** Rank of matrix is ensemble size minus one
+      rank = dim_ens - 1
+
+      ! allocate memory for temporary fields
+      ALLOCATE(eofV(dim_p, rank))
+      ALLOCATE(svals(rank))
+      ALLOCATE(state_p(dim_p))
+      ! get eigenvalue and eigenvectors from file
+      call read_eof_cov(filename_cov, dim_p, rank, state_p, eofV, svals)
+
+      ! *** Generate full ensemble on filter-PE 0 ***
+      WRITE (*, '(9x, a)') '--- generate ensemble from covariance matrix'
+      WRITE (*, '(9x, a)') &
+         '--- use rank reduction and 2nd order exact sampling (SEIK type)'
+      WRITE (*, '(9x, a, i5)') '--- Ensemble size:  ', dim_ens
+      WRITE (*, '(9x, a, i5)') '--- number of EOFs: ', rank
+
+      WRITE (*,'(9x, a)') '--- generate state ensemble'
+      ! Use PDAF routine to generate ensemble from covariance matrix
+      CALL PDAF_SampleEns(dim_p, dim_ens, eofV, svals, state_p, ens_p, 1, status_pdaf)
+
+      if (status_pdaf /= 0) then
+       write (*, '(/1x,a6,i3,a43,i4,a1/)') &
+            'ERROR ', status_pdaf, &
+            ' in sample ensemble of PDAF - stoppinsg! (PE ', mype, ')'
+       call abort_parallel()
+      end if
+      ! ****************
+      ! *** clean up ***
+      ! ****************
+      DEALLOCATE(svals, eofV, state_p)
+    end subroutine gen_ens_from_cov
 end subroutine init_ens_pdaf
