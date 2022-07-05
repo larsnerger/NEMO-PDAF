@@ -8,6 +8,7 @@ module mod_nemo_pdaf
        nimpp, njmpp, tmask, gdept_1d, ndastp
   use par_oce, &
        only: jp_tem, jp_sal
+  use mod_kind_pdaf
 
   ! *** NEMO model variables
 !  integer :: jpiglo, jpjglo, jpk        ! Global NEMO grid dimensions
@@ -20,8 +21,8 @@ module mod_nemo_pdaf
 !  real, allocatable :: gdept_1d(:)      ! Depths
   
   ! *** Other grid variables
-  real, allocatable :: tmp_4d(:,:,:,:)     ! 4D array used to represent full NEMO grid box
-  real, allocatable :: lat1(:), lon1(:)    ! Vectors holding latitude and latitude
+  real(pwp), allocatable :: tmp_4d(:,:,:,:)     ! 4D array used to represent full NEMO grid box
+  real(pwp), allocatable :: lat1(:), lon1(:)    ! Vectors holding latitude and latitude
 
   integer :: dim_2d                        ! Dimension of 2d grid box    
   integer :: nwet                          ! Number of surface wet grid points
@@ -32,13 +33,15 @@ module mod_nemo_pdaf
   integer, allocatable :: idx_nwet(:,:)    ! Index array for wet_pts row index in wet surface grid points
   integer, allocatable :: nlev_wet_2d(:,:) ! Number of wet layers for ij position in 2d box
 
-  integer :: use_wet_state=0
+  integer :: use_wet_state=0               ! 1: State vector contains full columns when surface grid point is wet
+                                           ! 2: State vector only contains wet grid points 
+                                           ! other: State vector contains 2d/3d grid box
 
   integer :: i0, j0                         ! PE-local halo offsets
   integer :: ni_p, nj_p, nk_p               ! Size of decomposed grid
   integer :: istart, jstart                 ! Start indices for internal local domain
   integer :: dim_2d_p, dim_3d_p             ! Dimension of 2d/3d grid box of sub-domain   
-  real, allocatable :: lat1_p(:), lon1_p(:) ! Vectors holding latitude and latitude for decomposition
+  real(pwp), allocatable :: lat1_p(:), lon1_p(:) ! Vectors holding latitude and latitude for decomposition
   integer :: sdim2d, sdim3d                 ! 2D/3D dimension of field in state vector
 
   ! *** File name and path to read grid information

@@ -24,8 +24,12 @@ type state_field
    character(len=50) :: file=''        ! File name stub to read field from
    logical :: read_from_list = .false. ! if we read actual filename from a list of files
 
+   integer :: nx = 1
+   integer :: ny = 1
+   integer :: nlvls = 1                ! dimension size
+
    integer :: transform = 0            ! Type of variable transformation; not implemented
-   real(pdp) :: trafo_shift = 0.0      ! Constant to shift value in transformation; not implemented
+   real(pdp) :: trafo_shift = 0.0_pdp  ! Constant to shift value in transformation; not implemented
 
    character(len=20) :: unit           ! Unit of variable
    integer :: ndims = 0                ! Number of field dimensions (2 or 3)
@@ -44,13 +48,10 @@ integer :: screen=1          ! Verbosity flag
 contains
    ! ==============================================================
    subroutine init_sfields(sfields, nfields, n2d, n3d)
-      use mod_io_pdaf, only: get_var_dims
       type(state_field), allocatable, intent(out) :: sfields(:)
       integer, intent(out) :: nfields ! number of model fields
-      integer, intent(out) :: n2d     ! size of 2d field
-      integer, intent(out) :: n3d     ! size of 3d field
-
-      integer :: nx, ny ,nlvls
+      integer, intent(out) :: n2d
+      integer, intent(out) :: n3d
 
       namelist /n_statevector/ nfields
       read(unit=20, nml=n_statevector)
@@ -64,11 +65,9 @@ contains
       call init_sfields_unit(sfields, nfields)
       call init_sfields_ndim(sfields, nfields)
       ! get the spatial dimension size of the domain
-      call get_var_dims(trim(get_filename(sfields(1))), nlvls, ny, nx)
-      ! set variable sizes
-      n2d = ny*nx
-      n3d = n2d*nlvls
-      call init_sfields_off(sfields, nfields, n2d, n3d)
+      call init_sfields_off(sfields, nfields)
+      n2d = sfields(1)%nx*sfields(1)%ny
+      n3d = n2d*maxval(sfields%nlvls)
    end subroutine init_sfields
 
 
@@ -120,23 +119,15 @@ contains
    end subroutine init_sfields_ndim
 
 
-   subroutine init_sfields_off(sfields, nfields, n2d, n3d)
+   subroutine init_sfields_off(sfields, nfields)
       integer, intent(in) :: nfields
       type(state_field), intent(inout) :: sfields(nfields)
-      integer, intent(in) :: n2d
-      integer, intent(in) :: n3d
 
       integer :: count
       integer :: i
 
       do i = 1, nfields
-         if (sfields(i)%ndims == 2) then
-            sfields(i)%dim = n2d
-         else if (sfields(i)%ndims == 3) then
-            sfields(i)%dim = n3d
-         else
-            stop 'init_sfields_off: number of dimension in sfields are wrong'
-         end if
+         sfields(i)%dim = sfields(i)%nx*sfields(i)%ny*sfields(i)%nlvls
       end do
 
       count = 0
@@ -187,6 +178,7 @@ contains
             if (present(do_exit)) do_exit = .false.
          end if
       else
+         if (present(do_exit)) do_exit = .false.
          if (do_init_) counter = 1
          filename = trim(sfield%file)
          if ((counter > 1) .and. (present(do_exit))) do_exit = .true.
