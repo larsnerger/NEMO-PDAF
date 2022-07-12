@@ -182,7 +182,8 @@ module mod_assimilation_pdaf
 
   integer, allocatable :: id_lstate_in_pstate(:) ! Indices of local state vector in global vector
   real(pwp) :: domain_coords(2) !> Coordinates of local analysis domain
-
+  real(pwp), parameter  :: pi     = 3.14159265358979323846_pwp
+  real(pwp) :: deg2rad = pi / 180.0_pwp      ! Conversion from degrees to radian
 ! Constants for coordinate calculations
 
 !$OMP THREADPRIVATE(domain_coords, id_lstate_in_pstate)
@@ -207,9 +208,7 @@ contains
          only: PDAFomi_assimilate_local, PDAF_get_localfilter
     use mod_parallel_pdaf, &
          only: mype_ens, abort_parallel
-  real(pwp), parameter  :: pi     = 3.14159265358979323846_pwp
-  real(pwp) :: deg2rad = pi / 180.0_pwp      ! Conversion from degrees to radian
-      
+
     integer :: status_pdaf  ! PDAF status flag
     integer :: localfilter  ! Flag for domain-localized filter (1=true)
 
