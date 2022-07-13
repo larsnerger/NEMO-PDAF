@@ -547,7 +547,7 @@ end subroutine gen_ens_mv
     call check( NF90_Inquire_dimension(ncid, dimid, len=rank_file) )
 
     ! Check consistency of dimensions
-    checkdim: IF (dim_state == dim_file .AND. rank_file >= rank) THEN
+    checkdim: IF (dim_state /= dim_file .OR. rank_file < rank) THEN
       ! *** Rank stored in file is smaller than requested EOF rank ***
       WRITE(*, '(a)') 'Rank stored in file is smaller than requested EOF rank'
       call check( NF90_CLOSE(ncid) )
