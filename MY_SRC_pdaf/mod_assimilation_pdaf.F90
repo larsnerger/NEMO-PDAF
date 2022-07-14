@@ -18,7 +18,7 @@ module mod_assimilation_pdaf
        ! (2) read snapshot from separate model files
   integer :: type_central_state = 1    !< Type of central state of ensemble
        !< (0) mean of model snapshots, (1) read from file, (2) use collect_state
-  real(pwp) :: ensscale=1.0            !< Scaling factor for initial ensemble
+  real(pwp) :: ensscale=1.0_pwp        !< Scaling factor for initial ensemble
 
 ! *** Model- and data specific variables ***
 
@@ -157,7 +157,7 @@ module mod_assimilation_pdaf
   INTEGER :: dim_cvec = 0  !< Size of control vector (parameterized part; for subtypes 0,1)
   INTEGER :: dim_cvec_ens = 0   !< Size of control vector (ensemble part; for subtypes 1,2)
   INTEGER :: mcols_cvec_ens = 1 !< Multiplication factor for number of columns for ensemble control vector
-  REAL(pwp) :: beta_3dvar = 0.5 !< Hybrid weight for hybrid 3D-Var
+  REAL(pwp) :: beta_3dvar = 0.5_pwp !< Hybrid weight for hybrid 3D-Var
 !    ! NETF/LNETF
   INTEGER :: type_winf     ! Set weights inflation: (1) activate
   REAL(pwp)    :: limit_winf  ! Limit for weights inflation: N_eff/N>limit_winf
@@ -182,10 +182,9 @@ module mod_assimilation_pdaf
 
   integer, allocatable :: id_lstate_in_pstate(:) ! Indices of local state vector in global vector
   real(pwp) :: domain_coords(2) !> Coordinates of local analysis domain
-
+  real(pwp), parameter  :: pi     = 3.14159265358979323846_pwp
+  real(pwp) :: deg2rad = pi / 180.0_pwp      ! Conversion from degrees to radian
 ! Constants for coordinate calculations
-  real(8), parameter  :: pi     = 3.14159265358979323846_pwp
-  real :: deg2rad = pi / 180.0_pwp      ! Conversion from degrees to radian
 
 !$OMP THREADPRIVATE(domain_coords, id_lstate_in_pstate)
 
@@ -209,7 +208,7 @@ contains
          only: PDAFomi_assimilate_local, PDAF_get_localfilter
     use mod_parallel_pdaf, &
          only: mype_ens, abort_parallel
-      
+
     integer :: status_pdaf  ! PDAF status flag
     integer :: localfilter  ! Flag for domain-localized filter (1=true)
 

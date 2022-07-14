@@ -1,0 +1,42 @@
+&n_statevector
+  nfields = 5 ! number of model fields to be read
+/
+&state_vector
+  ! variable names
+  sfields(1)%variable =  'zos'
+  sfields(2)%variable =  'thetao'
+  sfields(3)%variable =  'so'
+  sfields(4)%variable =  'uo'
+  sfields(5)%variable =  'vo'
+
+  sfields(1)%nx = 182
+  sfields(2)%nx = 182
+  sfields(3)%nx = 182
+  sfields(4)%nx = 182
+  sfields(5)%nx = 182
+  sfields(1)%ny = 149
+  sfields(2)%ny = 149
+  sfields(3)%ny = 149
+  sfields(4)%ny = 149
+  sfields(5)%ny = 149
+  sfields(1)%nlvls = 1
+  sfields(2)%nlvls = 31
+  sfields(3)%nlvls = 31
+  sfields(4)%nlvls = 31
+  sfields(5)%nlvls = 31
+
+  ! input filenames
+  ! read from a file list
+  sfields(1)%file='ORCA2_5d_00010101_00011231_grid_T.nc'
+  sfields(2)%file='ORCA2_5d_00010101_00011231_grid_T.nc'
+  sfields(3)%file='ORCA2_5d_00010101_00011231_grid_T.nc'
+  sfields(4)%file='ORCA2_5d_00010101_00011231_grid_U.nc'
+  sfields(5)%file='ORCA2_5d_00010101_00011231_grid_V.nc'
+/
+&cov_options
+   maxtimes = 50
+   do_mv = 1
+   remove_mean = 0
+   limit = 1.0e-12
+   hwindow = 6
+/
