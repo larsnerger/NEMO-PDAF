@@ -102,7 +102,7 @@ CONTAINS
       USE pdafomi, &
          ONLY: PDAFomi_gather_obs
       USE mod_assimilation_pdaf, &
-         ONLY: filtertype, lradius, delt_obs
+         ONLY: filtertype, lradius, delt_obs, deg2rad
       USE mod_nemo_pdaf, &
          ONLY: ni_p, nj_p
       USE mod_parallel_pdaf, &
@@ -253,8 +253,8 @@ IF (mype_filter == 0) write (*,*) 'NEMO-PDAF:    Warning: reading step ', nc_ste
                obs_p(cnt_p) = obs(i_obs, j_obs, 1)
 
                ! Observation coordinates - must be in radians for PDAFOMI
-               ocoord_p(1, cnt_p) = glamt(i + i0, j + j0)*rad_conv
-               ocoord_p(2, cnt_p) = gphit(i + i0, j + j0)*rad_conv
+               ocoord_p(1, cnt_p) = glamt(i + i0, j + j0)*deg2rad
+               ocoord_p(2, cnt_p) = gphit(i + i0, j + j0)*deg2rad
 
                ! Coordinates for observation operator (gridpoint)
                thisobs%id_obs_p(1, cnt_p) = cnt0_p
@@ -381,10 +381,10 @@ IF (mype_filter == 0) write (*,*) 'NEMO-PDAF:    Warning: reading step ', nc_ste
       !> Number of process-local observations
       INTEGER, INTENT(in) :: dim_obs_p
       !> Process-local observations
-      REAL, INTENT(inout) :: obs(dim_obs_p)
+      REAL(pwp), INTENT(inout) :: obs(dim_obs_p)
 
       !> Random noise
-      REAL, ALLOCATABLE :: noise(:)
+      REAL(pwp), ALLOCATABLE :: noise(:)
       !> Seed for random number generator
       INTEGER, SAVE :: iseed(4)
       !> Flag for first call

@@ -52,30 +52,30 @@ subroutine prepoststep_ens_pdaf(step, dim_p, dim_ens, dim_ens_p, dim_obs_p, &
   integer, intent(in) :: dim_ens        !< Size of state ensemble
   integer, intent(in) :: dim_ens_p      !< PE-local size of ensemble
   integer, intent(in) :: dim_obs_p      !< Dimension of observation vector
-  real, intent(inout) :: state_p(dim_p) !< PE-local forecast/analysis state
+  real(pwp), intent(inout) :: state_p(dim_p) !< PE-local forecast/analysis state
   !< (The array 'state_p' is not generally not initialized in the case of SEIK.
   !< It can be used freely here.)
-  real, intent(inout) :: Uinv(dim_ens-1, dim_ens-1) !< Inverse of matrix U
-  real, intent(inout) :: ens_p(dim_p, dim_ens)      !< PE-local state ensemble
+  real(pwp), intent(inout) :: Uinv(dim_ens-1, dim_ens-1) !< Inverse of matrix U
+  real(pwp), intent(inout) :: ens_p(dim_p, dim_ens)      !< PE-local state ensemble
   integer, intent(in) :: flag           !< PDAF status flag
 
 
 ! *** local variables ***
   integer :: i, j, member              ! counters
   logical, save :: firsttime = .true.  ! Routine is called for first time?
-  real :: invdim_ens                   ! Inverse ensemble size
-  real :: invdim_ensm1                 ! Inverse of ensemble size minus 1
-  real, allocatable :: rmse_est_p(:)   ! PE-local estimated RMS errors (ensemble standard deviations)
-  real, allocatable :: state_tmp(:)    ! temporary state vector; holds state variances or increment
   integer,save :: writestep_var=1      ! Time index for file output of variance
   integer,save :: writestep_state=1    ! Time index for file output of state
   integer :: nsteps                    ! Number of steps written into file
   character(len=3) :: forana           ! String indicating forecast or analysis
   character(len=8) :: ndastp_str       ! String for model date 
+  real(pwp) :: invdim_ens                  ! Inverse ensemble size
+  real(pwp) :: invdim_ensm1                ! Inverse of ensemble size minus 1
+  real(pwp), allocatable :: rmse_est_p(:)  ! PE-local estimated RMS errors (ensemble standard deviations)
+  real(pwp), allocatable :: state_tmp(:)   ! temporary state vector; holds state variances or increment
   character(len=200) :: titleState, titleVar   ! Strings for file titles
   integer, allocatable :: dimfield_p(:) ! Local field dimensions
   integer, allocatable :: dimfield(:)  ! Global field dimensions
-  real, allocatable :: rmse_est(:)     ! Global estimated RMS errors (ensmeble standard deviations)
+  real(pwp), allocatable :: rmse_est(:)    ! Global estimated RMS errors (ensmeble standard deviations)
   
 
 
@@ -100,8 +100,8 @@ subroutine prepoststep_ens_pdaf(step, dim_p, dim_ens, dim_ens_p, dim_obs_p, &
 !  if (firsttime) call memcount(3,'r',dim_p)
 
   ! Initialize numbers
-  invdim_ens    = 1.0_8 / real(dim_ens,8)  
-  invdim_ensm1  = 1.0_8 / real(dim_ens - 1,8)
+  invdim_ens    = 1.0_pwp / real(dim_ens,pwp)  
+  invdim_ensm1  = 1.0_pwp / real(dim_ens - 1,pwp)
 
 
 

@@ -67,10 +67,10 @@ contains
     implicit none
 
 ! *** Local variables
-    integer :: filter_param_i(7) ! Integer parameter array for filter
-    real    :: filter_param_r(2) ! Real parameter array for filter
-    integer :: status_pdaf       ! PDAF status flag
-    integer :: doexit, steps     ! Not used in this implementation
+    integer   :: filter_param_i(7) ! Integer parameter array for filter
+    real(pwp) :: filter_param_r(2) ! Real parameter array for filter
+    integer   :: status_pdaf       ! PDAF status flag
+    integer   :: doexit, steps     ! Not used in this implementation
     real(pwp) :: timenow         ! Not used in this implementation
       
     external :: init_ens_pdaf         ! Ensemble initialization
