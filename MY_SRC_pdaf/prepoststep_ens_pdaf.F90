@@ -35,7 +35,9 @@ subroutine prepoststep_ens_pdaf(step, dim_p, dim_ens, dim_ens_p, dim_obs_p, &
   use mod_parallel_pdaf, &
        only: mype=>mype_filter, comm_filter, MPIerr
   use mod_statevector_pdaf, &
-       only: n_fields, id, sfields
+       only: n_fields, sfields
+  use mod_iau_pdaf, only: init_iau_pdaf
+  use in_out_manager, only: nit000
   use mod_io_pdaf, &
         only: save_state, save_var_time, file_PDAF_state, file_PDAF_variance, &
         write_field_mv
@@ -270,6 +272,8 @@ subroutine prepoststep_ens_pdaf(step, dim_p, dim_ens, dim_ens_p, dim_obs_p, &
    endif
 
 
+   ! initialise IAU time
+   call init_iau_pdaf(step + nit000 - 1)
 ! ********************
 ! *** finishing up ***
 ! ********************

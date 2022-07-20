@@ -23,7 +23,7 @@ subroutine distribute_state_pdaf(dim_p, state_p)
        only: mype=>mype_ens
   use mod_iau_pdaf, &
        only: ssh_iau_pdaf, u_iau_pdaf, v_iau_pdaf, t_iau_pdaf, &
-       s_iau_pdaf
+       s_iau_pdaf, div_damping_filter
   use mod_statevector_pdaf, &
        only: sfields, id
   use mod_nemo_pdaf, &
@@ -240,6 +240,7 @@ subroutine distribute_state_pdaf(dim_p, state_p)
         call lbc_lnk_multi('distribute_state_pdaf', u_iau_pdaf, 'U', -1., &
              v_iau_pdaf, 'V', -1.)
      end if
+     call div_damping_filter
 
   end if direct
 

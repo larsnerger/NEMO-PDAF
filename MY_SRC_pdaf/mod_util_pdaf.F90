@@ -169,6 +169,9 @@ contains
                file_ens, verbose
     ! use mod_obs_ssh_mgrid_pdafomi, &
     !      only: assim_ssh_mgrid, rms_ssh_mgrid, file_ssh_mgrid
+    use mod_iau_pdaf, only: iau_nml
+    use mod_obs_ssh_mgrid_pdafomi, &
+         only: assim_ssh_mgrid, rms_ssh_mgrid, file_ssh_mgrid
     
 
     !< Namelist file
@@ -181,6 +184,7 @@ contains
     namelist /infl_nml/ type_forget, forget
     namelist /local_nml/ lradius, locweight, sradius
     namelist /obs_nml/ delt_obs !, assim_ssh_mgrid, rms_ssh_mgrid, file_ssh_mgrid
+    namelist /obs_nml/ delt_obs, assim_ssh_mgrid, rms_ssh_mgrid, file_ssh_mgrid
     namelist /init_nml/ type_ens_init, type_central_state, &
                         path_inistate, path_ens, coupling_nemo, &
                         file_ens, verbose
@@ -203,6 +207,8 @@ contains
     read (20, NML=obs_nml)
     rewind(20)
     read (20, NML=init_nml)
+    rewind(20)
+    read (20, NML=iau_nml)
     rewind(20)
     close (20)
 
@@ -264,7 +270,6 @@ contains
          only: mype_ens, comm_ensemble, mpierr
     use mod_iau_pdaf, &
          only: ssh_iau_pdaf, t_iau_pdaf, s_iau_pdaf, u_iau_pdaf, v_iau_pdaf
-
 
     ! Show allocated memory for PDAF
     if (mype_ens==0) call PDAF_print_info(2)

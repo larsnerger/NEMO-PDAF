@@ -10,11 +10,11 @@
 MODULE mod_parallel_pdaf
 
   USE mod_kind_pdaf
-
+  USE mpi
   IMPLICIT NONE
   SAVE
 
-  INCLUDE 'mpif.h'
+  ! INCLUDE 'mpif.h'
 
   ! Basic variables for model state integrations
   INTEGER :: COMM_model         ! MPI communicator for model tasks
