@@ -18,12 +18,12 @@ module mod_assimilation_pdaf
        ! (2) read snapshot from separate model files
   integer :: type_central_state = 1    !< Type of central state of ensemble
        !< (0) mean of model snapshots, (1) read from file, (2) use collect_state
-  real(pwp) :: ensscale=1.0_pwp        !< Scaling factor for initial ensemble
+  real(pwp) :: ensscale=1.0            !< Scaling factor for initial ensemble
 
 ! *** Model- and data specific variables ***
 
-  INTEGER :: dim_state     !< Global model state dimension
-  INTEGER :: dim_state_p   !< Model state dimension for PE-local domain
+  integer :: dim_state     !< Global model state dimension
+  integer :: dim_state_p   !< Model state dimension for PE-local domain
 
   ! Settings for time stepping - available as namelist read-in
   integer :: step_null = 0       !< initial time step of assimilation
@@ -33,25 +33,25 @@ module mod_assimilation_pdaf
 ! *** Their values are set in init_PDAF                         ***
 
 ! Settings for time stepping - available as command line options
-  LOGICAL :: model_error     !< Control application of model error
-  REAL(pwp) :: model_err_amp !< Amplitude for model error
+  logical :: model_error     !< Control application of model error
+  real(pwp) :: model_err_amp !< Amplitude for model error
 
 ! Settings for observations - available as command line options
-  INTEGER :: delt_obs         !< time step interval between assimilation steps
-  LOGICAL :: twin_experiment  !< Whether to run an twin experiment with synthetic observations
+  integer :: delt_obs         !< time step interval between assimilation steps
+  logical :: twin_experiment  !< Whether to run an twin experiment with synthetic observations
 
 ! General control of PDAF - available as command line options
-  INTEGER :: screen       !< Control verbosity of PDAF
+  integer :: screen       !< Control verbosity of PDAF
                           !< * (0) no outputs
                           !< * (1) progress info
                           !< * (2) add timings
                           !< * (3) debugging output
-  INTEGER :: dim_ens      !< Size of ensemble
-  INTEGER :: filtertype   !< Select filter algorithm:
+  integer :: dim_ens      !< Size of ensemble
+  integer :: filtertype   !< Select filter algorithm:
                           !<   * SEEK (0), SEIK (1), EnKF (2), LSEIK (3), ETKF (4)
                           !<   LETKF (5), ESTKF (6), LESTKF (7), NETF (9), LNETF (10)
                           !<   PF (12), GENOBS (100), 3DVAR (200)
-  INTEGER :: subtype      !< Subtype of filter algorithm
+  integer :: subtype      !< Subtype of filter algorithm
                           !<   * SEEK: 
                           !<     (0) evolve normalized modes
                           !<     (1) evolve scaled modes with unit U
@@ -101,20 +101,20 @@ module mod_assimilation_pdaf
                           !<     (4) 3D Ensemble Var using ESTKF for ensemble update
                           !<     (6) hybrid 3D-Var using LESTKF for ensemble update
                           !<     (7) hybrid 3D-Var using ESTKF for ensemble update
-  INTEGER :: incremental  !< Perform incremental updating in LSEIK
-  INTEGER :: dim_lag      !< Number of time instances for smoother
+  integer :: incremental  !< Perform incremental updating in LSEIK
+  integer :: dim_lag      !< Number of time instances for smoother
 
 ! Filter settings - available as command line options
 !    ! General
-  INTEGER :: type_forget  !< Type of forgetting factor
-  REAL(pwp) :: forget     !< Forgetting factor for filter analysis
-  INTEGER :: dim_bias     !< dimension of bias vector
+  integer :: type_forget  !< Type of forgetting factor
+  real(pwp) :: forget     !< Forgetting factor for filter analysis
+  integer :: dim_bias     !< dimension of bias vector
 
 !    ! ENKF
-  INTEGER :: rank_analysis_enkf  !< Rank to be considered for inversion of HPH
+  integer :: rank_analysis_enkf  !< Rank to be considered for inversion of HPH
 
 !    ! SEIK/ETKF/ESTKF/LSEIK/LETKF/LESTKF
-  INTEGER :: type_trans    !< Type of ensemble transformation 
+  integer :: type_trans    !< Type of ensemble transformation 
                            !< * SEIK/LSEIK: 
                            !< (0) use deterministic omega
                            !< (1) use random orthonormal omega orthogonal to (1,...,1)^T
@@ -134,57 +134,57 @@ module mod_assimilation_pdaf
                            !< (1) use identity transformation
 
 !    ! LSEIK/LETKF/LESTKF/LNETF
-  REAL(pwp) :: lradius     !< Cut-off radius for local observation domain 
-  INTEGER :: locweight     !< Type of localizing weighting of observations
+  integer :: locweight     !< Type of localizing weighting of observations
                     !<   * (0) constant weight of 1
                     !<   * (1) exponentially decreasing with SRANGE
                     !<   * (2) use 5th-order polynomial
                     !<   * (3) regulated localization of R with mean error variance
                     !<   * (4) regulated localization of R with single-point error variance
-  REAL(pwp) :: sradius     !< Support range for 5th order polynomial
-                           !<   or radius for 1/e for exponential weighting
 !    ! SEIK-subtype4/LSEIK-subtype4/ESTKF/LESTKF
-  INTEGER :: type_sqrt     !< Type of the transform matrix square-root 
+  integer :: type_sqrt     !< Type of the transform matrix square-root 
                     !<   * (0) symmetric square root
                     !<   * (1) Cholesky decomposition
 !    ! 3D-Var
-  INTEGER :: type_opt      !< Type of minimizer for 3DVar
+  integer :: type_opt      !< Type of minimizer for 3DVar
                     !<   * (1) LBFGS (default)
                     !<   * (2) CG+
                     !<   * (3) plain CG
                     !<   * (12) CG+ parallelized
                     !<   * (13) plain CG parallelized
-  INTEGER :: dim_cvec = 0  !< Size of control vector (parameterized part; for subtypes 0,1)
-  INTEGER :: dim_cvec_ens = 0   !< Size of control vector (ensemble part; for subtypes 1,2)
-  INTEGER :: mcols_cvec_ens = 1 !< Multiplication factor for number of columns for ensemble control vector
-  REAL(pwp) :: beta_3dvar = 0.5_pwp !< Hybrid weight for hybrid 3D-Var
+  integer :: dim_cvec = 0  !< Size of control vector (parameterized part; for subtypes 0,1)
+  integer :: dim_cvec_ens = 0   !< Size of control vector (ensemble part; for subtypes 1,2)
+  integer :: mcols_cvec_ens = 1 !< Multiplication factor for number of columns for ensemble control vector
+  real(pwp) :: beta_3dvar = 0.5 !< Hybrid weight for hybrid 3D-Var
 !    ! NETF/LNETF
-  INTEGER :: type_winf     ! Set weights inflation: (1) activate
-  REAL(pwp)    :: limit_winf  ! Limit for weights inflation: N_eff/N>limit_winf
+  integer :: type_winf     ! Set weights inflation: (1) activate
+  real(pwp)    :: limit_winf  ! Limit for weights inflation: N_eff/N>limit_winf
 !    ! Particle filter
-  INTEGER :: pf_res_type   ! Resampling type for PF
+  integer :: pf_res_type   ! Resampling type for PF
                            ! (1) probabilistic resampling
                            ! (2) stochastic universal resampling
                            ! (3) residual resampling        
-  INTEGER :: pf_noise_type    ! Resampling type for PF
+  integer :: pf_noise_type    ! Resampling type for PF
                            ! (0) no perturbations, (1) constant stddev, 
                            ! (2) amplitude of stddev relative of ensemble variance
-  REAL(pwp) :: pf_noise_amp ! Noise amplitude (>=0.0, only used if pf_noise_type>0)
+  real(pwp) :: pf_noise_amp ! Noise amplitude (>=0.0, only used if pf_noise_type>0)
 
 !    ! Other variables - _NOT_ available as command line options!
-  INTEGER :: covartype     !< For SEIK: Definition of ensemble covar matrix
+  integer :: covartype     !< For SEIK: Definition of ensemble covar matrix
                            !<   * (0): Factor (r+1)^-1 (or N^-1)
                            !<   * (1): Factor r^-1 (or (N-1)^-1) - real ensemble covar.
                            !< This setting is only for the model part; The definition
                            !< of P has also to be specified in PDAF_filter_init.
                            !< Only for upward-compatibility of PDAF!
-  REAL(pwp) :: time        !< model time
+  real(pwp) :: time        !< model time
 
   integer, allocatable :: id_lstate_in_pstate(:) ! Indices of local state vector in global vector
   real(pwp) :: domain_coords(2) !> Coordinates of local analysis domain
-  real(pwp), parameter  :: pi     = 3.14159265358979323846_pwp
-  real(pwp) :: deg2rad = pi / 180.0_pwp      ! Conversion from degrees to radian
+
+  integer :: assim_flag = 0   ! Flag whether assimilation step was just done
+
 ! Constants for coordinate calculations
+  real(8), parameter  :: pi     = 3.14159265358979323846_pwp
+  real :: deg2rad = pi / 180.0_pwp      ! Conversion from degrees to radian
 
 !$OMP THREADPRIVATE(domain_coords, id_lstate_in_pstate)
 
@@ -207,7 +207,8 @@ contains
     use pdaf_interfaces_module, &
          only: PDAFomi_assimilate_local, PDAF_get_localfilter
     use mod_parallel_pdaf, &
-         only: mype_ens, abort_parallel
+         only: mype_ens, abort_parallel, COMM_ensemble, MPIerr
+    use dom_oce, only: neuler
 
     integer :: status_pdaf  ! PDAF status flag
     integer :: localfilter  ! Flag for domain-localized filter (1=true)
@@ -255,6 +256,15 @@ contains
        write (*, '(a)') 'ERROR - global filter not implemented, stopping.'
        call abort_parallel()
     end if
+
+! *** Query whether analysis step was performed
+! *** This can trigger the Euler time step
+    CALL PDAF_get_assim_flag(assim_flag)
+
+! This Barrier is temporary to avoid that model tasks > 1 continue with model integrations
+! Remove when distribute state is coded!
+
+call MPI_Barrier(COMM_ensemble, MPIerr)
 
     ! Check for errors during execution of PDAF
     if (status_pdaf /= 0) then

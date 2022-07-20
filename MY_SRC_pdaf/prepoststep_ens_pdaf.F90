@@ -265,7 +265,7 @@ subroutine prepoststep_ens_pdaf(step, dim_p, dim_ens, dim_ens_p, dim_obs_p, &
       if (forana/='ini') then
          call write_field_mv(state_tmp, dim_p, trim(file_PDAF_state)//'_'//trim(ndastp_str)//'.nc', titleState, 1.0, 2, writestep_state)
       else
-         call write_field_mv(state_tmp, dim_p, trim(file_PDAF_state)//'_'//trim(ndastp_str)//'_ini.nc', titleState, 1.0, 2, writestep_state)
+         call write_field_mv(state_tmp, dim_p, trim(file_PDAF_state)//'_'//trim(ndastp_str)//'_ini.nc', titleState, 1.0, 1, writestep_state)
       end if
    endif
 

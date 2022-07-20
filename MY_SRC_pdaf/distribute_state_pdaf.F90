@@ -29,7 +29,7 @@ subroutine distribute_state_pdaf(dim_p, state_p)
   use mod_nemo_pdaf, &
        only: ni_p, nj_p, nk_p, i0, j0, jp_tem, jp_sal
   use oce, &
-       only: sshb, tsb, ub, vb
+       only: sshn, tsn, un, vn, sshb, tsb, ub, vb
   use lbclnk, &
        only: lbc_lnk, lbc_lnk_multi
 
@@ -41,7 +41,7 @@ subroutine distribute_state_pdaf(dim_p, state_p)
 
 ! *** Local variables ***
   integer :: i, j, k, cnt       ! Counters
-  logical :: dist_direct = .false. ! Flag for first timestep
+  logical :: dist_direct = .true. ! Flag for direct update of model fields
 
 
   ! **********************************************
@@ -50,7 +50,6 @@ subroutine distribute_state_pdaf(dim_p, state_p)
   ! **********************************************
 
   ! Note: The loop limits account for the halo offsets i0 and j0
-!     if (mype==0) write (*,'(a,4x,a)') 'NEMO-PDAF', 'distribute state - DEACTIVATED'
 
   direct: if (dist_direct) then
      ! ************************************
@@ -65,13 +64,16 @@ subroutine distribute_state_pdaf(dim_p, state_p)
         cnt = sfields(id%ssh)%off + 1
         do j = 1 + j0, nj_p + j0
            do i = 1 + i0, ni_p + i0
-              sshb(i, j) = state_p(cnt)
+              sshn(i, j) = state_p(cnt)
               cnt = cnt + 1
            end do
         end do
 
         ! Fill halo regions
-        call lbc_lnk('distribute_state_pdaf', sshb, 'T', 1.)
+        call lbc_lnk('distribute_state_pdaf', sshn, 'T', 1.)
+
+        ! Update before field 
+        sshb = sshn
      endif
 
 
@@ -85,7 +87,7 @@ subroutine distribute_state_pdaf(dim_p, state_p)
         do k = 1, nk_p
            do j = 1 + j0, nj_p + j0
               do i = 1 + i0, ni_p + i0
-                 tsb(i, j, k, jp_tem) = state_p(cnt)
+                 tsn(i, j, k, jp_tem) = state_p(cnt)
                  cnt = cnt + 1
               end do
            end do
@@ -98,7 +100,7 @@ subroutine distribute_state_pdaf(dim_p, state_p)
         do k = 1, nk_p
            do j = 1 + j0, nj_p + j0
               do i = 1 + i0, ni_p + i0
-                 tsb(i, j, k, jp_sal) = state_p(cnt)
+                 tsn(i, j, k, jp_sal) = state_p(cnt)
                  cnt = cnt + 1
               end do
            end do
@@ -107,8 +109,12 @@ subroutine distribute_state_pdaf(dim_p, state_p)
 
      if (id%temp>0 .or. id%salt>0) then
         ! Fill halo regions
-        call lbc_lnk_multi('distribute_state_pdaf', tsb(:, :, :, jp_tem), 'T', &
-             1., tsb(:, :, :, jp_sal), 'T', 1.)
+        call lbc_lnk_multi('distribute_state_pdaf', tsn(:, :, :, jp_tem), 'T', &
+             1., tsn(:, :, :, jp_sal), 'T', 1.)
+
+        ! Update before fields
+        tsb(:,:,:,jp_tem) = tsb(:,:,:,jp_tem)
+        tsb(:,:,:,jp_sal) = tsb(:,:,:,jp_sal)
      end if
 
      ! U
@@ -117,7 +123,7 @@ subroutine distribute_state_pdaf(dim_p, state_p)
         do k = 1, nk_p
            do j = 1 + j0, nj_p + j0
               do i = 1 + i0, ni_p + i0
-                 ub(i, j, k) = state_p(cnt)
+                 un(i, j, k) = state_p(cnt)
                  cnt = cnt + 1
               end do
            end do
@@ -130,7 +136,7 @@ subroutine distribute_state_pdaf(dim_p, state_p)
         do k = 1, nk_p
            do j = 1 + j0, nj_p + j0
               do i = 1 + i0, ni_p + i0
-                 vb(i, j, k) = state_p(cnt)
+                 vn(i, j, k) = state_p(cnt)
                  cnt = cnt + 1
               end do
            end do
@@ -139,7 +145,11 @@ subroutine distribute_state_pdaf(dim_p, state_p)
 
      if (id%uvel>0 .or. id%vvel>0) then
         ! Fill halo regions
-        call lbc_lnk_multi('distribute_state_pdaf', ub, 'U', -1., vb, 'V', -1.)
+        call lbc_lnk_multi('distribute_state_pdaf', un, 'U', -1., vn, 'V', -1.)
+
+        ! Update before fields
+        ub = un
+        vb = vn
      end if
 
   else direct
