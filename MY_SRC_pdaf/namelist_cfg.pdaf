@@ -4,34 +4,23 @@
 /
 &pdaf_nml
    screen = 2
-   dim_ens = 10
    ensscale = 1.0
-/
-&filter_nml
    filtertype = 5
    subtype = 0
    type_trans = 0
    type_sqrt = 0
-   incremental = 0
-   covartype = 1
-   rank_analysis_enkf = 0
-/
-&infl_nml
    type_forget = 0
    forget = 1
-/
-&local_nml
    lradius = 0
    locweight = 0
    sradius = 0
-/
-&obs_nml
    delt_obs = 496
 /
 &init_nml
    verbose = 2
    type_ens_init = 3
    type_central_state = 0
+   ensscale = 1.0
 
    path_inistate = './' 
    path_ens = './'
@@ -103,3 +92,23 @@
    sfields(5)%file = 'ORCA2_5d_00010101_00011231_grid_V.nc'
    sfields(5)%file_state = 'ORCA2_5d_00010101_00011231_grid_V.nc'
 /
+&obs_ssh_mgrid_nml
+! Settings for SSH MGRID
+!  assim_ssh_mgrid = .true.
+  varname_ssh_mgrid = 'SSH_inst'
+/
+
+&obs_sst_cmems_nml
+! Settings for CMEMS SST
+  assim_sst_cmems = .true.
+  path_sst_cmems = '.'
+  !file_sst_cmems = 'sst_multi_201801.nc'
+  file_sst_cmems = 'sst_rep_L4_201501.nc'
+  mode_sst_cmems = 0     ! 0 for linear interpolation onto observation grid
+  dist_sst_cmems = 'geo' ! 'geo' for geographic in km; 'gp' for grid point distance
+  varname_sst_cmems = 'analysed_sst'
+  rms_obs_sst_cmems = 0.08
+  lradius_sst_cmems = 20000.0 
+  sradius_sst_cmems = 20000.0 
+/
+
