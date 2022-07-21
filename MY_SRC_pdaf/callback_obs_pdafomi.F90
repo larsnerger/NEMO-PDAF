@@ -29,6 +29,8 @@ subroutine init_dim_obs_pdafomi(step, dim_obs)
 
   use mod_obs_ssh_mgrid_pdafomi, &
        only: assim_ssh_mgrid, init_dim_obs_ssh_mgrid
+  use mod_obs_sst_cmems_pdafomi, &
+       only: assim_sst_cmems, init_dim_obs_sst_cmems
 
   implicit none
 
@@ -38,6 +40,7 @@ subroutine init_dim_obs_pdafomi(step, dim_obs)
 
 ! *** Local variables ***
   integer :: dim_obs_ssh_mgrid     ! Observation dimension
+  integer :: dim_obs_sst_cmems     ! Observation dimension
 
 
 ! *********************************************
@@ -46,14 +49,16 @@ subroutine init_dim_obs_pdafomi(step, dim_obs)
 
   ! Initialize number of observations
   dim_obs_ssh_mgrid = 0
+  dim_obs_sst_cmems = 0
 
   ! Call observation-specific routines
   ! The routines are independent, so it is not relevant
   ! in which order they are called
 
   if (assim_ssh_mgrid) call init_dim_obs_ssh_mgrid(step, dim_obs_ssh_mgrid)
+  if (assim_sst_cmems) call init_dim_obs_sst_cmems(step, dim_obs_sst_cmems)
 
-  dim_obs = dim_obs_ssh_mgrid
+  dim_obs = dim_obs_ssh_mgrid + dim_obs_sst_cmems
 
 end subroutine init_dim_obs_pdafomi
 
@@ -70,6 +75,8 @@ subroutine obs_op_pdafomi(step, dim_p, dim_obs, state_p, ostate)
   use mod_kind_pdaf
   use mod_obs_ssh_mgrid_pdafomi, &
        only: obs_op_ssh_mgrid
+  use mod_obs_sst_cmems_pdafomi, &
+       only: obs_op_sst_cmems
 
   implicit none
 
@@ -90,6 +97,7 @@ subroutine obs_op_pdafomi(step, dim_p, dim_obs, state_p, ostate)
   ! order of the calls in init_dim_obs_pdafomi
 
    call obs_op_ssh_mgrid(dim_p, dim_obs, state_p, ostate)
+   call obs_op_sst_cmems(dim_p, dim_obs, state_p, ostate)
 
 end subroutine obs_op_pdafomi
 
@@ -107,7 +115,9 @@ subroutine init_dim_obs_l_pdafomi(domain_p, step, dim_obs, dim_obs_l)
   use mod_nemo_pdaf, &
        only: nwet
   use mod_obs_ssh_mgrid_pdafomi, &
-       only: init_dim_obs_l_ssh_mgrid
+       only: assim_ssh_mgrid, init_dim_obs_l_ssh_mgrid
+  use mod_obs_sst_cmems_pdafomi, &
+       only: assim_sst_cmems, init_dim_obs_l_sst_cmems
 
   implicit none
 
@@ -120,7 +130,8 @@ subroutine init_dim_obs_l_pdafomi(domain_p, step, dim_obs, dim_obs_l)
 ! *** Local variables ***
 
    if (nwet>0) then
-      call init_dim_obs_l_ssh_mgrid(domain_p, step, dim_obs, dim_obs_l)
+      if (assim_ssh_mgrid) call init_dim_obs_l_ssh_mgrid(domain_p, step, dim_obs, dim_obs_l)
+      if (assim_sst_cmems) call init_dim_obs_l_sst_cmems(domain_p, step, dim_obs, dim_obs_l)
    else
       dim_obs_l = 0
    end if
