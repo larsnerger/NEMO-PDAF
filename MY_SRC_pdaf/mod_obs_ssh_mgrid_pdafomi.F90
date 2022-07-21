@@ -30,15 +30,21 @@ MODULE mod_obs_ssh_mgrid_pdafomi
    SAVE
 
    !> Whether to assimilate this data type
-   LOGICAL :: assim_ssh_mgrid = .true. !.FALSE.
+   LOGICAL :: assim_ssh_mgrid = .false.
    !> Observation error standard deviation (for constant errors)
    REAL(pwp) :: rms_ssh_mgrid = 0.1 !1
+   !> Localization cut-off radius
+   REAL(pwp) :: lradius_ssh_mgrid = 1.0
+   !> Support radius for weight function
+   REAL(pwp) :: sradius_ssh_mgrid = 1.0
    !> Whether to perform an identical twin experiment
    LOGICAL :: twin_exp_ssh_mgrid = .FALSE.
    !> Standard deviation for Gaussian noise in twin experiment
    REAL(pwp) :: noise_amp_ssh_mgrid = 1
    ! NetCDF file holding observations
    CHARACTER(lc) :: file_ssh_mgrid = 'my_nemo_ssh_file.nc'
+   ! Name of SSH variable in the observation file
+   CHARACTER(lc) :: varname_ssh_mgrid = 'zos'
 
    !> Instance of full observation data type - see `PDAFomi` for details.
    TYPE(obs_f), TARGET, PUBLIC :: thisobs
@@ -102,7 +108,7 @@ CONTAINS
       USE pdafomi, &
          ONLY: PDAFomi_gather_obs
       USE mod_assimilation_pdaf, &
-         ONLY: filtertype, lradius, delt_obs
+         ONLY: filtertype, delt_obs
       USE mod_nemo_pdaf, &
          ONLY: ni_p, nj_p
       USE mod_parallel_pdaf, &
@@ -163,29 +169,32 @@ CONTAINS
       ! The distance compution starts from the first row
       thisobs%ncoord = 2
 
+      ! SEt to use limited full observations
+      thisobs%use_global_obs = 0
+
       ! **********************************
       ! *** Read PE-local observations ***
       ! **********************************
 
       ! Format of ndastp is YYYYMMDD
-!      IF (mype_filter == 0) WRITE (*, '(/9x, a, i8)') &
-!         'obs_ssh_mgrid current date:', ndastp
-      IF (mype_filter == 0) WRITE (*, '(/a, 4x, a, i8)') &
-         'NEMO-PDAF', 'obs_ssh_mgrid current date:', ndastp
+      IF (mype_filter == 0) THEN
+         WRITE (*, '(a, 4x, a, 1x, i8)') &
+              'NEMO-PDAF', '--- obs_ssh_mgrid current date:', ndastp
+         WRITE (*, '(a,4x,a,a)') 'NEMO-PDAF', '--- name of SSH file variable: ', TRIM(varname_ssh_mgrid)
+      END IF
 
       s = 1
       stat(s) = NF90_OPEN(file_ssh_mgrid, NF90_NOWRITE, ncid_in)
       s = s + 1
 
-!      stat(s) = NF90_INQ_VARID(ncid_in, 'sossheig', id_var)
-      stat(s) = NF90_INQ_VARID(ncid_in, 'zos', id_var)
+      stat(s) = NF90_INQ_VARID(ncid_in, TRIM(varname_ssh_mgrid), id_var)
       s = s + 1
 
       ALLOCATE (obs(jpiglo, jpjglo, 1))
       ! Increment time in NetCDF file so correct obs read
       nc_step = nc_step + delt_obs
 
-      nc_step = 200
+      nc_step = 1
 IF (mype_filter == 0) write (*,*) 'NEMO-PDAF:    Warning: reading step ', nc_step, 'is hard-coded'
       pos = (/1, 1, nc_step/)
       cnt = (/jpiglo, jpjglo, 1/)
@@ -292,7 +301,7 @@ IF (mype_filter == 0) write (*,*) 'NEMO-PDAF:    Warning: reading step ', nc_ste
       ! ****************************************
 
       CALL PDAFomi_gather_obs(thisobs, dim_obs_p, obs_p, ivar_obs_p, ocoord_p, &
-                              thisobs%ncoord, lradius, dim_obs)
+                              thisobs%ncoord, lradius_ssh_mgrid, dim_obs)
 
       ! ********************
       ! *** Finishing up ***
@@ -354,7 +363,7 @@ IF (mype_filter == 0) write (*,*) 'NEMO-PDAF:    Warning: reading step ', nc_ste
       USE pdafomi, &
          ONLY: PDAFomi_init_dim_obs_l
       USE mod_assimilation_pdaf, &
-         ONLY: domain_coords, lradius, locweight, sradius
+         ONLY: domain_coords, locweight
 
       !> Index of current local analysis domain
       INTEGER, INTENT(in)  :: domain_p
@@ -370,7 +379,7 @@ IF (mype_filter == 0) write (*,*) 'NEMO-PDAF:    Warning: reading step ', nc_ste
       ! **********************************************
 
       CALL PDAFomi_init_dim_obs_l(thisobs_l, thisobs, domain_coords, &
-                                  locweight, lradius, sradius, dim_obs_l)
+           locweight, lradius_ssh_mgrid, sradius_ssh_mgrid, dim_obs_l)
 
    END SUBROUTINE init_dim_obs_l_ssh_mgrid
 
