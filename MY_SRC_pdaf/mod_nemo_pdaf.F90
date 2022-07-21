@@ -8,7 +8,6 @@ module mod_nemo_pdaf
        nimpp, njmpp, tmask, gdept_1d, ndastp
   use par_oce, &
        only: jp_tem, jp_sal
-  use mod_kind_pdaf
 
   ! *** NEMO model variables
 !  integer :: jpiglo, jpjglo, jpk        ! Global NEMO grid dimensions
@@ -91,6 +90,11 @@ contains
     istart = nimpp+nldi-1
     jstart = njmpp+nldj-1
 
+    ! Set coordinate vectors
+    allocate(lat1_p(nj_p), lon1_p(ni_p))
+    lat1_p = gphit(1, j0 + 1 : j0 + nj_p)
+    lon1_p = glamt(i0 + 1 : i0 + ni_p, 1)
+
     ! Count number of wet surface points
     nwet = 0
     do j = 1, nj_p
@@ -148,6 +152,33 @@ contains
        wet_pts(:, 1) = 1
        wet_pts(3, 1) = 0    ! Set number of layers=0
     end if
+
+  ! Initialize index arrays 
+  ! - for mapping from vector of wet points to 2d box
+  ! - for mapping from vector model grid point coordinats to wet point index
+  ! - for retrieving number of wet layers at a grid point coordinate
+  ! these arrays also serve as mask arrays (0 indicates land point)
+
+  allocate(idx_wet_2d(ni_p, nj_p))
+  allocate(idx_nwet(ni_p, nj_p))
+  allocate(nlev_wet_2d(ni_p, nj_p))
+
+  idx_wet_2d = 0
+  idx_nwet = 0
+  nlev_wet_2d = 0
+  do i = 1 , nwet
+     idx_wet_2d(wet_pts(6,i), wet_pts(7,i)) = wet_pts(4,i)
+     nlev_wet_2d(wet_pts(6,i), wet_pts(7,i)) = wet_pts(3,i)
+  end do
+  if (use_wet_state/=2) then
+     do i = 1 , nwet
+        idx_nwet(wet_pts(6,i), wet_pts(7,i)) = i
+     end do
+  else
+     do i = 1 , nwet
+        idx_nwet(wet_pts(6,i), wet_pts(7,i)) = wet_pts(5,i)
+     end do
+  end if
 
 
 ! ********************************************************
