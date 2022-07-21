@@ -54,7 +54,7 @@ contains
     use mod_assimilation_pdaf, &
          only: dim_state_p, screen, filtertype, subtype, dim_ens, &
          incremental, covartype, type_forget, forget, rank_analysis_enkf, &
-         type_trans, type_sqrt, delt_obs, locweight, lradius, sradius
+         type_trans, type_sqrt, delt_obs, locweight
     use mod_iau_pdaf, &
          only: asm_inc_init_pdaf
     use mod_nemo_pdaf, &
@@ -63,6 +63,12 @@ contains
          only: setup_statevector
     use mod_util_pdaf, &
          only: init_info_pdaf, read_config_pdaf
+    use mod_obs_sst_cmems_pdafomi, &
+         only: assim_sst_cmems, rms_obs_sst_cmems, &
+         lradius_sst_cmems, sradius_sst_cmems, mode_sst_cmems, dist_sst_cmems
+    use mod_obs_ssh_mgrid_pdafomi, &
+         only: assim_ssh_mgrid, rms_ssh_mgrid, &
+         lradius_ssh_mgrid, sradius_ssh_mgrid
 
     implicit none
 
@@ -95,7 +101,7 @@ contains
     screen = 2  ! Write screen output (1) for output, (2) add timings
 
     ! *** Filter specific variables
-    filtertype = 5    ! Type of filter
+    filtertype = 7    ! Type of filter
       !   (1) SEIK
       !   (2) EnKF
       !   (3) LSEIK
@@ -141,6 +147,10 @@ contains
     ! *** Forecast length (time interval between analysis steps) ***
     delt_obs = 496      ! Number of time steps between analysis/assimilation steps
 
+    ! Which observations to assimilate
+    assim_sst_cmems = .false.   ! Whether to assimilate SST data from CMEMS
+    assim_ssh_mgrid = .false.   ! Whether to assimilate SSH data on model grid
+
     ! *** Localization settings
     locweight = 0     ! Type of localizating weighting
       !   (0) constant weight of 1
@@ -148,8 +158,20 @@ contains
       !   (2) use 5th-order polynomial
       !   (3) regulated localization of R with mean error variance
       !   (4) regulated localization of R with single-point error variance
-    lradius = 0.0  ! Cut-off radius in grid points for observation domain in local filters
-    sradius = lradius  ! Support radius for 5th-order polynomial
+
+    ! Settings for CMEMS satellite SST
+    rms_ssh_mgrid     = 0.8_8     ! Observation error stddev for SSH data on mopdel grid
+    lradius_ssh_mgrid = 10000.0_8 ! Radius in km for lon/lat (or in grid points)
+    sradius_ssh_mgrid = lradius_ssh_mgrid  ! Support radius for 5th-order polynomial
+      ! or distance for 1/e for exponential weighting
+
+    ! Settings for CMEMS satellite SST
+    rms_obs_sst_cmems = 0.8_8     ! Observation error stddev for SST data from CMEMS
+    mode_sst_cmems = 1            ! Observation mode for SST_CMEMS: 
+                                  !  (0) linear interpolation to observation grid
+                                  !  (1) super-obbing: average 4 observation values
+    lradius_sst_cmems = 10000.0_8 ! Radius in km for lon/lat (or in grid points)
+    sradius_sst_cmems = lradius_sst_cmems  ! Support radius for 5th-order polynomial
       ! or distance for 1/e for exponential weighting
 
 
