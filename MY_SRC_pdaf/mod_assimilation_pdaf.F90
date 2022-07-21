@@ -208,7 +208,6 @@ contains
          only: PDAFomi_assimilate_local, PDAF_get_localfilter
     use mod_parallel_pdaf, &
          only: mype_ens, abort_parallel, COMM_ensemble, MPIerr
-    use dom_oce, only: neuler
 
     integer :: status_pdaf  ! PDAF status flag
     integer :: localfilter  ! Flag for domain-localized filter (1=true)
