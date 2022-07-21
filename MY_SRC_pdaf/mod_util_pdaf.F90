@@ -155,35 +155,50 @@ contains
     use mod_parallel_pdaf, &
          only: mype_ens
     use mod_assimilation_pdaf, &
-         only: filtertype, subtype, type_trans, &
-               type_sqrt, incremental, covartype, &
-               rank_analysis_enkf
-    use mod_assimilation_pdaf, &
-         only: lradius, locweight, sradius
+         only: filtertype, subtype, type_trans, type_sqrt, &
+         locweight  
     use mod_assimilation_pdaf, &
          only: screen, dim_ens, ensscale, delt_obs, &
-               type_forget, forget, &
-               type_ens_init, type_central_state
+         type_forget, forget, &
+         type_ens_init, type_central_state
     use mod_io_pdaf, &
-         only: path_inistate, path_ens, coupling_nemo, &
-               file_ens, verbose
-    ! use mod_obs_ssh_mgrid_pdafomi, &
-    !      only: assim_ssh_mgrid, rms_ssh_mgrid, file_ssh_mgrid
-    
+         only: verbose, path_inistate, path_ens, file_ens, &
+         coupling_nemo, save_var_time, save_state, add_slash, &
+         file_inistate_date1, file_inistate_date2, &
+         file_ens_date1, file_ens_date2, &
+         ens_datelist, datestype
+    use mod_obs_ssh_mgrid_pdafomi, &
+         only: assim_ssh_mgrid, rms_ssh_mgrid, file_ssh_mgrid, &
+         lradius_ssh_mgrid, sradius_ssh_mgrid, varname_ssh_mgrid
+    use mod_obs_sst_cmems_pdafomi, &
+         only: assim_sst_cmems, path_sst_cmems, file_sst_cmems, rms_obs_sst_cmems, &
+         lradius_sst_cmems, sradius_sst_cmems, mode_sst_cmems, dist_sst_cmems, &
+         varname_sst_cmems
 
     !< Namelist file
     character(lc) :: nmlfile
 
-    namelist /pdaf_nml/ screen, dim_ens, ensscale
-    namelist /filter_nml/ filtertype, subtype, type_trans, &
-                          type_sqrt, incremental, covartype, &
-                          rank_analysis_enkf
-    namelist /infl_nml/ type_forget, forget
-    namelist /local_nml/ lradius, locweight, sradius
-    namelist /obs_nml/ delt_obs !, assim_ssh_mgrid, rms_ssh_mgrid, file_ssh_mgrid
-    namelist /init_nml/ type_ens_init, type_central_state, &
-                        path_inistate, path_ens, coupling_nemo, &
-                        file_ens, verbose
+    namelist /pdaf_nml/ &
+         screen, filtertype, subtype, type_trans, type_sqrt, &
+         type_forget, forget, locweight, delt_obs
+
+    namelist /init_nml/ &
+         type_ens_init, type_central_state, ensscale, &
+         path_inistate, path_ens, file_ens, coupling_nemo, &
+         file_inistate_date1, file_inistate_date2, &
+         file_ens_date1, file_ens_date2, &
+         ens_datelist, datestype, &
+         save_var_time, save_state, verbose
+
+    namelist /obs_ssh_mgrid_nml/ &
+         assim_ssh_mgrid, rms_ssh_mgrid, file_ssh_mgrid, &
+         lradius_ssh_mgrid,  sradius_ssh_mgrid, varname_ssh_mgrid
+
+    namelist /obs_sst_cmems_nml/ &
+         assim_sst_cmems, path_sst_cmems, file_sst_cmems, rms_obs_sst_cmems, &
+         lradius_sst_cmems,  sradius_sst_cmems, mode_sst_cmems, dist_sst_cmems, &
+         varname_sst_cmems
+
 
     ! ****************************************************
     ! ***   Initialize PDAF parameters from namelist   ***
@@ -194,53 +209,62 @@ contains
     open (20, file=nmlfile)
     read (20, NML=pdaf_nml)
     rewind(20)
-    read (20, NML=filter_nml)
-    rewind(20)
-    read (20, NML=infl_nml)
-    rewind(20)
-    read (20, NML=local_nml)
-    rewind(20)
-    read (20, NML=obs_nml)
-    rewind(20)
     read (20, NML=init_nml)
     rewind(20)
+    read (20, NML=obs_ssh_mgrid_nml)
+    rewind(20)
+    read (20, NML=obs_sst_cmems_nml)
+    rewind(20)
     close (20)
+
+    ! *** Add trailing slash to paths ***
+    call add_slash(path_sst_cmems)
+    call add_slash(path_inistate)
+    call add_slash(path_ens)
+
 
     ! Print PDAF parameters to screen
     showconf: if (mype_ens == 0) then
 
        write (*, '(/a,1x,a)') 'NEMO-PDAF','-- Overview of PDAF configuration --'
        write (*, '(a,3x,a)') 'NEMO-PDAF','[pdaf_nml]:'
-       write (*, '(a,3x,a,i10)') 'NEMO-PDAF','screen       ', screen
-       write (*, '(a,3x,a,i10)') 'NEMO-PDAF','dim_ens      ', dim_ens
-       write (*, '(a,3x,a,f10.2)') 'NEMO-PDAF','ensscale     ', ensscale
-       write (*, *)
-       write (*, '(a,3x,a)') 'NEMO-PDAF','[filter_nml]:'
-       write (*, '(a,3x,a,i10)') 'NEMO-PDAF','filtertype   ', filtertype
-       write (*, '(a,3x,a,i10)') 'NEMO-PDAF','subtype      ', subtype
-       write (*, '(a,3x,a,i10)') 'NEMO-PDAF','type_trans   ', type_trans
-       write (*, '(a,3x,a,i10)') 'NEMO-PDAF','type_sqrt    ', type_sqrt
-       write (*, '(a,3x,a,i10)') 'NEMO-PDAF','incremental  ', incremental
-       write (*, '(a,3x,a,i10)') 'NEMO-PDAF','covartype    ', covartype
-       write (*, '(a,3x,a,i10)') 'NEMO-PDAF','rank_analysis_enkf ', rank_analysis_enkf
-       write (*, *)
-       write (*, '(a,3x,a)') 'NEMO-PDAF','[infl_nml]:'
-       write (*, '(a,3x,a,i10)') 'NEMO-PDAF','type_forget  ', type_forget
-       write (*, '(a,3x,a,f10.3)') 'NEMO-PDAF','forget       ', forget
-       write (*, *)
-       write (*, '(a,3x,a)') 'NEMO-PDAF','[local_nml]:'
-       write (*, '(a,3x,a,es10.2)') 'NEMO-PDAF','lradius   ', lradius
-       write (*, '(a,3x,a,i10)') 'NEMO-PDAF','locweight    ', locweight
-       write (*, '(a,3x,a,es10.2)') 'NEMO-PDAF','sradius   ', sradius
-       write (*, *)
-       write (*, '(a,3x,a)') 'NEMO-PDAF','[obs_nml]:'
-       write (*, '(a,3x,a,i10)') 'NEMO-PDAF','delt_obs     ', delt_obs
-       write (*, *)
+       write (*, '(a,5x,a,i10)') 'NEMO-PDAF','screen       ', screen
+       write (*, '(a,5x,a,i10)') 'NEMO-PDAF','filtertype   ', filtertype
+       write (*, '(a,5x,a,i10)') 'NEMO-PDAF','subtype      ', subtype
+       write (*, '(a,5x,a,i10)') 'NEMO-PDAF','type_trans   ', type_trans
+       write (*, '(a,5x,a,i10)') 'NEMO-PDAF','type_sqrt    ', type_sqrt
+       write (*, '(a,5x,a,i10)') 'NEMO-PDAF','type_forget  ', type_forget
+       write (*, '(a,5x,a,f10.3)') 'NEMO-PDAF','forget       ', forget
+       write (*, '(a,5x,a,i10)') 'NEMO-PDAF','locweight    ', locweight
+       write (*, '(a,5x,a,i10)') 'NEMO-PDAF','delt_obs     ', delt_obs
+       write (*, *) ''
        write (*, '(a,3x,a)') 'NEMO-PDAF','[init_nml]:'
-       write (*, '(a,3x,a,i10)') 'NEMO-PDAF','type_ens_init      ', type_ens_init
-       write (*, '(a,3x,a,i10)') 'NEMO-PDAF','type_central_state ', type_central_state
-       write (*, '(a,3x,a,a)') 'NEMO-PDAF','coupling_nemo        ', coupling_nemo
-       
+       write (*, '(a,5x,a,i10)') 'NEMO-PDAF','type_ens_init      ', type_ens_init
+       write (*, '(a,5x,a,i10)') 'NEMO-PDAF','type_central_state ', type_central_state
+       write (*, '(a,5x,a,5x,a)') 'NEMO-PDAF','coupling_nemo        ', coupling_nemo
+       write (*, '(a,5x,a,5x,f10.2)') 'NEMO-PDAF','ensscale     ', ensscale
+       write (*, *) ''
+       write (*, '(a,3x,a)') 'NEMO-PDAF','[obs_ssh_mgrid_nml]:'
+       write (*, '(a,5x,a,5x,l)') 'NEMO-PDAF','assim_ssh_mgrid      ', assim_ssh_mgrid
+       if (assim_ssh_mgrid) then
+          write (*, '(a,5x,a,f12.4)') 'NEMO-PDAF','rms_ssh_mgrid      ', rms_ssh_mgrid
+          write (*, '(a,5x,a,a)') 'NEMO-PDAF','file_ssh_mgrid     ', trim(file_ssh_mgrid)
+          write (*, '(a,5x,a,a)') 'NEMO-PDAF','varname_ssh_mgrid     ', trim(varname_ssh_mgrid)
+          write (*, '(a,5x,a,es12.4)') 'NEMO-PDAF','lradius_ssh_mgrid      ', lradius_ssh_mgrid
+          write (*, '(a,5x,a,es12.4)') 'NEMO-PDAF','sradius_ssh_mgrid      ', sradius_ssh_mgrid
+       end if
+       write (*, *) ''
+       write (*, '(a,3x,a)') 'NEMO-PDAF','[obs_sst_cmems_nml]:'
+       write (*, '(a,5x,a,5x,l)') 'NEMO-PDAF','assim_sst_cmems      ', assim_sst_cmems
+       if (assim_sst_cmems) then
+          write (*, '(a,5x,a,f12.4)') 'NEMO-PDAF','rms_obs_sst_cmems  ', rms_obs_sst_cmems
+          write (*, '(a,5x,a,a)') 'NEMO-PDAF','file_sst_cmems     ', trim(file_sst_cmems)
+          write (*, '(a,5x,a,a)') 'NEMO-PDAF','varname_sst_cmems     ', trim(varname_sst_cmems)
+          write (*, '(a,5x,a,es12.4)') 'NEMO-PDAF','lradius_sst_cmems      ', lradius_sst_cmems
+          write (*, '(a,5x,a,es12.4)') 'NEMO-PDAF','sradius_sst_cmems      ', sradius_sst_cmems
+          write (*, '(a,5x,a,i10)') 'NEMO-PDAF','mode_sst_cmems      ', mode_sst_cmems
+          write (*, '(a,5x,a,8x,a)') 'NEMO-PDAF','dist_sst_cmems      ', dist_sst_cmems
+       end if
 
        write (*, '(a,1x,a/)') 'NEMO-PDAF','-- End of PDAF configuration overview --'
 
