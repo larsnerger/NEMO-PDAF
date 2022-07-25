@@ -41,27 +41,28 @@ SUBROUTINE diag_ensstats(dim, dim_ens, element, &
 ! Include definitions for real type of different precision
 ! (Defines BLAS/LAPACK routines and MPI_REALTYPE)
 
+  use mod_kind_pdaf
   IMPLICIT NONE
 
 ! !ARGUMENTS:
-  INTEGER, INTENT(in) :: dim               ! PE-local state dimension
-  INTEGER, INTENT(in) :: dim_ens           ! Ensemble size
-  INTEGER, INTENT(in) :: element           ! ID of element to be used
-       ! If element=0, mean values over all elements are computed
-  REAL, INTENT(in)    :: state(dim)        ! State vector
-  REAL, INTENT(in)    :: ens(dim, dim_ens) ! State ensemble
-  REAL, INTENT(out)   :: skewness          ! Skewness of ensemble
-  REAL, INTENT(out)   :: kurtosis          ! Kurtosis of ensemble
-  INTEGER, INTENT(out) :: status           ! Status flag (0=success)
+  INTEGER,   INTENT(in)  :: dim               ! PE-local state dimension
+  INTEGER,   INTENT(in)  :: dim_ens           ! Ensemble size
+  INTEGER,   INTENT(in)  :: element           ! ID of element to be used
+                                              ! If element=0, mean values over all elements are computed
+  REAL(pwp), INTENT(in)  :: state(dim)        ! State vector
+  REAL(pwp), INTENT(in)  :: ens(dim, dim_ens) ! State ensemble
+  REAL(pwp), INTENT(out) :: skewness          ! Skewness of ensemble
+  REAL(pwp), INTENT(out) :: kurtosis          ! Kurtosis of ensemble
+  INTEGER,   INTENT(out) :: status            ! Status flag (0=success)
 !EOP
 
 ! *** local variables ***
-  INTEGER :: i, elem     ! Counters
-  REAL :: m2, m3, m4     ! Statistical moments
+  INTEGER   :: i, elem     ! Counters
+  REAL(pwp) :: m2, m3, m4  ! Statistical moments
  
  !local from WIbke for excluding dry points
-  REAL :: eps,eps2
-  INTEGER :: countR
+  REAL(pwp) :: eps,eps2
+  INTEGER   :: countR
 
 ! **************************
 ! *** Compute statistics ***

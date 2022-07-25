@@ -21,7 +21,7 @@
 ! !INTERFACE:
 SUBROUTINE diag_histogram(ncall, dim, dim_ens, element, &
      state, ens, hist, delta, status)
-
+   use mod_kind_pdaf
 ! !DESCRIPTION:
 ! This routine increments information on an ensemble rank histogram. 
 ! Inputs are the ensemble array and a state vector about which the histogram
@@ -48,25 +48,25 @@ SUBROUTINE diag_histogram(ncall, dim, dim_ens, element, &
   IMPLICIT NONE
 
 ! !ARGUMENTS:
-  INTEGER, INTENT(in) :: ncall              ! Number of calls to routine
-  INTEGER, INTENT(in) :: dim                ! State dimension
-  INTEGER, INTENT(in) :: dim_ens            ! Ensemble size
-  INTEGER, INTENT(in) :: element            ! Element of vector used for histogram
-       ! If element=0, all elements are used
-  REAL, INTENT(in)   :: state(dim)          ! State vector
-  REAL, INTENT(in)   :: ens(dim, dim_ens)   ! State ensemble
-  INTEGER, INTENT(inout) :: hist(dim_ens+1) ! Histogram about the state
-  REAL, INTENT(out)     :: delta            ! deviation measure from flat histogram
-  INTEGER, INTENT(out)   :: status          ! Status flag (0=success)
+  INTEGER,   INTENT(in)    :: ncall              ! Number of calls to routine
+  INTEGER,   INTENT(in)    :: dim                ! State dimension
+  INTEGER,   INTENT(in)    :: dim_ens            ! Ensemble size
+  INTEGER,   INTENT(in)    :: element            ! Element of vector used for histogram
+                                                 ! If element=0, all elements are used
+  REAL(pwp), INTENT(in)    :: state(dim)         ! State vector
+  REAL(pwp), INTENT(in)    :: ens(dim, dim_ens)  ! State ensemble
+  INTEGER,   INTENT(inout) :: hist(dim_ens+1)    ! Histogram about the state
+  REAL(pwp), INTENT(out)   :: delta              ! deviation measure from flat histogram
+  INTEGER,   INTENT(out)   :: status             ! Status flag (0=success)
 !EOP
 
 ! *** local variables ***
-  INTEGER :: i, elem     ! Counters
-  INTEGER :: rank        ! Rank of current ensemble
+  INTEGER   :: i, elem     ! Counters
+  INTEGER   :: rank        ! Rank of current ensemble
 
   !local variables from Wibke for excluding dry points
-  REAL :: eps
-  INTEGER :: countR
+  REAL(pwp) :: eps
+  INTEGER   :: countR
 
 
 ! ********************************
