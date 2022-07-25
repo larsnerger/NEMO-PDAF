@@ -1,11 +1,20 @@
-!$Id$
 !> Building the Statevector
 !!
 !! This module provides variables & routines for
 !! building the state vector.
 !!
+!! The module contains three routines
+!! - **init_id** - initialize the array `id`
+!! - **init_sfields** - initialize the array `sfields`
+!! - **setup_statevector** - generic routine controlling the initialization
+!!
+!! The declarations of **id** and **sfields** as well as the
+!! routines ~~init_id** and **init_sfields** usually need to be
+!! adapted to a particular modeling case.
+!!
 module mod_statevector_pdaf
 
+  use mod_kind_pdaf
   implicit none
   save
 
@@ -15,39 +24,42 @@ module mod_statevector_pdaf
   ! This can be extended to any number of fields - it serves to give each field a name
   type field_ids
      ! Ocean Physics
-     integer :: ssh
-     integer :: temp
-     integer :: salt
-     integer :: uvel
-     integer :: vvel
-
+     integer :: ssh = 0
+     integer :: temp = 0
+     integer :: salt = 0
+     integer :: uvel = 0
+     integer :: vvel = 0
      ! ERGOM
-     integer :: oxy
+     integer :: oxy = 0
   end type field_ids
 
   ! Declare Fortran type holding the definitions for model fields
   type state_field
-     integer :: ndims                  ! Number of field dimensions (2 or 3)
-     integer :: dim                    ! Dimension of the field
-     integer :: off                    ! Offset of field in state vector
-     character(len=10) :: variable     ! Name of field
-     character(len=20) :: name_incr    ! Name of field in increment file
-     character(len=20) :: name_rest_n  ! Name of field in restart file (n-field)
-     character(len=20) :: name_rest_b  ! Name of field in restart file (b-field)
-     character(len=30) :: file=''      ! File name stub to read field from
-     character(len=30) :: file_post='' ! File name part after dates
-     character(len=30) :: rst_file     ! Name of restart file
-     character(len=20) :: unit         ! Unit of variable
-     integer :: transform = 0          ! Type of variable transformation
-     real :: trafo_shift = 0.0         ! Constant to shift value in transformation
-     integer :: limit = 0              ! Whether to limit the value of the variable
-                     ! 0: no limits, 1: lower limit, 2: upper limit, 3: both limits
-     real :: max_limit = 0.0           ! Upper limit of variable
-     real :: min_limit = 0.0           ! Lower limit of variable
+     integer :: ndims = 0                  ! Number of field dimensions (2 or 3)
+     integer :: dim = 0                    ! Dimension of the field
+     integer :: off = 0                    ! Offset of field in state vector
+     integer :: jptrc                      ! index of the tracer in nemo tracer variable
+     character(len=10) :: variable = ''    ! Name of field
+     character(len=20) :: name_incr = ''   ! Name of field in increment file
+     character(len=20) :: name_rest_n = '' ! Name of field in restart file (n-field)
+     character(len=20) :: name_rest_b = '' ! Name of field in restart file (b-field)
+     character(len=60) :: file = ''        ! File name stub to read field from
+     character(len=50) :: file_state = ''  ! File name stub to read field from
+     character(len=30) :: rst_file = ''    ! Name of restart file
+     character(len=20) :: unit = ''        ! Unit of variable
+     integer :: transform = 0              ! Type of variable transformation
+     real(pwp) :: trafo_shift = 0.0_pwp    ! Constant to shift value in transformation
+     integer :: limit = 0                  ! Whether to limit the value of the variable
+                                           ! 0: no limits, 1: lower limit, 
+                                           ! 2: upper limit, 3: both limits
+     real(pwp) :: max_limit = 0.0_pwp      ! Upper limit of variable
+     real(pwp) :: min_limit = 0.0_pwp      ! Lower limit of variable
   end type state_field
 
 
   !---- The next variables usually do not need editing -----
+
+  integer :: screen=1          ! Verbosity flag
 
   ! Type variable holding field IDs in state vector
   type(field_ids) :: id
@@ -60,29 +72,17 @@ module mod_statevector_pdaf
 
 contains
 
-  !> This routine calculates the dimension of the local statevector.
-  !!
-  subroutine setup_state(dim_state_p)
-
-    use mpi
-    use mod_parallel_pdaf, &
-         only: mype=>mype_ens, npes=>npes_ens, task_id, comm_ensemble, &
-         comm_model, MPIerr
-    use mod_nemo_pdaf, &
-         only: sdim2d, sdim3d
-    use mod_memcount_pdaf, &
-         only: memcount
+!> This routine initializes the array id
+!!
+  subroutine init_id(nfields)
 
     implicit none
 
 ! *** Arguments ***
-    integer, intent(out) :: dim_state_p  !< Local dimension of state vector
+    integer, intent(out) :: nfields
 
 ! *** Local variables *** 
-    integer :: i, cnt            ! Counters
-    integer :: screen=1          ! Verbosity flag
-    integer :: id_var            ! Index of a variable in state vector
-    integer :: dim_state         ! Global state dimension
+    integer :: cnt               ! Counter
 
     ! Variables to activate a field from the namelist
     ! ---- This needs to be adapted according to possible fields -----
@@ -145,22 +145,28 @@ contains
        id%oxy = cnt
     end if
 
-    !---- End of section to be adapted ----
+    ! Set number of fields in state vector
+    nfields = cnt
+  end subroutine init_id
+! ===================================================================================
 
+!> This initializes the array sfields
+!!
+!! This routine initializes the sfields array with specifications
+!! of the fields in the state vector.
+  subroutine init_sfields()
 
-! ************************************************
-! *** Specify state vector and state dimension ***
-! ************************************************
+    use mod_kind_pdaf
+    use mod_nemo_pdaf, &
+         only: sdim2d, sdim3d
 
-    ! Number of model fields in state vector
-    n_fields = cnt
+    implicit none
 
-    allocate(sfields(n_fields))
+! *** Local variables *** 
+    integer :: id_var            ! Index of a variable in state vector
 
-
+    namelist /sfields_nml/ sfields
 ! *** Specifications for each model field in state vector ***
-
-    !---- This part needs to be adapted according to possible fields in the state vector ----
 
     ! SSH
     id_var = id%ssh
@@ -174,9 +180,6 @@ contains
        sfields(id_var)%file = 'NORDIC_1d_SURF_grid_T_'
        sfields(id_var)%rst_file = 'restart_in.nc'
        sfields(id_var)%unit = 'm'
-       sfields(id_var)%transform = 0
-       sfields(id_var)%trafo_shift = 0.0
-       sfields(id_var)%limit = 0
     endif
 
     ! Temperature
@@ -191,8 +194,6 @@ contains
        sfields(id_var)%file = 'NORDIC_1d_grid_T_'
        sfields(id_var)%rst_file = 'restart_in.nc'
        sfields(id_var)%unit = 'degC'
-       sfields(id_var)%transform = 0
-       sfields(id_var)%trafo_shift = 0.0
     endif
 
     ! Salinity
@@ -207,8 +208,8 @@ contains
        sfields(id_var)%file = 'NORDIC_1d_grid_T_'
        sfields(id_var)%rst_file = 'restart_in.nc'
        sfields(id_var)%unit = '1e-3'
-       sfields(id_var)%transform = 0
-       sfields(id_var)%trafo_shift = 0.0
+       sfields(id_var)%limit = 1             ! Apply lower limit
+       sfields(id_var)%min_limit = 0.0_pwp   ! Salinity is never negative
     endif
 
     ! U-velocity
@@ -223,8 +224,6 @@ contains
        sfields(id_var)%file = 'NORDIC_1d_grid_U_'
        sfields(id_var)%rst_file = 'restart_in.nc'
        sfields(id_var)%unit = 'm/s'
-       sfields(id_var)%transform = 0
-       sfields(id_var)%trafo_shift = 0.0
     endif
 
     ! V-velocity
@@ -239,8 +238,6 @@ contains
        sfields(id_var)%file = 'NORDIC_1d_grid_V_'
        sfields(id_var)%rst_file = 'restart_in.nc'
        sfields(id_var)%unit = 'm/s'
-       sfields(id_var)%transform = 0
-       sfields(id_var)%trafo_shift = 0.0
     endif
 
     ! Oxygen
@@ -261,9 +258,58 @@ contains
        sfields(id_var)%min_limit = -450.0D0
        sfields(id_var)%max_limit = 450.0D0
     endif
+    open (500,file='namelist_cfg.pdaf')
+    read (500,NML=sfields_nml)
+    close (500)
 
     !---- End of section to be adapted ----
+    do id_var = 1, n_fields
+      if (sfields(id_var)%ndims == 2) then
+        sfields(id_var)%dim = sdim2d
+      else if (sfields(id_var)%ndims == 3) then
+        sfields(id_var)%dim = sdim3d
+      else
+        write (*, '(a,i2,a)') 'NEMO-PDAF: cannot handle', sfields(id_var)%ndims, ' number of dimensions.'
+      end if
+    end do
+  end subroutine init_sfields
+! ===================================================================================
 
+!> Calculate the dimension of the process-local statevector.
+!!
+!! This routine is generic. case-specific adaptions should only
+!! by done in the routines init_id and init_sfields.
+!!
+  subroutine setup_statevector(dim_state, dim_state_p)
+
+    use mod_kind_pdaf
+    use mod_parallel_pdaf, &
+         only: mype=>mype_ens, npes=>npes_ens, task_id, comm_ensemble, &
+         comm_model, MPI_SUM, MPI_INTEGER, MPIerr
+
+    implicit none
+
+! *** Arguments ***
+    integer, intent(out) :: dim_state_p  !< Local dimension of state vector
+    integer, intent(out) :: dim_state    !< Local dimension of state vector
+
+! *** Local variables *** 
+    integer :: i                 ! Counters
+
+
+! ***********************************
+! *** Initialize the state vector ***
+! ***********************************
+
+! *** Initialize array `id` ***
+
+    call init_id(n_fields)
+
+! *** Initialize array `sfields` ***
+
+    allocate(sfields(n_fields))
+
+    call init_sfields()
 
 ! *** Compute offsets ***
 
@@ -321,7 +367,6 @@ contains
     end if
     call MPI_Barrier(comm_ensemble, MPIerr)
 
-
-  end subroutine setup_state
+  end subroutine setup_statevector
 
 end module mod_statevector_pdaf
