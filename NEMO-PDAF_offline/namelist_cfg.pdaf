@@ -1,0 +1,128 @@
+&tasks_nml
+   tasks = 2
+   screen = 3
+/
+&nemo_nml
+ screen = 3
+ path_dims = '.'
+ cn_domcfg = 'domain_cfg.nc'
+ use_wet_state = 3
+ read_decomp = .false.
+ file_ndastp = 'restart.nc'
+/
+&pdaf_nml
+   screen = 3
+   dim_ens = 2
+   ensscale = 1.0
+! filter-related options
+   filtertype = 7
+   subtype = 0
+   type_trans = 0
+   type_sqrt = 0
+   incremental = 0
+   covartype = 1
+   rank_analysis_enkf = 0
+! inflation options
+   type_forget = 0
+   forget = 1
+! localisation options
+   lradius = 0
+   locweight = 0
+   sradius = 0
+/
+&obs_nml
+   delt_obs = 496
+   assim_ssh_mgrid = .true.
+   rms_ssh_mgrid = 1.0
+   file_ssh_mgrid = 'amm7_1h_20050101_20050105_grid_T.nc'
+/
+&init_nml
+   verbose = 2
+   type_ens_init = 2
+   type_central_state = 0
+
+   path_inistate = './' 
+   path_ens = './'
+   file_ens = 'cov.nc'
+/
+&output_nml
+   save_var_time = 'both'
+   save_state = .true.
+   save_incr = .true.
+   save_restart = .true.
+   save_transformed = .true.
+   path_restart = 'restart.dat'
+   file_PDAF_state = 'state'
+   file_PDAF_variance = 'variance'
+   file_PDAF_incr = 'incr'
+/
+&state_vector
+   sv_temp = .true.
+   sv_salt = .false.
+   sv_ssh  = .false.
+   sv_uvel = .false.
+   sv_vvel = .false.
+   sv_vvel = .false.
+/
+&sfields_nml
+   sfields(1)%ndims = 2
+   sfields(1)%variable = 'ssh_ibb'
+   sfields(1)%name_incr = 'bckineta'
+   sfields(1)%name_rest_n = 'sshn'
+   sfields(1)%name_rest_b = 'sshb'
+   sfields(1)%rst_file = 'restart.nc'
+   sfields(1)%unit = 'm'
+   sfields(1)%file = 'nemo.dat'
+   sfields(1)%file_state = 'ORCA2_5d_00010101_00011231_grid_T_redu.nc'
+
+!   sfields(2)%ndims = 3
+!   sfields(2)%variable = 'thetao'
+!   sfields(2)%name_incr = 'bckint'
+!   sfields(2)%name_rest_n = 'tn'
+!   sfields(2)%name_rest_b = 'tb'
+!   sfields(2)%rst_file = 'restart_in.nc'
+!   sfields(2)%unit = 'degC'
+!   ! sfields(2)%file = 'thetao.dat'
+!   sfields(2)%file = 'ORCA2_5d_00010101_00011231_grid_T.nc'
+!   sfields(2)%file_state = 'ORCA2_5d_00010101_00011231_grid_T.nc'
+!
+!   sfields(3)%ndims = 3
+!   sfields(3)%variable = 'so'
+!   sfields(3)%name_incr = 'bckins'
+!   sfields(3)%name_rest_n = 'sn'
+!   sfields(3)%name_rest_b = 'sb'
+!   sfields(3)%rst_file = 'restart_in.nc'
+!   sfields(3)%unit = '1e-3'
+!   sfields(3)%limit = 1             ! Apply lower limit
+!   sfields(3)%min_limit = 0.0   ! Salinity is never negative
+!   ! sfields(3)%file = 'so.dat'
+!   sfields(3)%file = 'ORCA2_5d_00010101_00011231_grid_T.nc'
+!   sfields(3)%file_state = 'ORCA2_5d_00010101_00011231_grid_T.nc'
+!
+!   sfields(4)%ndims = 3
+!   sfields(4)%variable = 'uo'
+!   sfields(4)%name_incr = 'bckinu'
+!   sfields(4)%name_rest_n = 'un'
+!   sfields(4)%name_rest_b = 'ub'
+!   sfields(4)%rst_file = 'restart_in.nc'
+!   sfields(4)%unit = 'm/s'
+!   ! sfields(4)%file = 'uo.dat'
+!   sfields(4)%file = 'ORCA2_5d_00010101_00011231_grid_U.nc'
+!   sfields(4)%file_state = 'ORCA2_5d_00010101_00011231_grid_U.nc'
+!
+!   sfields(5)%ndims = 3
+!   sfields(5)%variable = 'vo'
+!   sfields(5)%name_incr = 'bckinv'
+!   sfields(5)%name_rest_n = 'vn'
+!   sfields(5)%name_rest_b = 'vb'
+!   sfields(5)%rst_file = 'restart_in.nc'
+!   sfields(5)%unit = 'm/s'
+!   ! sfields(5)%file = 'vo.dat'
+!   sfields(5)%file = 'ORCA2_5d_00010101_00011231_grid_V.nc'
+!   sfields(5)%file_state = 'ORCA2_5d_00010101_00011231_grid_V.nc'
+/
+&iau_nml
+   iiauper = 10
+   niaufn = 1
+   nn_divdmp = 2
+/
