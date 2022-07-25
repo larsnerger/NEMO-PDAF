@@ -180,15 +180,15 @@ contains
 
     namelist /pdaf_nml/ &
          screen, filtertype, subtype, type_trans, type_sqrt, &
-         type_forget, forget, locweight, delt_obs
+         type_forget, forget, locweight, delt_obs, &
+         save_var_time, save_state, verbose
 
     namelist /init_nml/ &
          type_ens_init, type_central_state, ensscale, &
          path_inistate, path_ens, file_ens, coupling_nemo, &
          file_inistate_date1, file_inistate_date2, &
          file_ens_date1, file_ens_date2, &
-         ens_datelist, datestype, &
-         save_var_time, save_state, verbose
+         ens_datelist, datestype
 
     namelist /obs_ssh_mgrid_nml/ &
          assim_ssh_mgrid, rms_ssh_mgrid, file_ssh_mgrid, &
