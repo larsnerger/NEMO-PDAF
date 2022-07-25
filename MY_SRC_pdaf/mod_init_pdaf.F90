@@ -53,7 +53,7 @@ contains
          COMM_couple, COMM_ensemble, mype_ens, filterpe, abort_parallel
     use mod_assimilation_pdaf, &
          only: dim_state_p, screen, filtertype, subtype, dim_ens, &
-         incremental, covartype, type_forget, forget, rank_analysis_enkf, &
+         incremental, type_forget, forget, rank_analysis_enkf, &
          type_trans, type_sqrt, delt_obs, locweight
     use mod_iau_pdaf, &
          only: asm_inc_init_pdaf
@@ -134,10 +134,6 @@ contains
     type_sqrt = 0     ! Type of transform matrix square-root
       !   (0) symmetric square root, (1) Cholesky decomposition
     incremental = 0   ! (1) to perform incremental updating (only in SEIK/LSEIK!)
-    covartype = 1     ! Definition of factor in covar. matrix used in SEIK
-      !   (0) for dim_ens^-1 (old SEIK)
-      !   (1) for (dim_ens-1)^-1 (real ensemble covariance matrix)
-      !   This parameter has also to be set internally in PDAF_init.
 
 
     ! *********************************************************************
