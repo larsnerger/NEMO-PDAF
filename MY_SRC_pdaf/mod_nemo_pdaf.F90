@@ -1,5 +1,7 @@
 module mod_nemo_pdaf
 
+  use mod_kind_pdaf
+
   ! Include variables from NEMO
   use par_oce, &
        only: jpk, jpiglo, jpjglo

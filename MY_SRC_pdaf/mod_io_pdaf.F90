@@ -24,6 +24,10 @@ module mod_io_pdaf
   use mod_aux_pdaf, &
        only: field2state, state2field, transform_field, transform_field_mv
 
+  ! Include coupling flag
+  use mod_assimilation_pdaf, &
+       only: coupling_nemo
+
   implicit none
   save
 
@@ -36,7 +40,6 @@ module mod_io_pdaf
   logical :: save_state=.true.               ! Write analysis state to file
   logical :: save_incr                       ! Write increment to file
   logical :: do_deflate=.false.              ! Deflate variables in NC files (this seems to fail for parallel nc)
-  character(len=4)   :: coupling_nemo = 'odir'   ! offline: 'rest', 'incr', online: 'oinc', 'odir'
 
   character(len=100) :: file_PDAF_state='state'       ! File name for outputs of ensemble mean state
   character(len=100) :: file_PDAF_incr='incr'         ! File name for increment

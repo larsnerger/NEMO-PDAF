@@ -19,6 +19,8 @@ module mod_assimilation_pdaf
   integer :: type_central_state = 1    !< Type of central state of ensemble
        !< (0) mean of model snapshots, (1) read from file, (2) use collect_state
   real(pwp) :: ensscale=1.0            !< Scaling factor for initial ensemble
+       !< Type of coupling between NEMO and PDAF
+  character(len=4)   :: coupling_nemo = 'odir'   ! offline: 'rest', 'incr', online: 'oinc', 'odir'
 
 ! *** Model- and data specific variables ***
 
@@ -169,12 +171,6 @@ module mod_assimilation_pdaf
   real(pwp) :: pf_noise_amp ! Noise amplitude (>=0.0, only used if pf_noise_type>0)
 
 !    ! Other variables - _NOT_ available as command line options!
-  integer :: covartype     !< For SEIK: Definition of ensemble covar matrix
-                           !<   * (0): Factor (r+1)^-1 (or N^-1)
-                           !<   * (1): Factor r^-1 (or (N-1)^-1) - real ensemble covar.
-                           !< This setting is only for the model part; The definition
-                           !< of P has also to be specified in PDAF_filter_init.
-                           !< Only for upward-compatibility of PDAF!
   real(pwp) :: time        !< model time
 
   integer, allocatable :: id_lstate_in_pstate(:) ! Indices of local state vector in global vector
@@ -257,13 +253,15 @@ contains
     end if
 
 ! *** Query whether analysis step was performed
-! *** This can trigger the Euler time step
-    CALL PDAF_get_assim_flag(assim_flag)
+! *** This is also used to trigger the Euler time step for nemo_coupling='odir'
+    call PDAF_get_assim_flag(assim_flag)
 
 ! This Barrier is temporary to avoid that model tasks > 1 continue with model integrations
 ! Remove when distribute state is coded!
 
-call MPI_Barrier(COMM_ensemble, MPIerr)
+    if (assim_flag==1) call MPI_Barrier(COMM_ensemble, MPIerr)
+
+    if (coupling_nemo/='odir') assim_flag=0
 
     ! Check for errors during execution of PDAF
     if (status_pdaf /= 0) then
