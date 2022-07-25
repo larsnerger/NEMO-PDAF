@@ -12,17 +12,36 @@
 # 2. Set PDAF_ARCH to include compile definitions
 #    (See directory BASEDIR/make.arch for files. PDAF_ARCH is filename without .h)
 
-# Root directory of PDAF package
+# # Root directory of PDAF package
 BASEDIR = ../../PDAF_V2.0
-#BASEDIR = ../PDAF-D_V1.16
+# DEF_NCPAR = -DUSE_NCPAR -Dkey_PDAF_offline
 
-DEF_NCPAR = -DUSE_NCPAR
-
+# # Include machine-specific definitions
+# # For available include files see directory make.arch
+# # To choose a file, set PDAF_ARCH either here or by an
+# # environment variable.
+# include $(BASEDIR)/make.arch/$(PDAF_ARCH).h
 # Include machine-specific definitions
 # For available include files see directory make.arch
-# To choose a file, set PDAF_ARCH either here or by an
-# environment variable.
-include $(BASEDIR)/make.arch/$(PDAF_ARCH).h
+FC = mpif90
+CC = mpif90
+LD = mpif90
+
+PDAF_INC = -I$(BASEDIR)/include
+NETCDFF_INC = 
+CPP_DEFS = -Dkey_PDAF_offline
+MPI_INC =
+
+INC= -I. $(MPI_INC) $(PDAF_INC) $(NETCDFF_INC) $(CPP_DEFS)
+
+OPT  = -O3 -cpp -Wall -Wextra --std=f2008
+
+
+NETCDFF_LIB = 
+PDAF_LIB = -L$(BASEDIR)/lib -lpdaf-d
+LAPACK_LIB = -llapack  -lblas -lm
+
+LDLIBS = $(NETCDFF_LIB) $(PDAF_LIB) $(LAPACK_LIB)
 
 # Name of executable
 EXE = PDAF_offline
@@ -33,42 +52,42 @@ EXE = PDAF_offline
 .SUFFIXES: .F90 .o 
 
 # Modules used for the model part
-MODULES =  	mod_parallel_pdaf.o \
+MODULES =  	mod_kind_pdaf.o\
+		mod_parallel_pdaf.o \
 		timer.o \
 		mod_memcount_pdaf.o \
-		parser_mpi.o
+		mod_mppini_pdaf_offline.o
 
-MOD_ERGOM = 	mod_aux_pdaf.o \
+MOD_ERGOM = mod_aux_pdaf.o \
 	    	mod_io_pdaf.o \
 	    	diag_histogram.o \
 	    	diag_ensstats.o
 
 # Module required for assimilation
-MOD_ASSIM = 	mod_nemo_pdaf.o \
-		mod_assimilation_pdaf.o \
+MOD_ASSIM = mod_assimilation_pdaf.o \
+		mod_nemo_pdaf.o \
 		mod_statevector_pdaf.o
 
 # Model routines
-OBJ_MODEL =	main_offline.o\
-		initialize.o
+OBJ_MODEL =	initialize.o
 
 # Routines of observation handling (PDAF-OMI)
-OBJ_USER_PDAFOMI = obs_prof_pdafomi.o \
-		obs_sst_cmems_pdafomi.o \
+OBJ_USER_PDAFOMI = mod_obs_ssh_mgrid_pdafomi.o \
 		callback_obs_pdafomi.o
+# 		obs_prof_pdafomi.o \
+		obs_sst_cmems_pdafomi.o \
 
 # Interface to PDAF - model sided
 OBJ_PDAF_INT =  init_parallel_pdaf.o \
-		init_pdaf_offline.o \
-		init_pdaf_parse.o \
-		init_pdaf_info.o \
-		assimilation_pdaf_offline.o \
-		finalize_pdaf.o 
+		mod_util_pdaf.o \
+		mod_init_pdaf.o \
+		mod_diagnostics_pdaf.o
 
 # Generic user-supplied routines
-OBJ_USER_GEN  = init_ens_offline.o \
-		collect_state_pdaf_offline.o \
-		prepoststep_ens_offline.o 
+OBJ_USER_GEN  = collect_state_pdaf.o \
+		init_ens_pdaf.o \
+		prepoststep_ens_pdaf.o \
+
 
 # User-supplied routines for localized analysis (LSEIK)
 OBJ_USER_LOCAL = init_n_domains_pdaf.o \
@@ -77,16 +96,13 @@ OBJ_USER_LOCAL = init_n_domains_pdaf.o \
 		l2g_state_pdaf.o
 
 # Full list of user-supplied routines for online modes
-OBJ_PDAF_USER = $(OBJ_USER_PDAFOMI) $(OBJ_USER_GEN) $(OBJ_USER_LOCAL)
+OBJ_PDAF_USER = $(OBJ_USER_PDAFOMI) $(OBJ_USER_LOCAL)
 
 ######################################################
 
-$(EXE) : libpdaf-d.a \
-	$(MODULES) $(MOD_ASSIM) $(MOD_ERGOM) $(OBJ_MODEL) $(OBJ_PDAF_USER) $(OBJ_PDAF_INT) $(OBJ_MPI)
-	$(LD)  $(OPT_LNK) $(NC_LIB) -o $@  \
-	$(MODULES) $(MOD_ASSIM) $(MOD_ERGOM) $(OBJ_MODEL) $(OBJ_PDAF_USER) $(OBJ_PDAF_INT) $(OBJ_MPI) \
-	-L$(BASEDIR)/lib -lpdaf-d \
-	$(LINK_LIBS)
+$(EXE) : $(MODULES) $(MOD_ASSIM) $(MOD_ERGOM) $(OBJ_MODEL) $(OBJ_PDAF_USER) \
+	$(OBJ_PDAF_INT)  $(OBJ_USER_GEN) main_offline.o
+	$(LD)  $(OPT_LNK) $(NC_LIB) -o $@ $^ $(LDLIBS)
 	@echo "++++++ Done ++++++"
 
 ######################################################
@@ -98,12 +114,10 @@ libpdaf-d.a:
 ######################################################
 
 .F90.o :
-	$(FC) $(OPT) $(DEF_NCPAR) $(CPP_DEFS) $(MPI_INC) $(NC_INC) -I$(BASEDIR)/include -c \
-	-convert big_endian -assume byterecl  $*.F90
+	$(FC) $(OPT) $(CPP_DEFS) $(INC) -I$(BASEDIR)/include -c $*.F90
 
 .f90.o :
-	$(FC) $(OPT) $(DEF_NCPAR) $(CPP_DEFS) $(MPI_INC) $(NC_INC) -c \
-	-convert big_endian -assume byterecl $*.f90
+	$(FC) $(OPT) $(CPP_DEFS) $(INC) -c $*.f90
 
 # For older compilers one might need to separate the
 # preprocessing from the compilation as defined below:

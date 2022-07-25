@@ -1,5 +1,4 @@
-!$Id: mod_obs_A_pdaf.F90 251 2019-11-19 08:43:39Z lnerger $
-!> callback_obs_pdafomi
+!> PDAFOMI interface routines
 !!
 !! This file provides interface routines between the call-back routines
 !! of PDAF and the observation-specific routines in PDAF-OMI. This structure
@@ -18,10 +17,6 @@
 !! In addition one has to add a call to the different routines include
 !! in this file. It is recommended to keep the order of the calls
 !! consistent over all files. 
-!! 
-!! __Revision history:__
-!! * 2019-12 - Lars Nerger - Initial code
-!! * Later revisions - see repository log
 !!
 !-------------------------------------------------------------------------------
 
@@ -33,8 +28,10 @@
 subroutine init_dim_obs_pdafomi(step, dim_obs)
 
   ! Include functions for different observations
-  use obs_prof_pdafomi, only: assim_prof, init_dim_obs_prof
-  use obs_sst_cmems_pdafomi, only: assim_sst_cmems, init_dim_obs_sst_cmems
+  ! use obs_prof_pdafomi, only: assim_prof, init_dim_obs_prof
+  ! use obs_sst_cmems_pdafomi, only: assim_sst_cmems, init_dim_obs_sst_cmems
+  use mod_obs_ssh_mgrid_pdafomi, &
+       only: assim_ssh_mgrid, init_dim_obs_ssh_mgrid
 
   implicit none
 
@@ -45,6 +42,7 @@ subroutine init_dim_obs_pdafomi(step, dim_obs)
 ! *** Local variables ***
   integer :: dim_obs_prof ! Observation dimensions
   integer :: dim_obs_sst_cmems
+  integer :: dim_obs_ssh_mgrid     ! Observation dimension
 
 
 ! *********************************************
@@ -54,15 +52,17 @@ subroutine init_dim_obs_pdafomi(step, dim_obs)
   ! Initialize number of observations
   dim_obs_prof = 0
   dim_obs_sst_cmems = 0
+  dim_obs_ssh_mgrid = 0
 
   ! Call observation-specific routines
   ! The routines are independent, so it is not relevant
   ! in which order they are called
 
-  if (assim_prof) call init_dim_obs_prof(step, dim_obs_prof)
-  if (assim_sst_cmems) call init_dim_obs_sst_cmems(step, dim_obs_sst_cmems)
+  ! if (assim_prof) call init_dim_obs_prof(step, dim_obs_prof)
+  ! if (assim_sst_cmems) call init_dim_obs_sst_cmems(step, dim_obs_sst_cmems)
+  if (assim_ssh_mgrid) call init_dim_obs_ssh_mgrid(step, dim_obs_ssh_mgrid)
 
-  dim_obs = dim_obs_prof + dim_obs_sst_cmems
+  dim_obs = dim_obs_ssh_mgrid + dim_obs_prof + dim_obs_sst_cmems
 
 end subroutine init_dim_obs_pdafomi
 
@@ -77,8 +77,11 @@ end subroutine init_dim_obs_pdafomi
 subroutine obs_op_pdafomi(step, dim_p, dim_obs, state_p, ostate)
 
   ! Include functions for different observations
-  use obs_prof_pdafomi, only: obs_op_prof
-  use obs_sst_cmems_pdafomi, only: obs_op_sst_cmems
+  ! use obs_prof_pdafomi, only: obs_op_prof
+  ! use obs_sst_cmems_pdafomi, only: obs_op_sst_cmems
+  use mod_kind_pdaf
+  use mod_obs_ssh_mgrid_pdafomi, &
+       only: obs_op_ssh_mgrid
 
   implicit none
 
@@ -86,8 +89,8 @@ subroutine obs_op_pdafomi(step, dim_p, dim_obs, state_p, ostate)
   integer, intent(in) :: step                 !< Current time step
   integer, intent(in) :: dim_p                !< PE-local state dimension
   integer, intent(in) :: dim_obs              !< Dimension of full observed state
-  real, intent(in)    :: state_p(dim_p)       !< PE-local model state
-  real, intent(inout) :: ostate(dim_obs)      !< PE-local full observed state
+  real(pwp), intent(in)    :: state_p(dim_p)  !< PE-local model state
+  real(pwp), intent(inout) :: ostate(dim_obs) !< PE-local full observed state
 
 
 ! ******************************************************
@@ -98,8 +101,9 @@ subroutine obs_op_pdafomi(step, dim_p, dim_obs, state_p, ostate)
   ! of the overall observation vector is defined by the
   ! order of the calls in init_dim_obs_pdafomi
 
-  call obs_op_prof(dim_p, dim_obs, state_p, ostate)
-  call obs_op_sst_cmems(dim_p, dim_obs, state_p, ostate)
+  ! call obs_op_prof(dim_p, dim_obs, state_p, ostate)
+  ! call obs_op_sst_cmems(dim_p, dim_obs, state_p, ostate)
+  call obs_op_ssh_mgrid(dim_p, dim_obs, state_p, ostate)
 
 end subroutine obs_op_pdafomi
 
@@ -114,8 +118,13 @@ end subroutine obs_op_pdafomi
 subroutine init_dim_obs_l_pdafomi(domain_p, step, dim_obs, dim_obs_l)
 
   ! Include functions for different observations
-  use obs_prof_pdafomi, only: init_dim_obs_l_prof
-  use obs_sst_cmems_pdafomi, only: init_dim_obs_l_sst_cmems
+  ! use obs_prof_pdafomi, only: init_dim_obs_l_prof
+  ! use obs_sst_cmems_pdafomi, only: init_dim_obs_l_sst_cmems
+  use mod_kind_pdaf
+  use mod_nemo_pdaf, &
+       only: nwet
+  use mod_obs_ssh_mgrid_pdafomi, &
+       only: init_dim_obs_l_ssh_mgrid
 
   implicit none
 
@@ -131,7 +140,12 @@ subroutine init_dim_obs_l_pdafomi(domain_p, step, dim_obs, dim_obs_l)
 ! **********************************************
 
   ! Call init_dim_obs_l specific for each observation
-  call init_dim_obs_l_prof(domain_p, step, dim_obs, dim_obs_l)
-  call init_dim_obs_l_sst_cmems(domain_p, step, dim_obs, dim_obs_l)
+  ! call init_dim_obs_l_prof(domain_p, step, dim_obs, dim_obs_l)
+  ! call init_dim_obs_l_sst_cmems(domain_p, step, dim_obs, dim_obs_l)
+  if (nwet>0) then
+     call init_dim_obs_l_ssh_mgrid(domain_p, step, dim_obs, dim_obs_l)
+  else
+     dim_obs_l = 0
+  end if
 
 end subroutine init_dim_obs_l_pdafomi

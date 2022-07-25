@@ -106,7 +106,7 @@ contains
 
 ! *** Read namelist file for state vector setup
 
-    open (500,file='pdaf.nml')
+    open (500,file='namelist_cfg.pdaf')
     read (500,NML=state_vector)
     close (500)
 

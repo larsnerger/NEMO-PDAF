@@ -22,7 +22,7 @@ subroutine initialize()
        only: jpiglo, jpjglo, jpk, tmask, &
              glamt, gphit, gdept_1d, &            ! reading from domain file
              domain_decomposition, read_decomp, & ! doing domain decomposition
-             nimpp, njmpp, nldi, nldj, nlei, nlej, 
+             nimpp, njmpp, nldi, nldj, nlei, nlej, &
              set_nemo_grid, use_wet_state, ndastp
   use mod_statevector_pdaf, only: sfields
   use mod_io_pdaf, &
@@ -36,8 +36,6 @@ subroutine initialize()
   integer :: screen=1         ! Verbosity flag
   integer :: ncid             ! nc file ID
   integer :: varid            ! variable IDs
-
-  integer :: ios              ! ascii file status
 
   integer :: i, j             ! counters
   logical :: have_pdafnml     ! Flag whether namelist file is present

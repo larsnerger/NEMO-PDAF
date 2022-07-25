@@ -43,19 +43,19 @@ program MAIN_OFFLINE
 ! !USES:
   use mod_parallel_pdaf, &     ! Parallelization
        only: MPI_COMM_WORLD, MPIerr, npes_world, mype_world, &
-       init_parallel, finalize_parallel
+             init_parallel, init_parallel_pdaf, finalize_parallel
   use mod_memcount_pdaf, &
        only: memcount_ini, memcount_get
   use timer, &
        only: timeit, time_tot
+  use mod_init_pdaf, only: init_pdaf
+  use mod_util_pdaf, only: finalize_pdaf
+  use mod_assimilation_pdaf, only: assimilation_pdaf
 
   implicit none
 !EOP
-
-
-! Local variables
-  integer :: i                 ! Counter
-
+  integer :: mpi_comm
+  integer :: i
 
 ! **********************
 ! *** Initialize MPI ***
@@ -93,9 +93,8 @@ program MAIN_OFFLINE
   
 ! *** Initialize MPI communicators for PDAF (model and filter) ***
 ! *** NOTE: It is always n_modeltasks=1 for offline mode       ***
-
-  call init_parallel_pdaf(0, 1)
-
+  mpi_comm = MPI_COMM_WORLD
+  call init_parallel_pdaf(mpi_comm)
 ! *** Initialize model information ***
 ! *** This should only be information on the model dimension
 ! *** Generally, this could be joined with init_pdaf.
@@ -122,7 +121,7 @@ program MAIN_OFFLINE
        write (*, '(/2x, a)') 'PDAF offline mode: START ASSIMILATION'
 
   call timeit(4,'new')
-  call assimilation_pdaf_offline()
+  CALL assimilation_pdaf()
   call timeit(4,'old')
 
 
@@ -155,7 +154,7 @@ program MAIN_OFFLINE
   end if
 
   ! *** Finalize PDAF - print memory and timing information
-  call finalize_pdaf(0)
+  call finalize_pdaf()
 
   if (mype_world == 0) then
      write (*, '(/17x, a)') 'Offline - Timing information'
