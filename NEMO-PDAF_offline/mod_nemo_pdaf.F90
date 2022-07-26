@@ -221,6 +221,7 @@ contains
 
   end subroutine set_nemo_grid
 
+#ifdef key_PDAF_offline
   subroutine domain_decomposition(screen, mype, npes, file_decomp)
     use mod_parallel_pdaf, only: abort_parallel
     use mod_mppini_pdaf_offline, only: get_decomposition
@@ -285,6 +286,7 @@ contains
             njmpp+nldj-1, njmpp+nlej-1, nlei, nlej
     end if
   end subroutine domain_decomposition
+#endif
 
   subroutine print_nemo_info(screen)
       use mod_parallel_pdaf, &

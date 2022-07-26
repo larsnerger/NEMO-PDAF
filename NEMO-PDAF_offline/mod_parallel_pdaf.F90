@@ -41,7 +41,7 @@ MODULE mod_parallel_pdaf
   LOGICAL :: modelpe            ! Whether we are on a PE in a COMM_model
   LOGICAL :: filterpe           ! Whether we are on a PE in a COMM_filter
   INTEGER :: task_id            ! Index of my model task (1,...,n_modeltasks)
-#ifdef key_PDAF_offline
+#ifndef key_PDAF_offline
   CHARACTER(len=10) :: task_str ! Task ID as string
 #endif
   INTEGER :: MPIerr             ! Error flag for MPI

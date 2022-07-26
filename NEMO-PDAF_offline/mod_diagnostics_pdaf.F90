@@ -9,11 +9,9 @@ logical :: firsttime = .true.
 integer :: writestep_var=1       ! Time index for file output of variance
 integer :: writestep_state=1     ! Time index for file output of state
 
-#ifdef key_PDAF_offline
 real(pwp), allocatable :: ens_p_bkg(:, :)     ! save background ensemble
                                               ! can be used to calculate increments
 integer                :: allocflag = 0       ! Flag for memory counting
-#endif
 
 contains
    ! *** Compute mean state

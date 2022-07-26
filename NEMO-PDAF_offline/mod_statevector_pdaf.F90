@@ -15,6 +15,9 @@
 module mod_statevector_pdaf
 
   use mod_kind_pdaf
+#ifndef key_PDAF_offline
+  use trc, only: ctrcnm
+#endif
   implicit none
   save
 
@@ -69,6 +72,8 @@ module mod_statevector_pdaf
 
   ! Variables to handle multiple fields in the state vector
   integer :: n_fields      !< number of fields in state vector
+  integer :: n_bgc = 0 !< number of tracer fields
+  integer :: n_ocean  !< number of ocean state variables
 
 contains
 
@@ -95,7 +100,7 @@ contains
 
     ! Namelist to define active parts of state vector
     namelist /state_vector/ screen, sv_temp, sv_salt, sv_ssh, sv_uvel, sv_vvel, &
-         sv_oxy
+         sv_oxy, n_bgc
 
     !---- End of section to be adapted ----
 
@@ -146,7 +151,8 @@ contains
     end if
 
     ! Set number of fields in state vector
-    nfields = cnt
+    n_ocean = cnt
+    nfields = n_ocean + n_bgc
   end subroutine init_id
 ! ===================================================================================
 
@@ -164,7 +170,7 @@ contains
 
 ! *** Local variables *** 
     integer :: id_var            ! Index of a variable in state vector
-
+    integer :: jptrc_tmp(1)
     namelist /sfields_nml/ sfields
 ! *** Specifications for each model field in state vector ***
 
@@ -271,6 +277,12 @@ contains
       else
         write (*, '(a,i2,a)') 'NEMO-PDAF: cannot handle', sfields(id_var)%ndims, ' number of dimensions.'
       end if
+#ifdef key_PDAF_offline
+      sfields(id_var)%jptrc = id_var - n_ocean
+#else
+      jptrc_tmp = index(ctrcnm, trim(sfields(id_var)%variable))
+      sfields(id_var)%jptrc = jptrc_tmp(1)
+#endif
     end do
   end subroutine init_sfields
 ! ===================================================================================

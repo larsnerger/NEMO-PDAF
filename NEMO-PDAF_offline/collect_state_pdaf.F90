@@ -16,7 +16,7 @@ subroutine collect_state_pdaf(dim_p, state_p)
   use mod_parallel_pdaf, &
        only: mype=>mype_ens
   use mod_statevector_pdaf, &
-       only: sfields, id
+       only: sfields, id, n_ocean, n_bgc
 #ifndef key_PDAF_offline
   use mod_nemo_pdaf, &
        only: ni_p, nj_p, nk_p, i0, j0, &
@@ -108,5 +108,17 @@ subroutine collect_state_pdaf(dim_p, state_p)
         end do
      end do
   end if
+
+  do i_var = n_ocean + 1, n_bgc
+     cnt = sfields(i_var)%off + 1
+     do k = 1, nk_p
+       do j = 1 + j0, nj_p + j0
+         do i = 1 + i0, ni_p + i0
+           state_p(cnt) = trb(i, j, k, sfields(i_var)%jptrc)
+           cnt = cnt + 1
+         end do
+       end do
+     end do
+  end do
 #endif
 end subroutine collect_state_pdaf

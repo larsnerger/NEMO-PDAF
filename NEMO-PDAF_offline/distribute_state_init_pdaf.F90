@@ -25,7 +25,7 @@ subroutine distribute_state_init_pdaf(dim_p, state_p)
        only: ssh_iau_pdaf, u_iau_pdaf, v_iau_pdaf, t_iau_pdaf, &
        s_iau_pdaf
   use mod_statevector_pdaf, &
-       only: sfields, id
+       only: sfields, id, n_ocean, n_bgc
   use mod_nemo_pdaf, &
        only: ni_p, nj_p, nk_p, i0, j0, jp_tem, jp_sal, &
        tmask, trb, sshb, tsb, ub, vb, lbc_lnk_multi, lbc_lnk
@@ -142,4 +142,20 @@ subroutine distribute_state_init_pdaf(dim_p, state_p)
      ! Fill halo regions
      call lbc_lnk_multi('distribute_state_pdaf', ub, 'U', -1., vb, 'V', -1.)
   end if
+
+  do id_var = n_ocean + 1, n_bgc
+     cnt = sfields(id_var)%off + 1
+     do k = 1, nk_p
+        do j = 1 + j0, nj_p + j0
+           do i = 1 + i0, ni_p + i0
+              if (tmask(i, j, 1) == 1.0_pwp) then
+                 trb(i, j, k, sfields(id_var)%jptrc) = state_p(cnt)
+              end if
+              cnt = cnt + 1
+           end do
+        end do
+     end do
+     ! Fill halo regions
+     call lbc_lnk_multi('distribute_state_pdaf', trb(:, :, :, sfields(id_var)%jptrc), 'T', 1.)
+  end do
 end subroutine distribute_state_init_pdaf

@@ -56,10 +56,8 @@ module mod_io_pdaf
   character(len=100) :: file_PDAF_incr='incr'         ! File name for increment
 
 
-#ifdef key_PDAF_offline
    ! Temporary - from offline code
   real(pwp) :: startEnsTime=1.0_pwp, endEnsTime=1.0_pwp
-#endif
 
   ! NEMO output file
   integer(4)        :: ntimec=1
