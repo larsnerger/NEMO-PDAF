@@ -245,7 +245,7 @@ contains
 !! This routine is generic. case-specific adaptions should only
 !! by done in the routines init_id and init_sfields.
 !!
-  subroutine setup_statevector(dim_state_p)
+  subroutine setup_statevector(dim_state, dim_state_p)
 
     use mod_kind_pdaf
     use mod_parallel_pdaf, &
@@ -256,7 +256,7 @@ contains
 
 ! *** Arguments ***
     integer, intent(out) :: dim_state_p  !< Local dimension of state vector
-
+    integer, intent(out) :: dim_state    !< Global dimension of state vector
 ! *** Local variables *** 
     integer :: i                 ! Counters
 

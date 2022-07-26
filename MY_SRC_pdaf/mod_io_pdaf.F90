@@ -503,13 +503,13 @@ end subroutine gen_ens_mv
 
 !> Read initial forecast error covariance from a file
 !!
-  subroutine read_eof_cov(filename_cov, dim_p, rank, state_p, eofV, svals)
+  subroutine read_eof_cov(filename_cov, dim_state, dim_p, rank, state_p, eofV, svals)
     use mod_nemo_pdaf, only: dim_2d_p, dim_3d_p
-    use mod_statevector_pdaf, only: dim_state
     use netcdf
 ! *** Arguments ***
     character(*), intent(in) :: filename_cov      !< filename
     integer, intent(in)      :: dim_p             !< local PE dimension of state vector
+    integer, intent(in)      :: dim_state         !< global dimension of state vector
     integer, intent(in)      :: rank              !< rank of the covariance matrix
     real(pwp), intent(inout) :: eofV(dim_p, rank) !< singular vectors
     real(pwp), intent(inout) :: svals(rank)       !< singular values

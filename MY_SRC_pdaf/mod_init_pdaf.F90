@@ -52,7 +52,7 @@ contains
          only: n_modeltasks, task_id, COMM_model, COMM_filter, &
          COMM_couple, COMM_ensemble, mype_ens, filterpe, abort_parallel
     use mod_assimilation_pdaf, &
-         only: dim_state_p, screen, filtertype, subtype, dim_ens, &
+         only: dim_state, dim_state_p, screen, filtertype, subtype, dim_ens, &
          incremental, covartype, type_forget, forget, rank_analysis_enkf, &
          type_trans, type_sqrt, delt_obs, locweight, lradius, sradius
     use mod_iau_pdaf, &
@@ -172,7 +172,7 @@ contains
     call set_nemo_grid()
 
     ! Setup state vector
-    call setup_statevector(dim_state_p)
+    call setup_statevector(dim_state, dim_state_p)
 
 
 ! *****************************************************

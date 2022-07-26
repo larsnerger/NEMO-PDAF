@@ -22,7 +22,7 @@ subroutine init_ens_pdaf(filtertype, dim_p, dim_ens, state_p, Uinv, &
   use mod_parallel_pdaf, &
        only: mype_filter
   use mod_assimilation_pdaf, &
-       only:  type_ens_init, type_central_state, ensscale
+       only:  dim_state, type_ens_init, type_central_state, ensscale
   use mod_io_pdaf, &
        only: path_inistate, path_ens, file_ens, &
              coupling_nemo, read_state_mv, &
@@ -158,7 +158,7 @@ contains
       ALLOCATE(svals(rank))
       ALLOCATE(state_p(dim_p))
       ! get eigenvalue and eigenvectors from file
-      call read_eof_cov(filename_cov, dim_p, rank, state_p, eofV, svals)
+      call read_eof_cov(filename_cov, dim_state, dim_p, rank, state_p, eofV, svals)
 
       ! *** Generate full ensemble on filter-PE 0 ***
       WRITE (*, '(9x, a)') '--- generate ensemble from covariance matrix'
