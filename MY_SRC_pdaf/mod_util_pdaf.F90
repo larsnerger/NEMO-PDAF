@@ -163,10 +163,7 @@ contains
          type_ens_init, type_central_state
     use mod_io_pdaf, &
          only: verbose, path_inistate, path_ens, file_ens, &
-         coupling_nemo, save_var_time, save_state, add_slash, &
-         file_inistate_date1, file_inistate_date2, &
-         file_ens_date1, file_ens_date2, &
-         ens_datelist, datestype
+         coupling_nemo, save_var_time, save_state, add_slash
     use mod_obs_ssh_mgrid_pdafomi, &
          only: assim_ssh_mgrid, rms_ssh_mgrid, file_ssh_mgrid, &
          lradius_ssh_mgrid, sradius_ssh_mgrid, varname_ssh_mgrid
@@ -185,10 +182,7 @@ contains
 
     namelist /init_nml/ &
          type_ens_init, type_central_state, ensscale, &
-         path_inistate, path_ens, file_ens, coupling_nemo, &
-         file_inistate_date1, file_inistate_date2, &
-         file_ens_date1, file_ens_date2, &
-         ens_datelist, datestype
+         path_inistate, path_ens, file_ens, coupling_nemo
 
     namelist /obs_ssh_mgrid_nml/ &
          assim_ssh_mgrid, rms_ssh_mgrid, file_ssh_mgrid, &

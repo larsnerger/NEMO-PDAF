@@ -219,10 +219,10 @@ subroutine prepoststep_ens_pdaf(step, dim_p, dim_ens, dim_ens_p, dim_obs_p, &
          titleVar='Ensemble variance'
 
          if (forana/='ini') then
-            call write_field_mv(state_tmp, dim_p, trim(file_PDAF_variance)//'_'//trim(ndastp_str)//'.nc', &
+            call write_field_mv(state_tmp, trim(file_PDAF_variance)//'_'//trim(ndastp_str)//'.nc', &
                  titleVar, 1.0, nsteps, writestep_var)
          else
-            call write_field_mv(state_tmp, dim_p, trim(file_PDAF_variance)//'_'//trim(ndastp_str)//'_ini.nc', &
+            call write_field_mv(state_tmp, trim(file_PDAF_variance)//'_'//trim(ndastp_str)//'_ini.nc', &
                  titleVar, 1.0, nsteps, writestep_var)
          end if
          if (forana/='ini') writestep_var = writestep_var + 1
@@ -231,7 +231,7 @@ subroutine prepoststep_ens_pdaf(step, dim_p, dim_ens, dim_ens_p, dim_obs_p, &
 
          if (mype == 0) write (*,'(a,5x,a)') 'NEMO-PDAF', '--- Write variance after analysis step'
 
-         call write_field_mv(state_tmp, dim_p, trim(file_PDAF_variance)//'_'//trim(ndastp_str)//'.nc', &
+         call write_field_mv(state_tmp, trim(file_PDAF_variance)//'_'//trim(ndastp_str)//'.nc', &
               titleVar, 1.0, 2, writestep_var)
 
          writestep_var = 1
@@ -260,12 +260,12 @@ subroutine prepoststep_ens_pdaf(step, dim_p, dim_ens, dim_ens_p, dim_obs_p, &
       end if
 
       ! Write separate files for forecast and analysis
-!      call write_field_mv(state_tmp, dim_p, trim(file_PDAF_state)//'_'//forana//'.nc', titleState, 1.0, 1, 1)
+!      call write_field_mv(state_tmp, trim(file_PDAF_state)//'_'//forana//'.nc', titleState, 1.0, 1, 1)
       ! Write forecast and analysis into the same file
       if (forana/='ini') then
-         call write_field_mv(state_tmp, dim_p, trim(file_PDAF_state)//'_'//trim(ndastp_str)//'.nc', titleState, 1.0, 2, writestep_state)
+         call write_field_mv(state_tmp, trim(file_PDAF_state)//'_'//trim(ndastp_str)//'.nc', titleState, 1.0, 2, writestep_state)
       else
-         call write_field_mv(state_tmp, dim_p, trim(file_PDAF_state)//'_'//trim(ndastp_str)//'_ini.nc', titleState, 1.0, 1, writestep_state)
+         call write_field_mv(state_tmp, trim(file_PDAF_state)//'_'//trim(ndastp_str)//'_ini.nc', titleState, 1.0, 1, writestep_state)
       end if
    endif
 
