@@ -9,7 +9,7 @@
 !! - **setup_statevector** - generic routine controlling the initialization
 !!
 !! The declarations of **id** and **sfields** as well as the
-!! routines ~~init_id** and **init_sfields** usually need to be
+!! routines **init_id** and **init_sfields** usually need to be
 !! adapted to a particular modeling case.
 !!
 module mod_statevector_pdaf
@@ -61,7 +61,7 @@ contains
       allocate(sfields(nfields))
 
       ! initialise field
-      call init_sfields_namelist(sfields)
+      call init_sfields_namelist(sfields, nfields)
       call init_sfields_unit(sfields, nfields)
       call init_sfields_ndim(sfields, nfields)
       ! get the spatial dimension size of the domain
@@ -73,11 +73,12 @@ contains
 
    !> This initializes the sfields from namelist
    !!
-   subroutine init_sfields_namelist(sfields)
-      use mod_kind_pdaf
+   subroutine init_sfields_namelist(sfields, nfields)
+
       implicit none
       ! Type variable holding the defintions of model fields
-      type(state_field), intent(inout) :: sfields(:)
+      integer, intent(in) :: nfields
+      type(state_field), intent(inout) :: sfields(nfields)
 
       namelist /state_vector/ sfields
       read(unit=20, nml=state_vector)
