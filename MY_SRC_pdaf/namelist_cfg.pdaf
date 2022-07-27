@@ -102,7 +102,6 @@
   !file_sst_cmems = 'sst_multi_201801.nc'
   file_sst_cmems = 'sst_rep_L4_201501.nc'
   mode_sst_cmems = 0     ! 0 for linear interpolation onto observation grid
-  dist_sst_cmems = 'geo' ! 'geo' for geographic in km; 'gp' for grid point distance
   varname_sst_cmems = 'analysed_sst'
   rms_obs_sst_cmems = 0.08
   lradius_sst_cmems = 20000.0 

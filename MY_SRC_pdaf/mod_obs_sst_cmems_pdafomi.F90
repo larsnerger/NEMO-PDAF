@@ -42,7 +42,7 @@ module mod_obs_sst_cmems_pdafomi
                                         !< (0) mightnight, (12) noon
   character(len=3) :: dist_sst_cmems = 'geo'  ! Type of distance computation: 
                                         !< (gp) for Cartesian distance in unit of grid points
-                                        !< (geo) for geographic distance in km
+                                        !< (geo) for geographic distance in km (Probably doesn't work in online-coupled)
   character(lc) :: path_sst_cmems = '.' !< Path to CMEMS SST data
   character(lc) :: file_sst_cmems = ''  !< Filename of CMEMS SST data
   character(lc) :: varname_sst_cmems = 'adjusted_sea_surface_temperature'  !< Name of SST variable in file
