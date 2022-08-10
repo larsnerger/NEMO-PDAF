@@ -160,7 +160,10 @@ PROGRAM generate_covar
    end do
 
    call write_state('cov.nc', sfields(:)%variable, sfields(:)%ndims, &
-                    sfields(:)%off, n2d, n3d, dim_state, maxtimes, nfields, &
+                    sfields(:)%off, n2d, n3d, &
+                    maxval(sfields%nx), maxval(sfields%ny), &
+                    maxval(sfields%nlvls), &
+                    dim_state, maxtimes, nfields, &
                     svals, svdu, rank, run_meanstate, do_mv)
    ! ********************
    ! *** Finishing up ***

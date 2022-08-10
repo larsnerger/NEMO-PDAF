@@ -139,7 +139,8 @@ contains
    !> write singular value and vectors
    !!   
    subroutine write_state(filename, varnames, ndims, off, &
-                          n2d, n3d, dim_state, maxtimes, nfields, svals, &
+                          n2d, n3d, nx, ny, nlvls, dim_state, &
+                          maxtimes, nfields, svals, &
                           svdu, rank, run_meanstate, do_mv)
       character(*), intent(in) :: filename
       character(*), dimension(:), intent(in) ::varnames
@@ -150,8 +151,8 @@ contains
       real(pdp), intent(in) :: svdu(:, :)
       integer, intent(in) :: do_mv
       integer, intent(in) :: rank
-      integer, intent(in) :: n2d
-      integer, intent(in) :: n3d
+      integer, intent(in) :: n2d, n3d
+      integer, intent(in) :: nx, ny, nlvls
       integer, intent(in) :: dim_state
       integer, intent(in) :: maxtimes
       integer, intent(in) :: nfields
@@ -160,13 +161,15 @@ contains
       integer :: ncid ! netcdf file id
       integer :: dimid_one ! size one dimension
       integer :: dimid_rank ! dimension id of rank of svd
-      integer :: dimid_n2d ! dimension id of 2d field
-      integer :: dimid_n3d ! dimension id of 3d field
+      integer :: dimid_x ! dimension id of x dimension
+      integer :: dimid_y ! dimension id of y dimension
+      integer :: dimid_z ! dimension id of vertical dimension
       integer :: dimid_state
       integer :: dimid_nfields
       integer :: varid_sigma
       integer :: varid_mean(nfields)
       integer :: varid_svd(nfields)
+      real(pdp), allocatable :: field(:, :, :)
       character(150) :: attstr
 
       ! *********************************************************
@@ -174,6 +177,8 @@ contains
       ! ********************************************************
 
       write (*,'(/1x,a)') '------- write decomposed covariance matrix -------------'
+
+      allocate(field(nx, ny, nlvls))
 
       ! *** initialize file
       call check( nf90_create(filename, nf90_netcdf4, ncid) )
@@ -194,8 +199,9 @@ contains
 
       ! define dimensions
       call check( nf90_def_dim(ncid, 'rank',  rank, dimid_rank) )
-      call check( nf90_def_dim(ncid, 'nodes_2d', n2d, dimid_n2d) )
-      call check( nf90_def_dim(ncid, 'nodes_3d', n3d, dimid_n3d) )
+      call check( nf90_def_dim(ncid, 'x', nx, dimid_x) )
+      call check( nf90_def_dim(ncid, 'y', ny, dimid_y) )
+      call check( nf90_def_dim(ncid, 'z', nlvls, dimid_z) )
       call check( nf90_def_dim(ncid, 'dim_state', dim_state, dimid_state) )
       call check( nf90_def_dim(ncid, 'one',  1, dimid_one) )
       call check( nf90_def_dim(ncid, 'nfields',  nfields, dimid_nfields) )
@@ -207,11 +213,15 @@ contains
       ! mean state and singular vectors
       do i = 1, nfields
          if (ndims(i) == 3) then
-            call check( nf90_def_var(ncid, trim(varnames(i))//'_mean', nf90_double, [dimid_n3d, dimid_one], varid_mean(i)) )
-            call check( nf90_def_var(ncid, trim(varnames(i))//'_svd', nf90_double, [dimid_n3d, dimid_rank], varid_svd(i)) )
+            call check( nf90_def_var(ncid, trim(varnames(i))//'_mean', nf90_double, &
+                                     [dimid_x, dimid_y, dimid_z, dimid_one], varid_mean(i)) )
+            call check( nf90_def_var(ncid, trim(varnames(i))//'_svd', nf90_double, &
+                                     [dimid_x, dimid_y, dimid_z, dimid_rank], varid_svd(i)) )
          else
-            call check( nf90_def_var(ncid, trim(varnames(i))//'_mean', nf90_double, [dimid_n2d, dimid_one], varid_mean(i)) )
-            call check( nf90_def_var(ncid, trim(varnames(i))//'_svd', nf90_double, [dimid_n2d, dimid_rank], varid_svd(i)) )
+            call check( nf90_def_var(ncid, trim(varnames(i))//'_mean', nf90_double, &
+                                     [dimid_x, dimid_y, dimid_one], varid_mean(i)) )
+            call check( nf90_def_var(ncid, trim(varnames(i))//'_svd', nf90_double, &
+                                     [dimid_x, dimid_y, dimid_rank], varid_svd(i)) )
          endif
       end do
       ! end define mode
@@ -224,13 +234,15 @@ contains
       ! write running mean (for the last snap shot)
       do i = 1, nfields
          if (ndims(i) == 3) then
+            field(:, :, :) = reshape(run_meanstate(1+off(i) : n3d+off(i), maxtimes), [nx, ny, nlvls])
             call check( nf90_put_var(ncid, varid_mean(i), &
-                                     run_meanstate(1+off(i) : n3d+off(i), maxtimes), &
-                                     [1, 1], [n3d, 1]) )
+                                     field, &
+                                     [1, 1, 1], [nx, ny, nlvls, 1]) )
          else
+            field(:, :, 1) = reshape(run_meanstate(1+off(i) : n2d+off(i), maxtimes), [nx, ny])
             call check( nf90_put_var(ncid, varid_mean(i), &
-                                     run_meanstate(1+off(i) : n2d+off(i), maxtimes), &
-                                     [1, 1], [n2d, 1]) )
+                                     field(:, :, 1), &
+                                     [1, 1], [nx, ny, 1]) )
          endif
       end do
 
@@ -238,19 +250,23 @@ contains
       writevectors: do i = 1, rank
          do j = 1, nfields
             if (ndims(j) == 3) then
+               field(:, :, :) = reshape(svdu(1+off(j) : n3d+off(j), i), [nx, ny, nlvls])
                call check( nf90_put_var(ncid, varid_svd(j), &
-                                        svdu(1 + off(j) : n3d + off(j), i), &
-                                        [1, i], [n3d, 1]) )
+                                        field, &
+                                        [1, 1, 1, i], [nx, ny, nlvls, 1]) )
             else
+               field(:, :, 1) = reshape(svdu(1+off(j) : n3d+off(j), i), [nx, ny])
                call check( nf90_put_var(ncid, varid_svd(j), &
-                                        svdu(1 + off(j) : n2d + off(j), i), &
-                                        [1, i], [n2d, 1]) )
+                                        field(:, :, 1), &
+                                        [1, 1, i], [nx, ny, 1]) )
             endif
          end do
       end do writevectors
 
       ! close file
       call check( nf90_close(ncid))
+
+      deallocate(field)
    end subroutine write_state   
    ! ==============================================================================
 
