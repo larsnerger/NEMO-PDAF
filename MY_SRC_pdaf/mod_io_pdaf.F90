@@ -507,14 +507,11 @@ end subroutine gen_ens_mv
 !> Read initial forecast error covariance from a file
 !!
   subroutine read_eof_cov(filename_cov, dim_state, dim_p, rank, state_p, eofV, svals)
-
     use mod_nemo_pdaf, only: dim_2d_p, dim_3d_p
-    use mod_statevector_pdaf, only: dim_state
     use netcdf
-
 ! *** Arguments ***
     character(*), intent(in) :: filename_cov      !< filename
-    integer, intent(in)      :: dim_state         !< Global dimension of state vector
+    integer, intent(in)      :: dim_state         !< global dimension of state vector
     integer, intent(in)      :: dim_p             !< local PE dimension of state vector
     integer, intent(in)      :: rank              !< rank of the covariance matrix
     real(pwp), intent(inout) :: eofV(dim_p, rank) !< singular vectors
@@ -527,8 +524,6 @@ end subroutine gen_ens_mv
     integer                :: varid                    ! variable id
     integer                :: i_rank, i_field, i_var   ! counter
     integer                :: n_rank                   ! last dimension of variables
-    integer                :: offset                   ! domain decomposition offset
-    real(pwp), allocatable :: state_tmp(:, :)             ! local variable
     real(pwp)              :: missing_value=1.e+20_pwp ! missing value in variables
     character(len=5)       :: vartypes(2)              ! variable types: svd and mean
 
@@ -536,7 +531,6 @@ end subroutine gen_ens_mv
     ! *** Initialize initial state and covar matrix ***
     ! *************************************************
     ! initialize the subroutine for reading
-    allocate(state_tmp(dim_3d_p, 1))
     vartypes = [character(len=5) :: '_svd', '_mean']
     if (.not. allocated(tmp_4d)) allocate(tmp_4d(ni_p, nj_p, nk_p, 1))
 
@@ -553,7 +547,7 @@ end subroutine gen_ens_mv
     call check( NF90_Inquire_dimension(ncid, dimid, len=rank_file) )
 
     ! Check consistency of dimensions
-    checkdim: IF (dim_state /= dim_file .OR. rank_file < rank) THEN
+    checkdim: IF (dim_state == dim_file .AND. rank_file >= rank) THEN
       ! *** Rank stored in file is smaller than requested EOF rank ***
       WRITE(*, '(a)') 'Rank stored in file is smaller than requested EOF rank'
       call check( NF90_CLOSE(ncid) )
@@ -566,7 +560,6 @@ end subroutine gen_ens_mv
 
     ! Read singular vectors and mean
     ! position of the domain in the state vector
-    offset = (jstart - 1)*nlons + istart
     do i_var = 1, 2
       if (i_var == 1) then
         n_rank = rank
@@ -583,13 +576,11 @@ end subroutine gen_ens_mv
         do i_rank = 1, n_rank
           ! read and convert state vector into field shape
           if (sfields(i_field)%ndims == 2) then
-            call check( NF90_GET_VAR(ncid, varid, state_tmp(:dim_2d_p, :), &
-                        start=[offset, i_rank], count=[dim_2d_p, 1]) )
-            tmp_4d(:, :, 1, 1) = reshape(state_tmp(:dim_2d_p, 1), [ni_p, nj_p])
+            call check( NF90_GET_VAR(ncid, varid, tmp_4d(:, :, 1, 1), &
+                        start=(/istart, jstart, i_rank/), count=(/ni_p, nj_p, 1/) ) )
           else if (sfields(i_field)%ndims == 3) then
-            call check( NF90_GET_VAR(ncid, varid, state_tmp, &
-                                     start=[offset, i_rank], count=[dim_3d_p, 1]) )
-            tmp_4d(:, :, :, 1) = reshape(state_tmp(:, 1), [ni_p, nj_p, nk_p])
+            call check( NF90_GET_VAR(ncid, varid, tmp_4d(:, :, :, 1), &
+                        start=(/istart, jstart, 1, i_rank/), count=(/ni_p, nj_p, nlvls, 1/) ) )
           end if
 
           if (i_var == 1) then
@@ -606,7 +597,6 @@ end subroutine gen_ens_mv
 
     enddo
     call check( NF90_CLOSE(ncid) )
-    deallocate(state_tmp)
   end subroutine read_eof_cov
 
 
