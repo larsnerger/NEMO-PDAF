@@ -46,6 +46,27 @@ NENS=4  # number of ensembles --> namelist_cfg.pdaf: tasks
 # ---------------------------------------------------------------------------------------------------
 #set -xv #debugging
 
+
+# ---------------------------------------------------------------------------------------------------
+#nemo_exe_dir='/home/hzfblner/SEAMLESS/nemo4_dev/cfgs/NORDIC_run/BLD/bin'
+nemo_exe_dir='/home/hbkycsun/nemo4_dev/cfgs/NORDIC_ens/BLD/bin'
+xios_exe_dir='/home/hzfblner/SEAMLESS/xios-2.0_par/bin'
+#rebuild='/home_ad/bm1405/balmfc_git/nemo4_dev/tools/REBUILD_NEMO/'
+restart_out='output/restarts'
+#archive='/work/ollie/fdaryabo/ergom_data'
+archive='/work/ollie/lnerger/SEAMLESS/forcing_ergom'
+archive_ln='/scratch/usr/hzfblner/SEAMLESS/forcings'
+#inputs_ln='/scratch/usr/hzfblner/SEAMLESS/inputs'
+setup_store='/scratch/usr/hbkycsun/data/setup_store'
+initialdir='/scratch/usr/hzfblner/SEAMLESS/restart'
+# ---------------------------------------------------------------------------------------------------
+
+# Prepare PDAF namelist
+cp $setup_store/namelist_cfg.pdaf_template ./
+cat namelist_cfg.pdaf_template     \
+   | sed -e "s:_DIMENS_:$NENS:"     \
+   > namelist_cfg.pdaf
+
 # set working directories for different ensemble members
 for((i=1;i<=$NENS;i++))
   do
@@ -65,18 +86,6 @@ for((i=1;i<=$NENS;i++))
     mkdir -p $wdir/forcing
 done
 
-# ---------------------------------------------------------------------------------------------------
-#nemo_exe_dir='/home/hzfblner/SEAMLESS/nemo4_dev/cfgs/NORDIC_run/BLD/bin'
-nemo_exe_dir='/home/hbkycsun/nemo4_dev/cfgs/NORDIC_ens/BLD/bin'
-xios_exe_dir='/home/hzfblner/SEAMLESS/xios-2.0_par/bin'
-#rebuild='/home_ad/bm1405/balmfc_git/nemo4_dev/tools/REBUILD_NEMO/'
-restart_out='output/restarts'
-#archive='/work/ollie/fdaryabo/ergom_data'
-archive='/work/ollie/lnerger/SEAMLESS/forcing_ergom'
-archive_ln='/scratch/usr/hzfblner/SEAMLESS/forcings'
-#inputs_ln='/scratch/usr/hzfblner/SEAMLESS/inputs'
-setup_store='/scratch/usr/hbkycsun/data/setup_store'
-initialdir='/scratch/usr/hzfblner/SEAMLESS/restart'
 # ---------------------------------------------------------------------------------------------------
 #export wdir
 export nemo_exe_dir
@@ -346,6 +355,8 @@ for((i=1;i<=$NENS;i++))
     cp $setup_store/namelist* $wdir/
     cp $setup_store/ACCESS $wdir/
     cp $setup_store/ens_dates.txt $wdir/
+    #cp $setup_store/files*.txt $wdir/
+    cp `pwd`/namelist_cfg.pdaf $wdir/
     #sed -e 's/nemo_000/nemo_${ENSstr}/' $wdir/../context_nemo_000.xml >$wdir/context_nemo.xml
     ln -s /scratch/usr/hzfblner/SEAMLESS/out_free/NORDIC_1d_SURF_grid_T_20150115-20150115.nc $wdir/my_nemo_ssh_file.nc
     cat $wdir/namelist_cfg_template		       \
@@ -373,19 +384,19 @@ do
       ENSstr=`printf %03d $i`
       echo 'preparing mpmd.conf...'${ENSstr}
 
-      echo '#!/bin/sh' > nemo${ENSstr}
-      echo 'cd '${ENSstr} >> nemo${ENSstr}
-      echo './nemo.exe' >> nemo${ENSstr}
-      chmod +x nemo${ENSstr}
+      echo '#!/bin/sh' > nemo${ENSstr}.sh
+      echo 'cd '${ENSstr} >> nemo${ENSstr}.sh
+      echo './nemo.exe' >> nemo${ENSstr}.sh
+      chmod +x nemo${ENSstr}.sh
 
-      echo '#!/bin/sh' > xios${ENSstr}
-      echo 'cd '${ENSstr} >> xios${ENSstr}
-      echo './xios_server.exe' >> xios${ENSstr}
-      chmod +x xios${ENSstr}
+      echo '#!/bin/sh' > xios${ENSstr}.sh
+      echo 'cd '${ENSstr} >> xios${ENSstr}.sh
+      echo './xios_server.exe' >> xios${ENSstr}.sh
+      chmod +x xios${ENSstr}.sh
 
-      echo $(((i-1)*($np_nemo+$np_xios)))'-'$(((i-1)*($np_nemo+$np_xios)+$np_nemo-1))' ./nemo'${ENSstr} >> mpmd.conf
-      #echo $(((i-1)*($np_nemo+$np_xios)+$np_nemo))'-'$(((i)*($np_nemo+$np_xios)-1))' ./xios'${ENSstr} >> mpmd.conf
-      echo $(((i-1)*($np_nemo+$np_xios)+$np_nemo))'-'$(((i)*($np_nemo+$np_xios)-1))' ./xios001' >> mpmd.conf
+      echo $(((i-1)*($np_nemo+$np_xios)))'-'$(((i-1)*($np_nemo+$np_xios)+$np_nemo-1))' ./nemo'${ENSstr}.sh >> mpmd.conf
+      #echo $(((i-1)*($np_nemo+$np_xios)+$np_nemo))'-'$(((i)*($np_nemo+$np_xios)-1))' ./xios'${ENSstr}.sh >> mpmd.conf
+      echo $(((i-1)*($np_nemo+$np_xios)+$np_nemo))'-'$(((i)*($np_nemo+$np_xios)-1))' ./xios001.sh' >> mpmd.conf
 done
 
 cat mpmd.conf
