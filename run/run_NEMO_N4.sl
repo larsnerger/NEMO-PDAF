@@ -5,11 +5,12 @@
 #SBATCH --nodes=4
 #SBATCH --ntasks=384
 #SBATCH --ntasks-per-node=96
-#SBATCH --time=0:30:00
-#SBATCH --partition=standard96:test
-##SBATCH --mail-user=yuchen.sun@awi.de
+#SBATCH --time=2:30:00
+##SBATCH --partition=standard96:test
+#SBATCH --partition=standard96
+#SBATCH --mail-user=yuchen.sun@awi.de
 #SBATCH --mail-type=END
-##SBATCH -A zzz0002
+##SBATCH -A hbk00095
 
 #anja.lindenthal 07/2019
 #empty 17GB
@@ -37,7 +38,16 @@ yy=2015 #Start year
 mm=01   #Start month
 dd=01   #Start day
 
-tstr2='20150101' #End date yyyymmdd
+tstr2='20150103' #End date yyyymmdd
+
+# ---------------------------------------------------------------------------------------------------
+
+# Set initial date  $yy$mm$dd==$initial_date we use the restart files from the input directory
+
+initial_date=20150101
+
+
+# ---------------------------------------------------------------------------------------------------
 
 NENS=4  # number of ensembles --> namelist_cfg.pdaf: tasks
 
@@ -62,8 +72,7 @@ initialdir='/scratch/usr/hzfblner/SEAMLESS/restart'
 # ---------------------------------------------------------------------------------------------------
 
 # Prepare PDAF namelist
-cp $setup_store/namelist_cfg.pdaf_template ./
-cat namelist_cfg.pdaf_template     \
+cat $setup_store/namelist_cfg.pdaf_template     \
    | sed -e "s:_DIMENS_:$NENS:"     \
    > namelist_cfg.pdaf
 
@@ -74,8 +83,8 @@ for((i=1;i<=$NENS;i++))
     echo 'creating ensemble woring directories...'
     if [ ! -d ${ENSstr} ]; then
       mkdir -p ${ENSstr}
-    else
-      rm -rf ${ENSstr}    # delete output from previous test runs
+    #else
+    #  rm -rf ${ENSstr}    # delete output from previous test runs
     fi
     wdir=`pwd`/${ENSstr}
     export wdir
@@ -121,9 +130,9 @@ done
 tstr0=`date +%Y%m%d`
 
 rn_rdt=90
-#rnl=$((6 * 3600 / $rn_rdt ))
+rnl=$((24 * 3600 / $rn_rdt ))
 # Set run length manually to 240
-rnl=240
+#rnl=240
 echo 'NOTE: RUN LENGTH SET MANUALLY TO ' $rnl
 nnstep=00000$rnl #00000 depends on rnl
 echo 'run length rnl: ' $rnl
@@ -153,11 +162,16 @@ for((i=1;i<=$NENS;i++))
     wdir=`pwd`/${ENSstr}
     export wdir
     echo 'linking restart...'
-    if [ ! -f $wdir/initialstate/restart_in.nc ]; then
-      ln -s $initialdir/NORDIC_2015010100_restart.nc $wdir/initialstate/restart_in.nc
-    fi
-    if [ ! -f $wdir/initialstate/restart_ice_in.nc ]; then
-      ln -s $initialdir/NORDIC_2015010100_restart_ice.nc $wdir/initialstate/restart_ice_in.nc
+    if [ $yy$mm$dd -eq $initial_date ]; then
+      echo "Link initial restart files"
+      if [ ! -f $wdir/initialstate/restart_in.nc ]; then
+        ln -s $initialdir/NORDIC_2015010100_restart.nc $wdir/initialstate/restart_in.nc
+      fi
+      if [ ! -f $wdir/initialstate/restart_ice_in.nc ]; then
+        ln -s $initialdir/NORDIC_2015010100_restart_ice.nc $wdir/initialstate/restart_ice_in.nc
+      fi
+    else
+      echo "Use distributed restart files from previous run"
     fi
 done
 
@@ -417,28 +431,41 @@ cat mpmd.conf
 #srun -l --cpu_bind=verbose,cores --multi-prog mpmd.conf
 srun -l --cpu_bind=cores --multi-prog mpmd.conf
 
-exit
+#exit
 # ---------------------------------------------------------------------------------------------------
 # error check in ocean.output
-if grep -q 'E R R O R' ocean.output
-    then
-    #{ echo 'ERROR in ocean.output' ;./test_err.sh; exit 1; }  >> log.$tstr0
-    { echo 'ERROR in ocean.output' ;  }
-    exit 1
-fi
+for((i=1;i<=$NENS;i++))
+  do
+    ENSstr=`printf %03d $i`
+    wdir=`pwd`/${ENSstr}
+    export wdir
+
+    if grep -q 'E R R O R' $wdir/ocean.output
+      then
+      #{ echo 'ERROR in ocean.output' ;./test_err.sh; exit 1; }  >> log.$tstr0
+        { echo 'ERROR in ocean.output' ;  }
+        exit 1
+    fi
+done
 
 #exit    -- NOTE: EXIT JUST FOR DEBUGGING  !!!!!!!!!!!!!!!!
 
 # check pe and kill
 # ---------------------------------------------------------------------------------------------------
-mv $wdir/NORDIC_* $wdir/output/data/
-#mv $wdir/NORDIC_1h* $wdir/output/data/
-#mv $wdir/NORDIC_6h* $wdir/output/data/
-#mv $wdir/NORDIC_1d* $wdir/output/data/
-mv $wdir/station_* $wdir/output/data/
-#mv $wdir/NORDIC_1ts_SURF_grid_T_2* $wdir/output/data/
-# call compression backround (and rebuild)
-#./compress.sh $date_nemo $wdir/output/data/  &>> log.$tstr0
+for((i=1;i<=$NENS;i++))
+  do
+    ENSstr=`printf %03d $i`
+    wdir=`pwd`/${ENSstr}
+    export wdir
+    mv $wdir/NORDIC_* $wdir/output/data/
+    #mv $wdir/NORDIC_1h* $wdir/output/data/
+    #mv $wdir/NORDIC_6h* $wdir/output/data/
+    #mv $wdir/NORDIC_1d* $wdir/output/data/
+    mv $wdir/station_* $wdir/output/data/
+    #mv $wdir/NORDIC_1ts_SURF_grid_T_2* $wdir/output/data/
+    # call compression backround (and rebuild)
+    #./compress.sh $date_nemo $wdir/output/data/  &>> log.$tstr0
+done
 
 # ---------------------------------------------------------------------------------------------------
 
@@ -458,61 +485,76 @@ mv $wdir/station_* $wdir/output/data/
 
 # ---------------------------------------------------------------------------------------------------
 #Remove old restart files
-echo "Remove old restart files from initialstate"
-rm $wdir'/initialstate/restart_in_*'
-rm $wdir'/initialstate/restart_ice_in_*'
-#rm $wdir'/initialstate/restart_trc_in_*'
+for((i=1;i<=$NENS;i++))
+  do
+    ENSstr=`printf %03d $i`
+    wdir=`pwd`/${ENSstr}
+    export wdir
+    echo "Remove old restart files from initialstate"
+    rm $wdir'/initialstate/restart_in_*'
+    rm $wdir'/initialstate/restart_ice_in_*'
+    #rm $wdir'/initialstate/restart_trc_in_*'
+done
 
 # ---------------------------------------------------------------------------------------------------
 np=$(( $np - 1 ))
-cd $wdir
-#save restarts
-echo "Save restart files"
-for n in `seq -f "%04g" 0 $np`;do
-cp $wdir/$restart_out/'NORDIC_'$nnstep'_restart_out_'$n'.nc'     $wdir/$restart_out/'/restart_in_'$n$date_nemo'.nc'
-cp $wdir/$restart_out/'NORDIC_'$nnstep'_restart_ice_out_'$n'.nc' $wdir/$restart_out/'/restart_ice_in_'$n$date_nemo'.nc'
-#cp $wdir/$restart_out/'NORDIC_'$nnstep'_restart_trc_out_'$n'.nc' $wdir/$restart_out/'/restart_trc_in_'$n$date_nemo'.nc'
-done
+for((i=1;i<=$NENS;i++))
+  do
+    ENSstr=`printf %03d $i`
+    wdir=`pwd`/${ENSstr}
+    export wdir
 
-for n in `seq -f "%04g" 0 $np`;do
-cp $wdir/$restart_out/'NORDIC_'$nnstep'_restart_out_'$n'.nc'     $wdir'/initialstate/restart_in_'$n'.nc'
-cp $wdir/$restart_out/'NORDIC_'$nnstep'_restart_ice_out_'$n'.nc' $wdir'/initialstate/restart_ice_in_'$n'.nc'
-#cp $wdir/$restart_out/'NORDIC_'$nnstep'_restart_trc_out_'$n'.nc' $wdir'/initialstate/restart_trc_in_'$n'.nc'
-done
+    #save restarts
+    echo "Save restart files"
+    for n in `seq -f "%04g" 0 $np`;do
+      cp $wdir/$restart_out/'NORDIC_'$nnstep'_restart_out_'$n'.nc'     $wdir/$restart_out/'/restart_in_'$n$date_nemo'.nc'
+      cp $wdir/$restart_out/'NORDIC_'$nnstep'_restart_ice_out_'$n'.nc' $wdir/$restart_out/'/restart_ice_in_'$n$date_nemo'.nc'
+      #cp $wdir/$restart_out/'NORDIC_'$nnstep'_restart_trc_out_'$n'.nc' $wdir/$restart_out/'/restart_trc_in_'$n$date_nemo'.nc'
+    done
 
-for n in `seq -f "%04g" 0 $np`;do
-if [ -f $wdir'/initialstate/restart_in_'$n'.nc' ] && [ $wdir'/initialstate/restart_ice_in_'$n'.nc' ] && [ $wdir'/initialstate/restart_trc_in_'$n'.nc' ]; then
+    for n in `seq -f "%04g" 0 $np`;do
+      cp $wdir/$restart_out/'NORDIC_'$nnstep'_restart_out_'$n'.nc'     $wdir'/initialstate/restart_in_'$n'.nc'
+      cp $wdir/$restart_out/'NORDIC_'$nnstep'_restart_ice_out_'$n'.nc' $wdir'/initialstate/restart_ice_in_'$n'.nc'
+      #cp $wdir/$restart_out/'NORDIC_'$nnstep'_restart_trc_out_'$n'.nc' $wdir'/initialstate/restart_trc_in_'$n'.nc'
+    done
+
+    for n in `seq -f "%04g" 0 $np`;do
+    if [ -f $wdir'/initialstate/restart_in_'$n'.nc' ] && [ $wdir'/initialstate/restart_ice_in_'$n'.nc' ] && [ $wdir'/initialstate/restart_trc_in_'$n'.nc' ]; then
+      echo "Save restart files successfully"
 	rm $wdir/$restart_out/'NORDIC_'$nnstep'_restart_out_'$n'.nc'
 	rm $wdir/$restart_out/'NORDIC_'$nnstep'_restart_ice_out_'$n'.nc'
 #	rm $wdir/$restart_out/'NORDIC_'$nnstep'_restart_trc_out_'$n'.nc'
 	else
 	{ echo ' failed' ; exit 1; }
-fi
-done
+    fi
+    done
 
 
-#for n in `seq -f "%04g" 0 $np`;do
-#rm $wdir/$restart_out/'NORDIC_'$nnstep'_restart_out_'$n'.nc'     >> log.$tstr0
-#rm $wdir/$restart_out/'NORDIC_'$nnstep'_restart_ice_out_'$n'.nc' >> log.$tstr0
-#rm $wdir/$restart_out/'NORDIC_'$nnstep'_restart_trc_out_'$n'.nc' >> log.$tstr0
-#done
+    #for n in `seq -f "%04g" 0 $np`;do
+    #rm $wdir/$restart_out/'NORDIC_'$nnstep'_restart_out_'$n'.nc'     >> log.$tstr0
+    #rm $wdir/$restart_out/'NORDIC_'$nnstep'_restart_ice_out_'$n'.nc' >> log.$tstr0
+    #rm $wdir/$restart_out/'NORDIC_'$nnstep'_restart_trc_out_'$n'.nc' >> log.$tstr0
+    #done
 
 
-cp $wdir/ocean.output $wdir/output/log/ocean.output$tstr
-cp $wdir/timing.output $wdir/output/log/timing.output$tstr
-#mv $wdir/output/ /cmems_shared_work/bm1405/nemo_output/output_$date_nemo
+    cp $wdir/ocean.output $wdir/output/log/ocean.output$tstr
+    cp $wdir/timing.output $wdir/output/log/timing.output$tstr
+    #mv $wdir/output/ /cmems_shared_work/bm1405/nemo_output/output_$date_nemo
 
 # ---------------------------------------------------------------------------------------------------
 # remove forcing files
-rm $wdir/forcing/bdy_ts_$date_nemo'.nc'
-rm $wdir/forcing/bdy_uvh_$date_nemo'.nc'
-rm $wdir/forcing/EHYPE_$date_nemo'.nc'
-rm $wdir/forcing/FORCE_$date_nemo'.nc'
-#rm $wdir/forcing/ERGOM_TCC_$date_nemo'.nc'
-#rm $wdir/forcing/ERGOM_OBC_$date_nemo'.nc'
-#rm $wdir/forcing/ERGOM_SBC_$date_nemo'.nc'
-#rm $wdir/forcing/ERGOM_CBC_$date_nemo'.nc'
-#remove restarts
+    #rm $wdir/forcing/bdy_ts_$date_nemo'.nc'
+    #rm $wdir/forcing/bdy_uvh_$date_nemo'.nc'
+    #rm $wdir/forcing/EHYPE_$date_nemo'.nc'
+    #rm $wdir/forcing/FORCE_$date_nemo'.nc'
+    
+    #rm $wdir/forcing/ERGOM_TCC_$date_nemo'.nc'
+    #rm $wdir/forcing/ERGOM_OBC_$date_nemo'.nc'
+    #rm $wdir/forcing/ERGOM_SBC_$date_nemo'.nc'
+    #rm $wdir/forcing/ERGOM_CBC_$date_nemo'.nc'
+    #remove restarts
+done
+
 # ---------------------------------------------------------------------------------------------------
 # add one day
 tstr=$(date -I -d "$tstr + 1 day ")
