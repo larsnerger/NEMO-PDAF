@@ -931,7 +931,7 @@ end subroutine read_trajectory_mv
        call check( NF90_def_var_deflate(ncid, id_lev, 0, 1, 1) )
     end if
 
-    call check( NF90_DEF_VAR(ncid, 'svals', NF90_FLOAT, dimids_field(4), id_svals))
+    call check( NF90_DEF_VAR(ncid, 'sigma', NF90_FLOAT, dimids_field(4), id_svals))
 
     do i = 1, n_fields
        if (sfields(i)%ndims==3) then
@@ -1095,7 +1095,7 @@ end subroutine read_trajectory_mv
    end IF checkdimB
 
     !  Read singular values
-    call check( nf90_inq_varid(ncid, 'svals', varid))
+    call check( nf90_inq_varid(ncid, 'sigma', varid))
     call check( NF90_GET_VAR(ncid, varid, svals) )
 
     do i = 1, n_fields
@@ -1129,11 +1129,6 @@ end subroutine read_trajectory_mv
     end do
 
     call check( nf90_close(ncid) )
-
-    do member = 1, rank
-       ! Potentially transform fields
-       call transform_field_mv(1, eofV(:,member))
-    end do
 
     if (verbose>2) then
        do i = 1, n_fields
