@@ -547,12 +547,16 @@ end subroutine gen_ens_mv
     call check( NF90_Inquire_dimension(ncid, dimid, len=rank_file) )
 
     ! Check consistency of dimensions
-    checkdim: IF (dim_state == dim_file .AND. rank_file <= rank) THEN
+    checkdim: IF (dim_state == dim_file .AND. rank_file < rank) THEN
       ! *** Rank stored in file is smaller than requested EOF rank ***
-      WRITE(*, '(a)') 'Rank stored in file is smaller than requested EOF rank'
+      WRITE(*, '(a)') 'Error: Rank stored in file is smaller than requested EOF rank'
       call check( NF90_CLOSE(ncid) )
       call abort_parallel()
     END IF checkdim
+    checkdimB: IF (dim_p /= dim_file) THEN
+      ! *** Rank stored in file is smaller than requested EOF rank ***
+      WRITE(*, '(a)') 'Warning: State dimension in file is different from DA setup'
+   end IF checkdimB
   
     ! read singular values
     call check( NF90_INQ_VARID(ncid, 'sigma', varid) )
@@ -597,6 +601,7 @@ end subroutine gen_ens_mv
 
     enddo
     call check( NF90_CLOSE(ncid) )
+
   end subroutine read_eof_cov
 
 
@@ -972,8 +977,8 @@ end subroutine gen_ens_mv
             call check( NF90_def_var_deflate(ncid, id_incr, 0, 1, 1) )
 
        fillval = 0.0_pwp
-       call check( nf90_put_att(ncid, id_incr, "long_name", trim(sfields(id_field)%name_incr)//trim('Increment')) )
-       call check( nf90_put_att(ncid, id_incr, "units", trim(sfields(id_field)%unit)) )
+       call check( nf90_put_att(ncid, id_incr, "long_name", trim(sfields(i)%name_incr)//trim('Increment')) )
+       call check( nf90_put_att(ncid, id_incr, "units", trim(sfields(i)%unit)) )
        call check( nf90_put_att(ncid, id_incr, "coordinates", "nav_lat nav_lon") )
        call check( nf90_put_att(ncid, id_incr, "_FillValue", fillval) )
        call check( nf90_put_att(ncid, id_incr, "missing_value", fillval) )
