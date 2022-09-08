@@ -35,6 +35,10 @@ module mod_assimilation_pdaf
 ! *** Below are the generic variables used for configuring PDAF ***
 ! *** Their values are set in init_PDAF_offline                 ***
 
+  character(len=5) :: program_mode = 'assim'      ! Mode of the program: 
+                           !   'assim' to perform analysis step 
+                           !   'covar' for EOF decomposition to generate covariance matrix file
+
 ! !PUBLIC MEMBER FUNCTIONS:
 ! ! Settings for time stepping - available as command line options
   logical :: model_error   ! Control application of model error
@@ -179,47 +183,13 @@ module mod_assimilation_pdaf
                            ! Only for upward-compatibility of PDAF!
   real    :: time          ! model time
 
+!    ! Variables for generation of covariance matrix
+  integer :: do_mv         ! 1: activate normalization; 0: run without normalization
+  integer :: remove_mean   ! 1 to let PDAF_eofcovar subtract the long-term mean state
+  integer :: hwindow       ! Half time window for running mean (2*irange+1)
+  real    :: limit         ! lower limit for singular values
 
-!   ! Variables to handle multiple fields in the state vector
-!   integer :: n_fields      !< number of fields in state vector
-! 
-!   ! Declare Fortran type holding the indices of model fields in the state vector
-!   ! This can be extended to any number of fields - it serves to give each field a name
-!   type field_ids
-!      ! Ocean Physics
-!      integer :: ssh
-!      integer :: temp
-!      integer :: salt
-!      integer :: uvel
-!      integer :: vvel
-! 
-!      ! ERGOM
-!      integer :: oxy
-!   end type field_ids
-! 
-!   ! Type variable holding field IDs in state vector
-!   type(field_ids) :: id
-! 
-!   type state_field
-!      integer :: ndims                  ! Number of field dimensions (2 or 3)
-!      integer :: dim                    ! Dimension of the field
-!      integer :: off                    ! Offset of field in state vector
-!      character(len=10) :: variable     ! Name of field
-!      character(len=20) :: name_incr    ! Name of field in increment file
-!      character(len=20) :: name_rest_n  ! Name of field in restart file (n-field)
-!      character(len=20) :: name_rest_b  ! Name of field in restart file (b-field)
-!      character(len=30) :: file         ! File name stub to read field from
-!      character(len=30) :: rst_file     ! Name of restart file
-!      character(len=20) :: unit         ! Unit of variable
-!      integer :: transform = 0          ! Type of variable transformation
-!      real :: trafoConst = 0.0          ! Constant to shift value in transformation
-!      integer :: limit = 0              ! Whether to limit the value of the variable
-!                                        ! 0: no limits, 1: lower limit, 2: upper limit, 3: both limits
-!      real :: max_limit = 0.0           ! Upper limit of variable
-!      real :: min_limit = 0.0           ! Lower limit of variable
-!   end type state_field
-! 
-!   type(state_field), allocatable :: sfields(:)
+
 
 !$OMP threadprivate(domain_coords, id_lstate_in_pstate)
 

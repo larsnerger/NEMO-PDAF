@@ -81,8 +81,6 @@ SUBROUTINE assimilation_pdaf_offline()
 
 
   IF (filtertype == 7) THEN
-     if (mype_world==0) write (*,'(1x,a)') 'Assimilate using OMI'
-
      CALL PDAFomi_put_state_local(collect_state_pdaf, init_dim_obs_pdafomi, &
           obs_op_pdafomi, prepoststep_ens_offline, init_n_domains_pdaf, init_dim_l_pdaf, &
           init_dim_obs_l_pdafomi, g2l_state_pdaf, l2g_state_pdaf, status)

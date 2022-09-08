@@ -44,6 +44,8 @@ program MAIN_OFFLINE
   use mod_parallel_pdaf, &     ! Parallelization
        only: MPI_COMM_WORLD, MPIerr, npes_world, mype_world, &
        init_parallel, finalize_parallel
+  use mod_assimilation_pdaf, & ! Variables for assimilation
+       only: program_mode
   use mod_memcount_pdaf, &
        only: memcount_ini, memcount_get
   use timer, &
@@ -69,7 +71,7 @@ program MAIN_OFFLINE
 ! ********************************
 
   ! Initialize memory counting and timers
-  call memcount_ini(3)
+  call memcount_ini(4)
   call timeit(4, 'ini')
 
   call timeit(1,'new')
@@ -118,12 +120,23 @@ program MAIN_OFFLINE
 
   ! *** Perform analysis ***
 
-  if (mype_world == 0) &
-       write (*, '(/2x, a)') 'PDAF offline mode: START ASSIMILATION'
+  if (trim(program_mode)=='assim') then
+     if (mype_world == 0) &
+          write (*, '(/2x, a)') 'PDAF offline mode: START ASSIMILATION'
 
-  call timeit(4,'new')
-  call assimilation_pdaf_offline()
-  call timeit(4,'old')
+     call timeit(4,'new')
+     call assimilation_pdaf_offline()
+     call timeit(4,'old')
+
+  elseif (trim(program_mode)=='covar') then
+     if (mype_world == 0) &
+          write (*, '(/2x, a)') 'PDAF offline: GENERATE COVARIANCE MATRIX'
+
+     call timeit(4,'new')
+     call eofcovar()
+     call timeit(4,'old')
+
+  end if
 
 
   ! Synchronize at barrier for exit
@@ -152,6 +165,8 @@ program MAIN_OFFLINE
           'ensemble init:', memcount_get(2, 'M'), ' MB (temporary)'
      write (*, '(17x, a, f12.3, a)') &
           'Pre-Poststep:', memcount_get(3, 'M'), ' MB (temporary)'
+     write (*, '(20x, a, f12.3, a)') &
+          'gen_covar:', memcount_get(4, 'M'), ' MB (temporary)'
   end if
 
   ! *** Finalize PDAF - print memory and timing information
@@ -163,7 +178,11 @@ program MAIN_OFFLINE
      ! Timing summary for assimilation
      write (*, '(19x, a, F11.3, 1x, a)') 'initialize model:', time_tot(2), 's'
      write (*, '(18x, a, F11.3, 1x, a)') 'initialize filter:', time_tot(3), 's'
-     write (*, '(23x, a, F11.3, 1x, a)') 'assimilation:', time_tot(4), 's'
+     if (trim(program_mode)=='assim') then
+        write (*, '(23x, a, F11.3, 1x, a)') 'assimilation:', time_tot(4), 's'
+     else
+        write (*, '(27x, a, F11.3, 1x, a)') 'gen_covar:', time_tot(4), 's'
+     end if
      write (*, '(19x, a, F11.3, 1x, a)') 'total run time:', time_tot(1), 's'
 
      write (*, '(/1x, a)') 'PDAF offline mode: END'

@@ -22,7 +22,7 @@ subroutine init_pdaf()
        ensfile_type, timeDA, &
        shiftObsInWet, flate, genEnsMeanYearly, nyears, GaussTransf, trafoConst, &
        EnsDiagnos, flateZ,flateTOP,flateBOT,nLevFB,nLevFE, &
-       deg2rad
+       deg2rad, program_mode
   use mod_nemo_pdaf, &
        only: jpiglo, jpjglo, jpk, nwet, nwet3d, use_wet_state, &
        lon1, lat1, nldi, nlei, nldj, nlej
@@ -31,7 +31,8 @@ subroutine init_pdaf()
        saveState, coupling_nemo, saveIncr, do_deflate, &
        file_PDAF_state, file_PDAF_variance, file_PDAF_incr, ens_filelist, &
        path_state, file_state_date1, file_state_date2, path_ens, file_ens, &
-       path_restart, file_restart, startEnsTime, endEnsTime, incrTime
+       path_covar, file_covar, path_restart, file_restart, &
+       startEnsTime, endEnsTime, incrTime
   use mod_statevector_pdaf, &
        only: setup_state
   use obs_prof_pdafomi, &
@@ -55,13 +56,13 @@ subroutine init_pdaf()
   real :: lim_coords(2,2)      ! Limiting coordinates of sub-domain
   
   logical :: printconfig = .true.  ! Print information on all configuration parameters
-  logical :: pdafnlthere
     
   ! Namelist for PDAF settings
-  namelist /pdaf_nml/ iday, filtertype, dim_ens,timeDA,screen, printconfig,   &
+  namelist /pdaf_nml/ program_mode, &
+       iday, filtertype, dim_ens, timeDA, screen, printconfig,   &
        forget, type_forget, locweight, &
        path_state,file_state_date1,  file_state_date2, &
-       path_ens, file_ens, ensfile_type,   &
+       path_ens, file_ens, ensfile_type, path_covar, file_covar,  &
        file_PDAF_state, file_PDAF_variance, file_PDAF_incr,&
        ens_filelist, saveState, saveIncr, do_deflate, coupling_nemo, path_restart, file_restart,&
        shiftObsInWet, write_ens_fields, write_ens_states, flate, genEnsMeanYearly, nyears, GaussTransf, &
@@ -90,6 +91,10 @@ subroutine init_pdaf()
 ! **********************************************************
 ! ***   CONTROL OF PDAF - used in call to PDAF_init      ***
 ! **********************************************************
+
+  program_mode = 'assim'   ! Mode of the program: 
+                   !   'assim' to perform analysis step 
+                   !   'covar' for EOF decomposition to generate covariance matrix file
 
 ! *** IO options ***
   screen      = 2  ! Write screen output (1) for output, (2) add timings
@@ -168,8 +173,10 @@ subroutine init_pdaf()
 ! *** File settings
   
   ensfile_type = 2  ! (1) for using ens file
-                    ! (2) for using ergom output files
+                    ! (2) for using a set of single output files
                     ! (3) for using dim_ens ens files (ens(dim_p)) e.g. from SMHI toolbox
+                    ! (4) for reading in trajectory for generating covariance matrix
+                    ! (5) for init using covariance matrix file
   write_ens_states = .false. ! Whether to write ensemble file after generation for ensfile_type=2
   write_ens_fields = .false. ! Whether to write set of files holding ensemble fields
   timeDA = 1
@@ -195,12 +202,9 @@ subroutine init_pdaf()
 
 
 ! *** Read namelist file for PDAF if the list is there ***
-  inquire( FILE='pdaf.nml', EXIST=pdafnlthere ) 
-  if ( pdafnlthere ) then
-     open (500,file='pdaf.nml')
-     read (500,NML=pdaf_nml)
-     close (500)
-  end if
+  open (500,file='pdaf.nml')
+  read (500,NML=pdaf_nml)
+  close (500)
 
   open (500,file='ergompdaf.nml')
   read (500,NML=ergompdaf_nml)
@@ -213,6 +217,10 @@ subroutine init_pdaf()
   call add_slash(path_state)
   call add_slash(path_ens)
 
+! *** For generating the covariance matrix reset ensemble mode
+  if (trim(program_mode)=='covar') ensfile_type = 4
+
+
 ! *** Activate netcdf deflation for single process runs
   if (npes==1) do_deflate = .true.
 
@@ -221,12 +229,14 @@ subroutine init_pdaf()
 
      write (*,'(/1x,a)') '-- Overview of PDAF configuration --'
      write (*,'(3x,a)') 'PDAF [pdaf_nml]:'
+     write (*,'(5x,a,a)')     'program_mode       ', program_mode     
      write (*,'(5x,a,i10)')   'filtertype  ', filtertype
      write (*,'(5x,a,i10)')   'subtype     ', subtype
      write (*,'(5x,a,i10)')   'dim_ens     ', dim_ens
      write (*,'(5x,a,i10)')   'screen      ', screen
      write (*,'(5x,a,f10.2)') 'forget        ', forget
      write (*,'(5x,a,i10)')   'locweight   ', locweight
+     write (*,'(5x,a,i10)')   'ensfile_type', ensfile_type
      write (*,'(5x,a,l)')     'assim_prof         ', assim_prof
      if (assim_prof) then
         write (*,'(6x,a,es10.2)')'lradius_prof      ', lradius_prof

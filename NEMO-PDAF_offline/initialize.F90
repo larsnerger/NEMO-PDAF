@@ -468,7 +468,7 @@ subroutine initialize()
   allocate(idx_wet_2d(ni_p, nj_p))
   allocate(idx_nwet(ni_p, nj_p))
   allocate(nlev_wet_2d(ni_p, nj_p))
-  call memcount(1, 'i', 3*nx*ny)
+  call memcount(1, 'i', 3*ni_p*nj_p)
 
   idx_wet_2d = 0
   idx_nwet = 0

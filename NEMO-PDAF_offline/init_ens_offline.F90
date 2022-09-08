@@ -27,17 +27,17 @@ SUBROUTINE init_ens_offline(filtertype, dim_p, dim_ens, state_p, Uinv, &
 ! !USES:
   use netcdf
   USE mod_assimilation_pdaf, &
-       ONLY: ensfile_type, timeDA, &
+       ONLY: program_mode, ensfile_type, timeDA, &
        flate, genEnsMeanYearly, nyears, GaussTransf, trafoConst, &
        flateZ, flateTOP, flateBOT, nLevFB, nLevFE
   use mod_io_pdaf, &
-       only : read_state_mv, read_ens, gen_ens_mv, write_state_ens, write_ens_files, &
-       write_ens_states, write_ens_fields, &
+       only : read_state_mv, read_ens, gen_ens_mv, read_trajectory_mv, &
+       write_state_ens, write_ens_files, write_ens_states, write_ens_fields, &
        gen_ensMeanYearly, &
        read_ens_dim_ens_files, read_ens_dims_dim_ens_files, &
        flate_depth, gen_ensFlateZ, nfiles, ntimec, &
-       path_state, file_state_date1, file_state_date2, path_ens, file_ens, ens_filelist, &
-       coupling_nemo
+       path_state, file_state_date1, file_state_date2, path_ens, file_ens, &
+       ens_filelist, path_covar, file_covar, coupling_nemo
   USE mod_parallel_pdaf, &
        ONLY: mype=>mype_filter
 
@@ -80,9 +80,8 @@ SUBROUTINE init_ens_offline(filtertype, dim_p, dim_ens, state_p, Uinv, &
 ! **********************
 
   IF (mype==0) THEN
-     WRITE (*, '(/9x, a)') 'Initialize state ensemble'
-     WRITE (*, '(9x, a)') '--- read ensemble from files'
-     WRITE (*, '(9x, a, i5)') '--- Ensemble size:  ', dim_ens
+     WRITE (*, '(/a, 4x, a)') 'NEMO-PDAF', 'Initialize state ensemble'
+     WRITE (*, '(a, 6x, a, i5)') 'NEMO-PDAF', '--- Ensemble size:  ', dim_ens
   END IF
 
 
@@ -94,24 +93,11 @@ SUBROUTINE init_ens_offline(filtertype, dim_p, dim_ens, state_p, Uinv, &
 
 !LN TODO: Move this to the actual ensemble reading
 if (1==2) then
-  if (ensfile_type == 1) then
-     ! Read ensemble dimension from ensemble file
-  elseif (ensfile_type == 2) then
-     ! Read ensemble dimension from a list of files
-  elseif (ensfile_type == 3) then
+  if (ensfile_type == 3) then
      ! Determine ensemble size from number of files present
      call read_ens_dims_dim_ens_files(path_ens,dim_state_ensfile,dim_ens_ensfile)
-  else
-     write (*,*) 'ERROR: No valid choice of ensfile_type', ensfile_type
   endif
 endif
-
-!   if (dim_ens /= dim_ens_ensfile) then
-!      write (*,'(/1x,a)') 'dim_ens in pdaf.nml and from ensemble input file are not the same:', &
-!           dim_ens, dim_ens_ensfile
-!      write (*,'(/1x,a)')  'ERGOM-PDAF is gooing to exit.' 
-!      call exit(0)  
-!   endif
 
 
 ! ********************************
@@ -119,15 +105,19 @@ endif
 ! ********************************
 
   ! Read ensemble central state vector state_p
-  write (*,'(1x,a)') 'Read central model state of the ensemble'
+  if (trim(program_mode)=='assim') then
 
-  IF (coupling_nemo=='incr') THEN
-     CALL read_state_mv(path_state, file_state_date1, file_state_date2, dim_p, timeDA, &
-          coupling_nemo, state_p)
-  ELSE
-     CALL read_state_mv(path_state, file_state_date1, file_state_date2, dim_p, 1, &
-          coupling_nemo, state_p)
-  END IF
+     IF (mype==0) &
+          write (*,'(a,4x,a)') 'NEMO-PDAF', '--- Read central model state of the ensemble'
+
+     IF (coupling_nemo=='incr') THEN
+        CALL read_state_mv(path_state, file_state_date1, file_state_date2, dim_p, timeDA, &
+             coupling_nemo, state_p)
+     ELSE
+        CALL read_state_mv(path_state, file_state_date1, file_state_date2, dim_p, 1, &
+             coupling_nemo, state_p)
+     END IF
+  endif
 
   IF (flateZ) THEN
      ALLOCATE (flate_z(dim_p))
@@ -135,16 +125,21 @@ endif
   ENDIF
 
   ! Read ensemble perturbations
-  if ( ensfile_type == 1 ) then
-     write (*,'(1x,a)') 'Initialize ensemble from single ensemble file'
+  if (ensfile_type == 1) then
+
+     IF (mype==0) &
+          write (*,'(a,4x,a)') 'NEMO-PDAF','--- Initialize ensemble from single ensemble file'
 
      call read_ens(trim(path_ens)//trim(file_ens), dim_p, dim_ens, ens_p)
 
-  else if  ( ensfile_type == 2 ) then
+  else if  (ensfile_type == 2) then
+     ! This option initializes ensemble perturbations by reading from a
+     ! set of NEMO/ERGOM output files and subtracing the mean of these
 
      IF (.NOT. genEnsMeanYearly) THEN
         IF (.NOT. flateZ) THEN
-           if (mype==0) write (*,'(1x,a)') 'Initialize ensemble from NEMO/ERGOM output files'
+           if (mype==0) write (*,'(a,4x,a)') &
+                'NEMO-PDAF','--- Initialize ensemble from set of NEMO/ERGOM output files'
 
            CALL gen_ens_mv(flate, ens_filelist, path_state, dim_p, dim_ens, ens_p)
         ELSE
@@ -156,23 +151,47 @@ endif
      IF (flateZ) DEALLOCATE (flate_z)
      IF (write_ens_states) call write_state_ens(path_ens, file_ens, dim_p, dim_ens, ens_p)
 
-  else if ( ensfile_type == 3) then
+  else if (ensfile_type == 3) then
+
 !     call read_ens_dim_ens_files(path_ens, dim_p, dim_ens, ens_p)
+
+  else if (ensfile_type == 4) then
+
+     ! This is the usual choice for program_mode='covar' 
+     ! and could be used at the very beginning of a DA sequence
+
+     if (mype==0) write (*,'(a, 4x,a)') 'NEMO-PDAF','--- Read model trajectory from NEMO/ERGOM output files'
+
+     CALL read_trajectory_mv(flate, ens_filelist, path_state, dim_p, dim_ens, ens_p)
+
+  else if (ensfile_type == 5) then
+
+     ! Generate ensemble from covariance matrix by 2nd-order exact sampling
+     ! This generates the full ensemble and sets the central state state_p
+
+     if (mype==0) WRITE (*, '(a, 4x, a)') 'NEMO-PDAF','--- generate ensemble from covariance matrix'
+
+     CALL gen_ens_from_cov(path_covar, file_covar, dim_p, dim_ens, state_p, ens_p)
+
   endif
+
+
+  ! Add ensemble central state to perturbations
+  if (trim(program_mode)=='assim' .and. ensfile_type /= 5) then
+     write (*,'(a,4x,a)') 'NEMO-PDAF', '--- Add central model state to ensemble perturbations'
+
+     DO member = 1, dim_ens
+!$OMP PARALLEL DO  
+        DO i=1, dim_p
+           ens_p(i, member) = ens_p(i, member) + state_p(i)
+        END DO
+!$OMP END PARALLEL DO
+     END DO
+  end if
 
   ! write ensemble of files holding ensemble of fields
   ! Careful: This routine applied the backward state transformation
   IF (write_ens_fields) call write_ens_files(path_ens,'ensembleField',dim_p,dim_ens,ens_p)
-
-
-  ! Add ensemble central state and perturbations
-  DO member = 1, dim_ens
-!$OMP PARALLEL DO  
-     DO i=1, dim_p
-        ens_p(i, member) = ens_p(i, member) + state_p(i)
-     END DO
-!$OMP END PARALLEL DO
-  END DO
 
 
 ! ****************
@@ -180,3 +199,65 @@ endif
 ! ****************
 
 END SUBROUTINE init_ens_offline
+
+
+subroutine gen_ens_from_cov(path, name, dim_p, dim_ens, state_p, ens_p)
+
+  use pdaf_interfaces_module, only: PDAF_SampleEns
+  use mod_io_pdaf, only: read_eof_cov_mv, path_covar, file_covar
+  use mod_parallel_pdaf, &
+       only: mype=>mype_filter, abort_parallel
+
+  implicit none
+
+! *** Arguments ***
+  character(len=*), intent(in) :: path         !< File path
+  character(len=*), intent(in) :: name         !< File name
+  integer, intent(in) :: dim_p                 !< dimension of local state vector
+  integer, intent(in) :: dim_ens               !< ensemble size
+  real, intent(inout) :: state_p(dim_p)        !< state vector (central state of ensemble)
+  real, intent(inout) :: ens_p(dim_p, dim_ens) !< ensemble vector
+
+! *** Local variables ***
+  integer :: rank
+  integer :: status_pdaf
+  real, allocatable :: eofV(:, :)
+  real, allocatable :: svals(:)
+
+
+! *****************************************
+! *** Generate ensemble of model states ***
+! *****************************************
+
+  ! *** Rank of matrix is ensemble size minus one
+  rank = dim_ens - 1
+
+  ! allocate memory for temporary fields
+  ALLOCATE(eofV(dim_p, rank))
+  ALLOCATE(svals(rank))
+
+  ! get eigenvalue and eigenvectors from file
+  call read_eof_cov_mv(path_covar, file_covar, dim_p, rank, eofV, svals)
+
+  ! *** Generate full ensemble on filter-PE 0 ***
+  WRITE (*, '(a, 4x, a)') 'NEMO-PDAF','--- generate ensemble using PDAF_SampleEns'
+  WRITE (*, '(a, 6x, a)') &
+       'NEMO-PDAF','--- 2nd order exact sampling'
+  WRITE (*, '(a, 6x, a, i5)') 'NEMO-PDAF','--- number of EOFs: ', rank
+
+  ! Use PDAF routine to generate ensemble from covariance matrix
+  CALL PDAF_SampleEns(dim_p, dim_ens, eofV, svals, state_p, ens_p, 1, status_pdaf)
+
+  if (status_pdaf /= 0) then
+     write (*, '(/1x,a6,i3,a43,i4,a1/)') &
+          'ERROR ', status_pdaf, &
+          ' in sample ensemble of PDAF - stopping! (PE ', mype, ')'
+     call abort_parallel()
+  end if
+
+! ****************
+! *** clean up ***
+! ****************
+  DEALLOCATE(svals, eofV)
+
+end subroutine gen_ens_from_cov

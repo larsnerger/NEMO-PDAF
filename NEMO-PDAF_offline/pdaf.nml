@@ -9,6 +9,7 @@ read_decomp=.false.
 /
 
 &pdaf_nml
+program_mode = 'assim'   ! 'assim' for analysis step; 'covar' to generate covariance matrix
 dim_ens=30
 
 iday = 1
@@ -17,7 +18,7 @@ genEnsMeanYearly=.false.
 filtertype=7             ! 7 for analysis step, 5 for no analysis
 printconfig=.true.
 varname='votemper'    ! Still to remove this from the code
-ensfile_type=2
+ensfile_type=2        ! 2: read from set of snapshop files; 5: init from covariance matrix
 write_ens_states=.false.
 write_ens_fields=.false.
 write_var_time='fcst'   ! (both, fcst, ana, none)
@@ -74,3 +75,9 @@ sradius_sst_cmems = 20000.0 !5.0
  sv_vvel = .true.
 ! sv_oxy = .true.
 /
+
+! Settings to generate covariance matrix
+&gen_cov
+ hwindow = 10   ! half window size to compute running mean
+/
+

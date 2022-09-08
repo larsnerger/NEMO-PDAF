@@ -44,6 +44,8 @@ module mod_io_pdaf
   character(len=8)   :: file_state_date2   ! Date 2 in NEMO file name
   character(len=200) :: path_ens           ! Path of ensemble file  
   character(len=80)  :: file_ens           ! File name of ensemble file
+  character(len=200) :: path_covar         ! Path of file holding covariance matrix
+  character(len=80)  :: file_covar         ! Filename for covariance matrix
   character(len=200) :: path_restart       ! Path of restart file
   character(len=80)  :: file_restart       ! file name of restart dile
   character(len=80)  :: ens_filelist       ! Name of file holding dates to read in ensemble states
@@ -504,6 +506,69 @@ end subroutine gen_ens_mv
 
   end subroutine read_ens_mv
 
+
+!================================================================================
+
+!> Initialize array holding model trajectory from a list of NEMO output files
+!!
+!! Note: This routine is nearly identical to gen_ens_mv, except that the final
+!! subtraction of the mean state is not present here.
+  subroutine read_trajectory_mv(flate, infilelist, inpath, dim_p, dim_ens, ens)
+
+  implicit none
+  
+! *** Arguments ***
+  real(8),            intent(in)    :: flate        !< inflation
+  character(len=*),   intent(in)    :: infilelist   !< Name of file holding dates of input files
+  character(len=*),   intent(in)    :: inpath       !< Path to input files
+  integer(4),         intent(in)    :: dim_p        !< State dimension
+  integer(4),         intent(in)    :: dim_ens      !< Ensemble size
+  real(8),            intent(inout) :: ens(:, :)    !< Ensemble array
+
+! *** Local variables ***
+  integer(4)        :: i, k, iens, ifile  ! Counters
+  integer           :: ios                ! Flag for file reading
+  character(len=8)  :: indate             ! Date string
+  real(8)           :: ens_mean           ! Ensemble mean
+  real(8)           :: invsteps           ! Inverse of ensemble size
+
+
+! *** Read ensemble from files ***
+
+  if (verbose>0 .and. mype==0) &
+       write(*,'(/1x,a)') "*** Read trajectory from output files ***"
+
+  open (unit=10,file=trim(infilelist),iostat=ios)
+  if (ios /= 0) write(*,*) 'Could not open file ',infilelist 
+  
+  iens=0
+
+  ensloop: do
+
+     read (10,*,iostat=ios) indate
+     if (ios/=0) exit ensloop
+
+     do k =1, ntimec
+        iens = iens + 1
+        if (verbose>0 .and. mype==0) write (*,*) '--- Read trajectory state', iens
+        call read_ens_mv(inpath, indate, indate, dim_p, k, ens(:,iens))
+     enddo
+
+     if (iens==dim_ens) exit ensloop
+
+  enddo ensloop
+  
+  close(10)
+
+  ! Check ensemble size
+  if (iens<dim_ens) then
+     write (*,'(/1x,a)') 'ERROR: Available files less than ensemble size!'
+     write (*,'(1x,a)')  'Stopping program!' 
+     stop 10
+  end if
+
+end subroutine read_trajectory_mv
+
 !================================================================================
 
 !> Write an ensemble file holding the state vectors
@@ -791,6 +856,295 @@ end subroutine gen_ens_mv
     call check( NF90_CLOSE(ncid) )
 
   end subroutine write_field_mv
+
+!================================================================================
+
+!> Write a covariance matrix into file
+!!
+  subroutine write_covar_mv(path, name, dim_p, rank, svdU, meanstate, svals)
+    
+    use netcdf
+   
+    implicit none
+
+! *** Arguments ***
+    character(len=*), intent(in) :: path         ! File path
+    character(len=*), intent(in) :: name         ! File name
+    integer(4),       intent(in) :: dim_p        ! State dimension
+    integer(4),       intent(in) :: rank         ! Number of EOFs to write
+    real(8),          intent(inout) :: svdU(:,:) ! Array of singular vectors
+    real(8),          intent(in) :: meanstate(:) ! State vector
+    real(8),          intent(in) :: svals(:)     ! Vector of singular values
+
+! *** Local variables ***
+    integer(4) :: ncid
+    integer(4) :: dimids_field(4)
+    integer(4) :: cnt,i,j,k, member
+    integer(4) :: dimid_rank, dimid_lvls, dimid_lat, dimid_lon, dimid_one, dimid_state
+    integer(4) :: id_lat, id_lon, id_lev, id_time, id_field, id_svals
+    integer(4) :: dimids(4)
+    integer(4) :: startC(2), countC(2)
+    integer(4) :: startt(4), countt(4)
+    integer(4) :: startz(1), countz(1)
+    real(8)    :: fillval
+    real(8)    :: timeField(1)
+    character(len=200) :: filename
+
+
+! *** Create file ***
+
+!    filename = trim(path)//trim(name)
+
+    if (verbose>0 .and. mype==0) then
+       write (*,'(1x,a)') 'Write covariance matrix into file'
+       write (*,'(1x,a,a)') 'Create file: ', trim(path)//trim(name)
+    endif
+
+    if (npes==1) then
+       call check( NF90_CREATE(trim(path)//trim(name),NF90_NETCDF4,ncid))
+    else
+       call check( NF90_CREATE_PAR(trim(path)//trim(name), NF90_NETCDF4, comm_filter, MPI_INFO_NULL, ncid))
+    end if
+    call check( NF90_PUT_ATT(ncid, NF90_GLOBAL, 'title', 'Covariance matrix'))
+    
+    ! define dimensions for NEMO-input file
+    call check( NF90_DEF_DIM(ncid,'rank', rank, dimid_rank))
+    call check( NF90_DEF_DIM(ncid, 'z', nlvls, dimid_lvls))
+    call check( NF90_DEF_DIM(ncid, 'y', nlats, dimid_lat) )
+    call check( NF90_DEF_DIM(ncid, 'x', nlons, dimid_lon) )
+    call check( NF90_DEF_DIM(ncid, 'one', 1, dimid_one) )
+    call check( NF90_DEF_DIM(ncid, 'dim_state', dim_p, dimid_state) )
+   
+    dimids_field(4)=dimid_rank
+    dimids_field(3)=dimid_lvls
+    dimids_field(2)=dimid_lat
+    dimids_field(1)=dimid_lon
+       
+    ! define variables
+    call check( NF90_DEF_VAR(ncid, 'nav_lat', NF90_FLOAT, dimids_field(1:2), id_lat))
+    call check( NF90_DEF_VAR(ncid, 'nav_lon', NF90_FLOAT, dimids_field(1:2), id_lon))
+    call check( NF90_DEF_VAR(ncid, 'nav_lev', NF90_FLOAT, dimids_field(3), id_lev))
+
+    if (do_deflate) then
+       call check( NF90_def_var_deflate(ncid, id_lat, 0, 1, 1) )
+       call check( NF90_def_var_deflate(ncid, id_lon, 0, 1, 1) )
+       call check( NF90_def_var_deflate(ncid, id_lev, 0, 1, 1) )
+    end if
+
+    call check( NF90_DEF_VAR(ncid, 'svals', NF90_FLOAT, dimids_field(4), id_svals))
+
+    do i = 1, n_fields
+       if (sfields(i)%ndims==3) then
+          dimids_field(3)=dimid_lvls
+          call check( NF90_DEF_VAR(ncid, trim(sfields(i)%variable), NF90_DOUBLE, dimids_field(1:4), id_field) )
+       else
+          dimids_field(3)=dimid_rank
+          call check( NF90_DEF_VAR(ncid, trim(sfields(i)%variable), NF90_DOUBLE, dimids_field(1:3), id_field) )
+       end if
+       if (do_deflate) &
+            call check( NF90_def_var_deflate(ncid, id_field, 0, 1, 1) )
+       call check( nf90_put_att(ncid, id_field, "coordinates", "nav_lat nav_lon") )
+       fillval = 1.0e20
+       call check( nf90_put_att(ncid, id_field, "_FillValue", fillval) )
+       call check( nf90_put_att(ncid, id_field, "missing_value", fillval) )
+    end do
+       
+    ! End define mode
+    call check( NF90_ENDDEF(ncid) )
+
+    ! write coordinates
+    startz(1)=1
+    countz(1)=nlvls
+
+    startC(1)=1
+    startC(2)=1
+    countC(1)=nlons
+    countC(2)=nlats
+
+    if (mype==0) then
+       call check( nf90_put_var(ncid,id_lev,depths,startz,countz))
+       call check( nf90_put_var(ncid,id_lon,lons,startC,countC))
+       call check( nf90_put_var(ncid,id_lat,lats,startC,countC))
+    end if
+
+     ! *** Write singular values
+
+    if (mype==0) then
+       startz(1)=1
+       countz(1)=rank
+       call check( nf90_put_var(ncid, id_svals, svals(1:rank), startz, countz))
+    end if
+
+    ! *** Write singular vectors as fields
+
+    do member = 1, rank
+
+       ! Backwards transformation of state
+       call transform_field_mv(2, svdU(:,member))
+
+    enddo
+
+    do i = 1, n_fields
+
+       if (verbose>1 .and. mype==0) then
+          write (*,'(a,i5,a,a,a,i10)') &
+               'NEMO-PDAF', i, 'Variable: ',trim(sfields(i)%variable), ',  offset', sfields(i)%off
+       end if
+
+       do member = 1, rank
+
+          ! Convert state vector to field
+          tmp_4d = 1.0e20
+          call state2field(svdU(:,member), tmp_4d, sfields(i)%off, sfields(i)%ndims)
+
+          if (verbose>0 .and. mype==0 .and. i==1) &
+               write (*,'(a,4x,a,i6)') 'NEMO-PDAF','--- write rank', member
+
+          call check( nf90_inq_varid(ncid, trim(sfields(i)%variable), id_field) )
+
+          ! Attention with coordinates, in Nemo Restart it is var(time,depth,y,x)
+          startt(1) = istart
+          countt(1) = ni_p
+          startt(2) = jstart
+          countt(2) = nj_p
+          startt(3) = 1
+          countt(3) = nlvls
+          startt(4) = member
+          countt(4) = 1 
+    
+          if (sfields(i)%ndims==3) then
+             startt(3) = 1
+             countt(3) = nlvls
+             call check( nf90_put_var(ncid, id_field, tmp_4d, startt, countt))
+          else
+             startt(3) = member
+             countt(3) = 1 
+
+             call check( nf90_put_var(ncid, id_field, tmp_4d, startt(1:3), countt(1:3)))
+          end if
+
+       end do
+    end do
+
+    ! *** close file with state sequence ***
+    call check( NF90_CLOSE(ncid) )
+
+  end subroutine write_covar_mv
+
+
+!=============================================================================== 
+
+!> Read an covariance matrix from file
+!!  
+  subroutine read_eof_cov_mv(path, name, dim_p, rank, eofV, svals)
+
+    use netcdf
+    use mod_parallel_pdaf, only: abort_parallel
+    
+    implicit none
+
+! *** Arguments ***    
+    character(len=*), intent(in) :: path         ! File path
+    character(len=*), intent(in) :: name         ! File name
+    integer(4),       intent(in) :: dim_p        ! State dimension
+    integer(4),       intent(in) :: rank         ! Number of EOFs to write
+    real(8),          intent(inout) :: eofV(:,:) ! Array of singular vectors
+    real(8),          intent(inout) :: svals(:)  ! Vector of singular values
+    
+! *** Local variables ***
+    integer(4) :: i, cnt, member   ! Counters
+    integer(4) :: ncid             ! NC file ID
+    integer(4) :: dimid, varid     ! Dimension and variable ID
+    character(len=50) :: filename  ! Full file name
+    character(len=17) :: dates     ! Combined date string of file
+    integer :: dim_file, rank_file
+
+    if (verbose>0 .and. mype==0) &
+         write(*,'(a,4x,a)') 'NEMO-PDAF','--- Read covariance matrix'
+
+    if (.not. allocated(tmp_4d)) allocate(tmp_4d(ni_p, nj_p, nk_p, 1))
+
+    ! Initialize singular vector array
+    eofV = 0.0
+
+    filename = trim(path)//trim(name)
+    if (verbose>0 .and. mype==0) then
+       write(*,'(a,6x,a,1x,a)') 'NEMO-PDAF', '--- File: ', trim(filename)
+    end if
+
+    ! Open the file
+    call check( nf90_open(trim(filename), nf90_nowrite, ncid) )
+
+    ! Read size of state vector
+    call check( NF90_INQ_DIMID(ncid, 'dim_state', dimid) )
+    call check( NF90_Inquire_dimension(ncid, dimid, len=dim_file) )
+    ! Read rank stored in file
+    call check( NF90_INQ_DIMID(ncid, 'rank', dimid) )
+    call check( NF90_Inquire_dimension(ncid, dimid, len=rank_file) )
+
+    ! Check consistency of dimensions
+    checkdim: IF (dim_p == dim_file .AND. rank_file < rank) THEN
+      ! *** Rank stored in file is smaller than requested EOF rank ***
+      WRITE(*, '(a)') 'Error: Rank stored in file is smaller than requested EOF rank'
+      call check( NF90_CLOSE(ncid) )
+      call abort_parallel()
+    END IF checkdim
+    checkdimB: IF (dim_p /= dim_file) THEN
+      ! *** Rank stored in file is smaller than requested EOF rank ***
+      WRITE(*, '(a)') 'Warning: State dimension in file is different from DA setup'
+   end IF checkdimB
+
+    !  Read singular values
+    call check( nf90_inq_varid(ncid, 'svals', varid))
+    call check( NF90_GET_VAR(ncid, varid, svals) )
+
+    do i = 1, n_fields
+
+       if (verbose>1 .and. mype==0) then
+          write (*,'(a,i5,a,a,a,i10)') &
+               'NEMO-PDAF', i, ' Variable: ',trim(sfields(i)%variable), ',  offset', sfields(i)%off
+       end if
+
+       !  Read field
+       call check( nf90_inq_varid(ncid, trim(sfields(i)%variable), varid) )
+
+       do member = 1, rank
+
+          if (verbose>0 .and. mype==0 .and. i==1) &
+               write (*,'(a,6x,a,i6)') 'NEMO-PDAF','--- read EOF rank', member
+
+          if (sfields(i)%ndims == 3) then
+             call check( nf90_get_var(ncid, varid, tmp_4d, &
+                  start=(/istart, jstart, 1, member/), count=(/ni_p, nj_p, nlvls, 1/)) )
+          else
+             call check( nf90_get_var(ncid, varid, tmp_4d(:,:,1,1), &
+                  start=(/istart, jstart, member/), count=(/ni_p, nj_p, 1/)) )
+          end if
+
+          ! Convert field to state vector
+          call field2state(tmp_4d, eofV(:,member), sfields(i)%off, sfields(i)%ndims, missing_value)
+
+       enddo
+
+    end do
+
+    call check( nf90_close(ncid) )
+
+    do member = 1, rank
+       ! Potentially transform fields
+       call transform_field_mv(1, eofV(:,member))
+    end do
+
+    if (verbose>2) then
+       do i = 1, n_fields
+          write(*,'(a, 1x, a, a10, 1x, a,1x, 2es13.6)') &
+               'NEMO-PDAF','Sing. vectors min and max for ',trim(sfields(i)%variable),' :     ', &
+               minval(eofV(sfields(i)%off+1:sfields(i)%off+sfields(i)%dim,:)), &
+               maxval(eofV(sfields(i)%off+1:sfields(i)%off+sfields(i)%dim,:))
+       enddo
+    end if
+
+  end subroutine read_eof_cov_mv
 
 
 !================================================================================
