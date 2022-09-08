@@ -42,7 +42,8 @@ module mod_obs_sst_cmems_pdafomi
                                         !< (0) mightnight, (12) noon
   character(len=3) :: dist_sst_cmems = 'geo'  ! Type of distance computation: 
                                         !< (gp) for Cartesian distance in unit of grid points
-                                        !< (geo) for geographic distance in km (Probably doesn't work in online-coupled)
+                                        !< (geo) for geographic distance in km
+                                        !<  Note: The implementation assumes a regular lat/lon grid
   character(lc) :: path_sst_cmems = '.' !< Path to CMEMS SST data
   character(lc) :: file_sst_cmems = ''  !< Filename of CMEMS SST data
   character(lc) :: varname_sst_cmems = 'adjusted_sea_surface_temperature'  !< Name of SST variable in file
@@ -245,6 +246,8 @@ contains
        ! Close the file
        call check( nf90_close(ncid) )
 
+       ! Note: The implementated coordinate handling to find grid points
+       ! neighboring an observation assumes a regular lat/lon grid
   
        ! *** Convert observation coordinates to radians ***
        lon_obs = lon_obs * deg2rad
