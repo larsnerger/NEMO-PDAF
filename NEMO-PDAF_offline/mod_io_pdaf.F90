@@ -1233,8 +1233,8 @@ end subroutine read_trajectory_mv
             call check( NF90_def_var_deflate(ncid, id_incr, 0, 1, 1) )
 
        fillval = 0.0
-       call check( nf90_put_att(ncid, id_incr, "long_name", trim(sfields(id_field)%name_incr)//trim('Increment')) )
-       call check( nf90_put_att(ncid, id_incr, "units", trim(sfields(id_field)%unit)) )
+       call check( nf90_put_att(ncid, id_incr, "long_name", trim(sfields(i)%name_incr)//trim('Increment')) )
+       call check( nf90_put_att(ncid, id_incr, "units", trim(sfields(i)%unit)) )
        call check( nf90_put_att(ncid, id_incr, "coordinates", "nav_lat nav_lon") )
        call check( nf90_put_att(ncid, id_incr, "_FillValue", fillval) )
        call check( nf90_put_att(ncid, id_incr, "missing_value", fillval) )
