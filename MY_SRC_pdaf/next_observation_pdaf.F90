@@ -44,15 +44,15 @@ subroutine next_observation_pdaf(stepnow, nsteps, doexit, time)
      nsteps = delt_obs   ! This assumes a constant time step interval
      doexit = 0          ! Not used in this implementation
 
-     if (mype_ens == 0) write (*, '(i7, 3x, a, i7)') &
-          stepnow, 'Next observation at time step', stepnow + nsteps
+     if (mype_ens == 0) write (*, '(a, i7, 3x, a, i7)') &
+          'NEMO-PDAF', stepnow, 'Next observation at time step', stepnow + nsteps
   else
      ! *** End of assimilation process ***
      nsteps = 0          ! No more steps
      doexit = 1          ! Not used in this implementation
 
-     if (mype_ens == 0) write (*, '(i7, 3x, a)') &
-          stepnow, 'No more observations - end assimilation'
+     if (mype_ens == 0) write (*, '(a, i7, 3x, a)') &
+          'NEMO-PDAF', stepnow, 'No more observations - end assimilation'
   end if
 
 end subroutine next_observation_pdaf

@@ -31,7 +31,7 @@ module mod_io_pdaf
   implicit none
   save
 
-  integer :: verbose=1   ! Set verbosity of IO routines (0,1,2,3)
+  integer :: verbose_io=1   ! Set verbosity of IO routines (0,1,2,3)
 
   ! Control of IO
   character(len=4) :: save_var_time='both'   ! Write variance at 'fcst', 'ana', 'both', or 'none'
@@ -46,7 +46,8 @@ module mod_io_pdaf
   character(len=100) :: file_PDAF_variance='variance' ! File name for ensemble variance
   character(len=200) :: path_inistate      ! Path to NEMO files
   character(len=200) :: path_ens           ! Path of ensemble file  
-  character(len=80)  :: file_ens           ! File name of ensemble file
+  character(len=200) :: file_ens           ! File name of ensemble file
+  character(len=200) :: file_covar         ! File name of file holding covariance matrix
   character(len=200) :: path_restart       ! Path of restart file
   character(len=80)  :: file_restart       ! file name of restart dile
 
@@ -84,7 +85,7 @@ contains
     character(len=50) :: filename ! Full file name
 
 
-    if (verbose>0 .and. mype==0) &
+    if (verbose_io>0 .and. mype==0) &
          write(*,'(a,4x,a,i8)') 'NEMO-PDAF', '*** Read model output at time step: ', itime
 
     if (.not. allocated(tmp_4d)) allocate(tmp_4d(ni_p, nj_p, nk_p, 1))
@@ -95,7 +96,7 @@ contains
     do i = 1, n_fields
     
        filename = trim(sfields(i)%file_state)
-       if (verbose>1 .and. mype==0) then 
+       if (verbose_io>1 .and. mype==0) then 
           write(*,'(a,2x,a)') 'NEMO-PDAF', trim(path)//trim(filename)
           write (*,'(a,i5,a,a,a,i10)') &
                'NEMO-PDAF', i, 'Variable: ',trim(sfields(i)%variable), ',  offset', sfields(i)%off
@@ -132,7 +133,7 @@ contains
     ! Potentially transform fields
     call transform_field_mv(1, state)
 
-    if (verbose>2) then
+    if (verbose_io>2) then
        do i = 1, n_fields
           write(*,'(a, 1x, a, a10, 1x, a,5x, 2f12.6)') &
                'NEMO-PDAF', 'Min and max for ',trim(sfields(i)%variable),' :     ',              &
@@ -167,7 +168,7 @@ contains
     integer(4) :: varid            ! Variable ID
     character(len=50) :: filename  ! Full file name
 
-    if (verbose>0 .and. mype==0) &
+    if (verbose_io>0 .and. mype==0) &
          write(*,'(a,4x,a)') 'NEMO-PDAF','*** Ensemble: Read model snapshots'
 
     if (.not. allocated(tmp_4d)) allocate(tmp_4d(ni_p, nj_p, nk_p, 1))
@@ -178,7 +179,7 @@ contains
     do i = 1, n_fields
 
        filename = trim(sfields(i)%file)
-       if (verbose>1 .and. mype==0) then
+       if (verbose_io>1 .and. mype==0) then
           write(*,'(a,2x,a)') 'NEMO-PDAF', trim(path)//trim(filename)
           write (*,'(a,i5,a,a,a,i10)') &
                'NEMO-PDAF', i, 'Variable: ',trim(sfields(i)%variable), ',  offset', sfields(i)%off
@@ -199,7 +200,7 @@ contains
 
        do member = 1, dim_ens
 
-          if (verbose>0 .and. mype==0 .and. i==1) &
+          if (verbose_io>0 .and. mype==0 .and. i==1) &
                write (*,'(a,4x,a,i6)') 'NEMO-PDAF','--- read member', member
 
           if (sfields(i)%ndims == 3) then
@@ -224,7 +225,7 @@ contains
        call transform_field_mv(1, ens(:,member))
     end do
 
-    if (verbose>2) then
+    if (verbose_io>2) then
        do i = 1, n_fields
           write(*,'(a, 1x, a, a10, 1x, a,1x, 2es13.6)') &
                'NEMO-PDAF','Ensemble min and max for ',trim(sfields(i)%variable),' :     ', &
@@ -273,7 +274,7 @@ contains
 
 ! *** Read file
     
-    if (verbose>0 .and. mype==0) then
+    if (verbose_io>0 .and. mype==0) then
        write(*,'(1x,a,a)') "--- Read ensemble file: ", trim(ensfile_fullname)
     end if
     
@@ -355,7 +356,7 @@ contains
 
 ! *** Read ensemble from files ***
 
-  if (verbose>0 .and. mype==0) &
+  if (verbose_io>0 .and. mype==0) &
        write(*,'(/a,1x,a)') 'NEMO-PDAF', '*** Generating ensemble from output files ***'
 
   do i = 1, n_fields
@@ -374,7 +375,7 @@ contains
 
      do k =1, ntimec
         iens = iens + 1
-        if (verbose>0 .and. mype==0) write (*,'(a,1x,a,i8)') 'NEMO-PDAF', '--- Read ensemble member', iens
+        if (verbose_io>0 .and. mype==0) write (*,'(a,1x,a,i8)') 'NEMO-PDAF', '--- Read ensemble member', iens
         call read_ens_mv(inpath, filenames, dim_p, k, ens(:,iens))
      enddo
 
@@ -398,7 +399,7 @@ contains
 
   if (zeromean) then
 
-     if (verbose>0 .and. mype==0) &
+     if (verbose_io>0 .and. mype==0) &
           write(*,'(a,1x,a)') 'NEMO-PDAF', '--- Subtract mean of ensemble snapshots'
 
 
@@ -446,7 +447,7 @@ end subroutine gen_ens_mv
     integer(4) :: varid            ! Variable ID
     character(len=50) :: filename  ! Full file name
 
-    if (verbose>0 .and. mype==0) &
+    if (verbose_io>0 .and. mype==0) &
          write(*,'(a,4x,a,i8)') 'NEMO-PDAF','*** Ensemble: Read model output at time step: ', itime
 
     if (.not. allocated(tmp_4d)) allocate(tmp_4d(ni_p, nj_p, nk_p, 1))
@@ -458,7 +459,7 @@ end subroutine gen_ens_mv
 
        filename = filenames(i)
 
-       if (verbose>1 .and. mype==0) then 
+       if (verbose_io>1 .and. mype==0) then 
           write(*,'(a,2x,a)') 'NEMO-PDAF', trim(path)//trim(filename)
           write (*,'(a,i5,1x,a,a,a,i10)') &
                'NEMO-PDAF', i, 'Variable: ',trim(sfields(i)%variable), ',  offset', sfields(i)%off
@@ -492,7 +493,7 @@ end subroutine gen_ens_mv
     ! Potentially transform fields
     call transform_field_mv(1, state)
 
-    if (verbose>2) then
+    if (verbose_io>2) then
        do i = 1, n_fields
           write(*,*) 'Min and max for ',trim(sfields(i)%variable),' :     ',              &
                minval(state(sfields(i)%off+1:sfields(i)%off+sfields(i)%dim)), &
@@ -506,9 +507,11 @@ end subroutine gen_ens_mv
 
 !> Read initial forecast error covariance from a file
 !!
-  subroutine read_eof_cov(filename_cov, dim_state, dim_p, rank, state_p, eofV, svals)
+  subroutine read_eof_cov(filename_cov, dim_state, dim_p, rank, state_p, eofV, svals, readmean)
+
     use mod_nemo_pdaf, only: dim_2d_p, dim_3d_p
     use netcdf
+
 ! *** Arguments ***
     character(*), intent(in) :: filename_cov      !< filename
     integer, intent(in)      :: dim_state         !< global dimension of state vector
@@ -517,11 +520,13 @@ end subroutine gen_ens_mv
     real(pwp), intent(inout) :: eofV(dim_p, rank) !< singular vectors
     real(pwp), intent(inout) :: svals(rank)       !< singular values
     real(pwp), intent(inout) :: state_p(dim_p)    !< mean state vector
+    logical, intent(in)      :: readmean          !< Whether to also read the mean state from covar file
 
 ! *** Local variables ***
     integer                :: ncid, dimid              ! file and dimension id
     integer                :: dim_file, rank_file      ! dimension size
     integer                :: varid                    ! variable id
+    integer                :: maxvar                   ! Counter to distinguish reading EOFs and mean state
     integer                :: i_rank, i_field, i_var   ! counter
     integer                :: n_rank                   ! last dimension of variables
     real(pwp)              :: missing_value=1.e+20_pwp ! missing value in variables
@@ -530,33 +535,38 @@ end subroutine gen_ens_mv
     ! *************************************************
     ! *** Initialize initial state and covar matrix ***
     ! *************************************************
+
     ! initialize the subroutine for reading
-    vartypes = [character(len=5) :: '_svd', '_mean']
+    vartypes(1) = '_svd'
+    vartypes(2) = '_mean'
+
+    if (.not.readmean) then
+       ! Only read singular vectors
+       maxvar = 1
+    else
+       ! Also read mean state vector from file
+       maxvar = 2
+    end if
+
     if (.not. allocated(tmp_4d)) allocate(tmp_4d(ni_p, nj_p, nk_p, 1))
 
     ! Open nc file
-    WRITE(*, '(9x,a,a)') '--- Reading covariance information from ', TRIM(filename_cov)
-    call check( NF90_OPEN(TRIM(filename_cov), NF90_NOWRITE, ncid) )
+    if (verbose_io>0 .and. mype==0) &
+         WRITE(*, '(a,1x,a,a)') 'NEMO-PDAF', '--- Reading covariance information from ', TRIM(filename_cov)
 
-    ! Read size of state vector
-    call check( NF90_INQ_DIMID(ncid, 'dim_state', dimid) )
-    call check( NF90_Inquire_dimension(ncid, dimid, len=dim_file) )
+    call check( NF90_OPEN(TRIM(filename_cov), NF90_NOWRITE, ncid) )
 
     ! Read rank stored in file
     call check( NF90_INQ_DIMID(ncid, 'rank', dimid) )
     call check( NF90_Inquire_dimension(ncid, dimid, len=rank_file) )
 
     ! Check consistency of dimensions
-    checkdim: IF (dim_state == dim_file .AND. rank_file < rank) THEN
+    checkdim: IF (rank_file < rank) THEN
       ! *** Rank stored in file is smaller than requested EOF rank ***
       WRITE(*, '(a)') 'Error: Rank stored in file is smaller than requested EOF rank'
       call check( NF90_CLOSE(ncid) )
       call abort_parallel()
     END IF checkdim
-    checkdimB: IF (dim_p /= dim_file) THEN
-      ! *** Rank stored in file is smaller than requested EOF rank ***
-      WRITE(*, '(a)') 'Warning: State dimension in file is different from DA setup'
-   end IF checkdimB
   
     ! read singular values
     call check( NF90_INQ_VARID(ncid, 'sigma', varid) )
@@ -564,7 +574,7 @@ end subroutine gen_ens_mv
 
     ! Read singular vectors and mean
     ! position of the domain in the state vector
-    do i_var = 1, 2
+    do i_var = 1, maxvar
       if (i_var == 1) then
         n_rank = rank
       else if (i_var == 2) then
@@ -573,10 +583,11 @@ end subroutine gen_ens_mv
 
       ! loop over all fields
       do i_field = 1, n_fields
+
         call check( NF90_INQ_VARID(ncid, &
-                    trim(sfields(i_field)%variable)//trim(vartypes(i_var)), &
-                    varid) &
-                   )
+                   trim(sfields(i_field)%variable)//trim(vartypes(i_var)), &
+                   varid) &
+                  )
         do i_rank = 1, n_rank
           ! read and convert state vector into field shape
           if (sfields(i_field)%ndims == 2) then
@@ -756,7 +767,7 @@ end subroutine gen_ens_mv
 
 ! *** Create file ***
 
-       if (verbose>0 .and. mype==0) &
+       if (verbose_io>0 .and. mype==0) &
             write (*,'(a,1x,a,a)') 'NEMO-PDAF', 'Create file: ', trim(filename)
 
        if (npes==1) then
@@ -825,7 +836,7 @@ end subroutine gen_ens_mv
        end if
 
     else
-       if (verbose>0 .and. mype==0) &
+       if (verbose_io>0 .and. mype==0) &
             write (*,'(a,1x,a,a)') 'NEMO-PDAF', 'Open file: ', trim(filename)
 
        if (npes==1) then
@@ -855,8 +866,8 @@ end subroutine gen_ens_mv
        tmp_4d = 1.0e20_pwp
        call state2field(state, tmp_4d, sfields(i)%off, sfields(i)%ndims)
 
-       if (verbose>1 .and. mype==0) &
-            write (*,'(5x,a,a)') '--- write variable: ', trim(sfields(i)%variable)
+       if (verbose_io>1 .and. mype==0) &
+            write (*,'(a,1x,a,a)') 'NEMO-PDAF', '--- write variable: ', trim(sfields(i)%variable)
        call check( nf90_inq_varid(ncid, trim(sfields(i)%variable), id_field) )
 !       call check( nf90_VAR_PAR_ACCESS(NCID, id_field, NF90_COLLECTIVE) )
 
@@ -926,7 +937,7 @@ end subroutine gen_ens_mv
     bgnTimeInterv(1)=startEnsTime !Start date of interval on which increment is valid (later for time ramp initialisation of  increment)
     finTimeInterv(1)=endEnsTime !End date of interval on which increment is valid (later for time rap init of increment)! 
 
-    if (verbose>0 .and. mype==0) &
+    if (verbose_io>0 .and. mype==0) &
          write (*,'(8x,a)') '--- Write increment file'
 
     if (npes==1) then
@@ -1018,7 +1029,7 @@ end subroutine gen_ens_mv
        tmp_4d = 0.0_pwp
        call state2field(state, tmp_4d, sfields(i)%off, sfields(i)%ndims)
 
-       if (verbose>1) &
+       if (verbose_io>1) &
             write (*,'(5x,a,a)') '--- write variable: ', trim(sfields(i)%name_incr)
        call check( nf90_inq_varid(ncid, trim(sfields(i)%name_incr), id_incr) )
 
@@ -1079,7 +1090,7 @@ end subroutine gen_ens_mv
     ! Store name of restart file
     rst_file = sfields(1)%rst_file
 
-    if (verbose>0) &
+    if (verbose_io>0) &
          write (*,'(a,3x,a,1x,a)') 'NEMO-PDAF', '--- Overwrite restart file:',trim(path_restart)//trim(rst_file) 
 
     ! Open file and retrieve field ids
@@ -1096,7 +1107,7 @@ end subroutine gen_ens_mv
 
        if (trim(sfields(i)%rst_file) /= trim(rst_file)) then
        ! Open other restart file and retrieve field ids
-          if (verbose>0 .and. mype==0) &
+          if (verbose_io>0 .and. mype==0) &
                write (*,'(a, 3x,a,1x,a)') 'NEMO-PDAF', '--- Open restart file:',trim(path_restart)//trim(sfields(i)%rst_file) 
           if (npes==1) then
              call check( nf90_open(trim(path_restart)//trim(sfields(i)%rst_file),NF90_WRITE, ncid))

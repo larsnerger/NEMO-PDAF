@@ -23,9 +23,9 @@ subroutine init_ens_pdaf(filtertype, dim_p, dim_ens, state_p, Uinv, &
        only: mype_filter
   use mod_assimilation_pdaf, &
        only: dim_state, type_ens_init, type_central_state, ensscale, &
-       coupling_nemo
+       coupling_nemo, screen
   use mod_io_pdaf, &
-       only: path_inistate, path_ens, file_ens, &
+       only: path_inistate, path_ens, file_ens, file_covar, &
              read_state_mv, &
              read_ens_mv_loop, read_ens, gen_ens_mv
 
@@ -56,12 +56,12 @@ subroutine init_ens_pdaf(filtertype, dim_p, dim_ens, state_p, Uinv, &
 
      ! Read ensemble states as model snapshots from a single file
 
-     if (mype_filter==0) write (*,'(1x,a)') 'Initialize ensemble from file holding model snapshots'
+     if (mype_filter==0) write (*,'(a,1x,a)') 'NEMO-PDAF', 'Initialize ensemble from file holding model snapshots'
 
      call read_ens_mv_loop(path_ens, dim_p, dim_ens, coupling_nemo, ens_p)
 
   elseif (type_ens_init == 1) then
-     if (mype_filter==0) write (*,'(1x,a)') 'Initialize ensemble from single ensemble file'
+     if (mype_filter==0) write (*,'(a,1x,a)') 'NEMO-PDAF', 'Initialize ensemble from single ensemble file'
 
      call read_ens(trim(file_ens), dim_p, dim_ens, ens_p)
 
@@ -69,17 +69,17 @@ subroutine init_ens_pdaf(filtertype, dim_p, dim_ens, state_p, Uinv, &
      
      ! Real ensemble states as model snapshots from separate files
 
-     if (mype_filter==0) write (*,'(1x,a)') 'Initialize ensemble from output files'
+     if (mype_filter==0) write (*,'(a,1x,a)') 'NEMO-PDAF', 'Initialize ensemble from output files'
 
-     CALL gen_ens_mv(1.0_pwp, .true., path_ens, dim_p, dim_ens, ens_p)
+      call gen_ens_mv(1.0_pwp, .true., path_ens, dim_p, dim_ens, ens_p)
 
   elseif (type_ens_init == 3) then
      
      ! Real ensemble states as model snapshots from separate files
 
-     if (mype_filter==0) write (*,'(1x,a)') 'Initialize ensemble from sampling covariance matrix'
+     if (mype_filter==0) write (*,'(a,1x,a)') 'NEMO-PDAF', 'Initialize ensemble by sampling from covariance matrix'
 
-     CALL gen_ens_from_cov(trim(file_ens), dim_p, dim_ens, ens_p)
+     CALL gen_ens_from_cov(trim(file_covar), dim_p, dim_ens, state_p, ens_p)
 
   end if
 
@@ -88,14 +88,14 @@ subroutine init_ens_pdaf(filtertype, dim_p, dim_ens, state_p, Uinv, &
   if (type_central_state == 1) then
 
      ! Read ensemble central state vector state_p
-     if (mype_filter==0) write (*,'(1x,a)') 'Read central model state of ensemble from file'
+     if (mype_filter==0) write (*,'(a,1x,a)') 'NEMO-PDAF', 'Read central model state of ensemble from file'
 
      call read_state_mv(path_inistate, dim_p, 1, coupling_nemo, state_p)
 
   elseif (type_central_state == 2) then
 
      ! Obtain central state from model task 1 (set by model initialization)
-     if (mype_filter==0) write (*,'(1x,a)') 'Obtain central ensemble state from model'
+     if (mype_filter==0) write (*,'(a,1x,a)') 'NEMO-PDAF', 'Collect central ensemble state from model'
 
      call collect_state_pdaf(dim_p, state_p)
 
@@ -108,7 +108,7 @@ subroutine init_ens_pdaf(filtertype, dim_p, dim_ens, state_p, Uinv, &
 
      inv_dim_ens = 1.0_pwp/real(dim_ens, kind=pwp)
 
-     if (mype_filter==0) write (*,'(1x,a)') 'Set central state of ensemble'
+     if (mype_filter==0) write (*,'(a, 1x,a)') 'NEMO-PDAF', 'Set central state of ensemble'
 
 !$OMP PARALLEL DO private(k, ens_mean)
      do i = 1, dim_p
@@ -130,23 +130,31 @@ contains
 
 !> Generate ensemble from reading covariance matrix from a file
 !!
-    subroutine gen_ens_from_cov(filename_cov, dim_p, dim_ens, ens_p)
+    subroutine gen_ens_from_cov(filename_cov, dim_p, dim_ens, state_p, ens_p)
+
       use pdaf_interfaces_module, only: PDAF_SampleEns
       use mod_io_pdaf, only: read_eof_cov
       use mod_parallel_pdaf, &
            only: mype=>mype_filter, abort_parallel
+
+
 ! *** Arguments ***
       character(*), intent(in) :: filename_cov          !< covariance filename
       integer, intent(in)      :: dim_p                 !< dimension of local state vector
       integer, intent(in)      :: dim_ens               !< ensemble size
-      real(pwp), intent(inout) :: ens_p(dim_p, dim_ens) !< ensemble vector
+      real(pwp), intent(inout) :: state_p(dim_p)        !< state vector
+      real(pwp), intent(inout) :: ens_p(dim_p, dim_ens) !< ensemble array
 
 ! *** Local variables ***
       integer :: rank
       integer :: status_pdaf
+      integer :: verbose_sampleens
       real(pwp), allocatable :: eofV(:, :)
       real(pwp), allocatable :: svals(:)
-      real(pwp), allocatable :: state_p(:)
+      logical :: readmean
+
+      state_p = 0.0
+
       ! *****************************************
       ! *** Generate ensemble of model states ***
       ! *****************************************
@@ -157,30 +165,40 @@ contains
       ! allocate memory for temporary fields
       ALLOCATE(eofV(dim_p, rank))
       ALLOCATE(svals(rank))
-      ALLOCATE(state_p(dim_p))
+
       ! get eigenvalue and eigenvectors from file
-      call read_eof_cov(filename_cov, dim_state, dim_p, rank, state_p, eofV, svals)
+      readmean = .false.
+      call read_eof_cov(filename_cov, dim_state, dim_p, rank, state_p, eofV, svals, readmean)
 
       ! *** Generate full ensemble on filter-PE 0 ***
-      WRITE (*, '(9x, a)') '--- generate ensemble from covariance matrix'
-      WRITE (*, '(9x, a)') &
-         '--- use rank reduction and 2nd order exact sampling (SEIK type)'
-      WRITE (*, '(9x, a, i5)') '--- Ensemble size:  ', dim_ens
-      WRITE (*, '(9x, a, i5)') '--- number of EOFs: ', rank
+      verbose_sampleens = 0
+      if (mype==0) then
+         WRITE (*, '(a, 1x, a)') 'NEMO-PDAF', '--- generate ensemble using PDAF_SampleEns'
+         WRITE (*, '(a, 3x, a)') &
+              'NEMO-PDAF', '--- use 2nd order exact sampling'
+         WRITE (*, '(a, 3x, a, i5)') 'NEMO-PDAF', '--- Ensemble size:  ', dim_ens
+         WRITE (*, '(a, 3x, a, i5)') 'NEMO-PDAF', '--- number of EOFs: ', rank
 
-      WRITE (*,'(9x, a)') '--- generate state ensemble'
+         if (screen>0) verbose_sampleens = 1
+      endif
+
       ! Use PDAF routine to generate ensemble from covariance matrix
-      CALL PDAF_SampleEns(dim_p, dim_ens, eofV, svals, state_p, ens_p, 1, status_pdaf)
+      CALL PDAF_SampleEns(dim_p, dim_ens, eofV, svals, state_p, ens_p, verbose_sampleens, status_pdaf)
 
       if (status_pdaf /= 0) then
        write (*, '(/1x,a6,i3,a43,i4,a1/)') &
             'ERROR ', status_pdaf, &
-            ' in sample ensemble of PDAF - stoppinsg! (PE ', mype, ')'
+            ' in sample ensemble of PDAF - stopping! (PE ', mype, ')'
        call abort_parallel()
       end if
+
+
       ! ****************
       ! *** clean up ***
       ! ****************
-      DEALLOCATE(svals, eofV, state_p)
+
+      DEALLOCATE(svals, eofV)
+
     end subroutine gen_ens_from_cov
+
 end subroutine init_ens_pdaf
