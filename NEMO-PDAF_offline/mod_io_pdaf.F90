@@ -1000,7 +1000,7 @@ end subroutine read_trajectory_mv
           if (verbose>0 .and. mype==0 .and. i==1) &
                write (*,'(a,4x,a,i6)') 'NEMO-PDAF','--- write rank', member
 
-          call check( nf90_inq_varid(ncid, trim(sfields(i)%variable), id_field) )
+          call check( nf90_inq_varid(ncid, trim(sfields(i)%variable)//'_svd', id_field) )
 
           ! Attention with coordinates, in Nemo Restart it is var(time,depth,y,x)
           startt(1) = istart
