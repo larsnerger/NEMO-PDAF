@@ -936,10 +936,10 @@ end subroutine read_trajectory_mv
     do i = 1, n_fields
        if (sfields(i)%ndims==3) then
           dimids_field(3)=dimid_lvls
-          call check( NF90_DEF_VAR(ncid, trim(sfields(i)%variable), NF90_DOUBLE, dimids_field(1:4), id_field) )
+          call check( NF90_DEF_VAR(ncid, trim(sfields(i)%variable)//'_svd', NF90_DOUBLE, dimids_field(1:4), id_field) )
        else
           dimids_field(3)=dimid_rank
-          call check( NF90_DEF_VAR(ncid, trim(sfields(i)%variable), NF90_DOUBLE, dimids_field(1:3), id_field) )
+          call check( NF90_DEF_VAR(ncid, trim(sfields(i)%variable)//'_svd', NF90_DOUBLE, dimids_field(1:3), id_field) )
        end if
        if (do_deflate) &
             call check( NF90_def_var_deflate(ncid, id_field, 0, 1, 1) )
@@ -1083,16 +1083,12 @@ end subroutine read_trajectory_mv
     call check( NF90_Inquire_dimension(ncid, dimid, len=rank_file) )
 
     ! Check consistency of dimensions
-    checkdim: IF (dim_p == dim_file .AND. rank_file < rank) THEN
+    checkdim: IF (rank_file < rank) THEN
       ! *** Rank stored in file is smaller than requested EOF rank ***
       WRITE(*, '(a)') 'Error: Rank stored in file is smaller than requested EOF rank'
       call check( NF90_CLOSE(ncid) )
       call abort_parallel()
     END IF checkdim
-    checkdimB: IF (dim_p /= dim_file) THEN
-      ! *** Rank stored in file is smaller than requested EOF rank ***
-      WRITE(*, '(a)') 'Warning: State dimension in file is different from DA setup'
-   end IF checkdimB
 
     !  Read singular values
     call check( nf90_inq_varid(ncid, 'sigma', varid))
@@ -1106,7 +1102,7 @@ end subroutine read_trajectory_mv
        end if
 
        !  Read field
-       call check( nf90_inq_varid(ncid, trim(sfields(i)%variable), varid) )
+       call check( nf90_inq_varid(ncid, trim(sfields(i)%variable)//'_svd', varid) )
 
        do member = 1, rank
 
