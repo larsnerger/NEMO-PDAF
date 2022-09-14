@@ -54,7 +54,8 @@ contains
     use mod_assimilation_pdaf, &
          only: dim_state, dim_state_p, screen, filtertype, subtype, dim_ens, &
          incremental, type_forget, forget, rank_analysis_enkf, &
-         type_trans, type_sqrt, delt_obs, locweight
+         type_trans, type_sqrt, delt_obs, locweight, type_ens_init, &
+         type_central_state
     use mod_iau_pdaf, &
          only: asm_inc_init_pdaf
     use mod_nemo_pdaf, &
@@ -136,6 +137,23 @@ contains
     incremental = 0   ! (1) to perform incremental updating (only in SEIK/LSEIK!)
 
 
+    ! ********************************************************************
+    ! ***   Settings for ensemble init  - used in call-back routines   ***
+    ! ********************************************************************
+
+    type_ens_init = 2         ! Type of ensemble initialization
+       !    (0) read snapshots from a single model file
+       !    (1) read states from single ensemble file,
+       !    (2) read snapshots from separate model files
+       !    (3) initialize ensemble from covariance matrix file
+       !    (4) ensemble restart using fields from NEMO restart files
+
+    type_central_state = 1    ! Type of central state of ensemble
+       !    (0) mean of model snapshots
+       !    (1) read from file
+       !    (2) use collect_state
+
+
     ! *********************************************************************
     ! ***   Settings for analysis steps  - used in call-back routines   ***
     ! *********************************************************************
@@ -204,8 +222,8 @@ contains
 ! *** Call PDAF initialization routine on all PEs.  ***
 ! *****************************************************
 
-    whichinit: if (filtertype == 2) then
-       ! *** EnKF with Monte Carlo init ***
+    whichinit: if (filtertype == 2 .or. filtertype==8) then
+       ! *** EnKF/LEnKF ***
        filter_param_i(1) = dim_state_p ! State dimension
        filter_param_i(2) = dim_ens     ! Size of ensemble
        filter_param_i(3) = rank_analysis_enkf ! Rank of speudo-inverse in analysis
@@ -221,7 +239,6 @@ contains
             screen, status_pdaf)
     else
        ! *** All other filters                       ***
-       ! *** SEIK, LSEIK, ETKF, LETKF, ESTKF, LESTKF ***
        filter_param_i(1) = dim_state_p ! State dimension
        filter_param_i(2) = dim_ens     ! Size of ensemble
        filter_param_i(3) = 0           ! Smoother lag (not implemented here)

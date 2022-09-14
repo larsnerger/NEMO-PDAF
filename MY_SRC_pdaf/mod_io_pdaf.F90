@@ -763,6 +763,8 @@ end subroutine gen_ens_mv
 
     timeField(1)=attime
 
+    if (.not. allocated(tmp_4d)) allocate(tmp_4d(ni_p, nj_p, nk_p, 1))
+
     if (step==1) then
 
 ! *** Create file ***

@@ -14,13 +14,20 @@ module mod_assimilation_pdaf
   save
 
   integer :: type_ens_init = 0    !< Type of ensemble initialization
-       ! (0) read snapshots from a single model file, (1) read states from single ensemble file,
-       ! (2) read snapshot from separate model files
+       !< (0) read snapshots from a single model file
+       !< (1) read states from single ensemble file,
+       !< (2) read snapshots from separate model files
+       !< (3) initialize ensemble from covariance matrix file
+       !< (4) ensemble restart using fields from NEMO restart files
   integer :: type_central_state = 1    !< Type of central state of ensemble
-       !< (0) mean of model snapshots, (1) read from file, (2) use collect_state
+       !< (0) mean of model snapshots
+       !< (1) read from file
+       !< (2) use collect_state
   real(pwp) :: ensscale=1.0            !< Scaling factor for initial ensemble
        !< Type of coupling between NEMO and PDAF
-  character(len=4)   :: coupling_nemo = 'odir'   ! offline: 'rest', 'incr', online: 'oinc', 'odir'
+  character(len=4)   :: coupling_nemo = 'odir'   !< offline: 'rest', 'incr', online: 'oinc', 'odir'
+  logical :: ens_restart = .false.     !< Whether to perform ensemble restart using NEMO's restart
+
 
 ! *** Model- and data specific variables ***
 

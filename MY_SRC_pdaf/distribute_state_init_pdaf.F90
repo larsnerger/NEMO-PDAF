@@ -29,12 +29,15 @@ subroutine distribute_state_init_pdaf(dim_p, state_p)
   use mod_nemo_pdaf, &
        only: ni_p, nj_p, nk_p, i0, j0, jp_tem, jp_sal, &
        tmask
+  use mod_assimilation_pdaf, &
+       only: ens_restart, assim_flag
   use oce, &
        only: sshn, tsn, un, vn, sshb, tsb, ub, vb
   use lbclnk, &
        only: lbc_lnk, lbc_lnk_multi
-use dom_oce, only: neuler
-USE in_out_manager, only: nit000
+  use dom_oce, &
+       only: neuler
+
   implicit none
 
 ! *** Arguments ***
@@ -53,113 +56,128 @@ USE in_out_manager, only: nit000
 
   ! Note: The loop limits account for the halo offsets i0 and j0
 
-  if (mype==0) write (*,'(a,4x,a)') 'NEMO-PDAF', 'distribute state at initial time'
+  coldstart: if (.not. ens_restart) then
 
-  ! SSH
+     if (mype==0) write (*,'(a,4x,a)') 'NEMO-PDAF', 'distribute state at initial time'
 
-  if (id%ssh > 0) then
-     cnt = sfields(id%ssh)%off + 1
-     do j = 1 + j0, nj_p + j0
-        do i = 1 + i0, ni_p + i0
-           if (tmask(i, j, 1) == 1.0_pwp) then
-              sshn(i, j) = state_p(cnt)
-           end if
-           cnt = cnt + 1
+     ! SSH
+
+     if (id%ssh > 0) then
+        cnt = sfields(id%ssh)%off + 1
+        do j = 1 + j0, nj_p + j0
+           do i = 1 + i0, ni_p + i0
+              if (tmask(i, j, 1) == 1.0_pwp) then
+                 sshn(i, j) = state_p(cnt)
+              end if
+              cnt = cnt + 1
+           end do
         end do
-     end do
 
-     ! Fill halo regions
-     call lbc_lnk('distribute_state_pdaf', sshn, 'T', 1.)
+        ! Fill halo regions
+        call lbc_lnk('distribute_state_pdaf', sshn, 'T', 1.)
 
-     ! Update before field 
-     sshb = sshn
-  endif
+        ! Update before field 
+        sshb = sshn
+     endif
 
 
 ! ************************************
 ! Distribute state vector 3d variables
 ! ************************************
 
-  ! T
-  if (id%temp > 0) then
-     cnt = sfields(id%temp)%off + 1
-     do k = 1, nk_p
-        do j = 1 + j0, nj_p + j0
-           do i = 1 + i0, ni_p + i0
-              if (tmask(i, j, 1) == 1.0_pwp) then
-                 tsn(i, j, k, jp_tem) = state_p(cnt)
-              end if
-              cnt = cnt + 1
+     ! T
+     if (id%temp > 0) then
+        cnt = sfields(id%temp)%off + 1
+        do k = 1, nk_p
+           do j = 1 + j0, nj_p + j0
+              do i = 1 + i0, ni_p + i0
+                 if (tmask(i, j, 1) == 1.0_pwp) then
+                    tsn(i, j, k, jp_tem) = state_p(cnt)
+                 end if
+                 cnt = cnt + 1
+              end do
            end do
         end do
-     end do
-  end if
-     
-  ! S
-  if (id%salt > 0) then
-     cnt = sfields(id%salt)%off + 1
-     do k = 1, nk_p
-        do j = 1 + j0, nj_p + j0
-           do i = 1 + i0, ni_p + i0
-              if (tmask(i, j, 1) == 1.0_pwp) then
-                 tsn(i, j, k, jp_sal) = state_p(cnt)
-              end if
-              cnt = cnt + 1
+     end if
+
+     ! S
+     if (id%salt > 0) then
+        cnt = sfields(id%salt)%off + 1
+        do k = 1, nk_p
+           do j = 1 + j0, nj_p + j0
+              do i = 1 + i0, ni_p + i0
+                 if (tmask(i, j, 1) == 1.0_pwp) then
+                    tsn(i, j, k, jp_sal) = state_p(cnt)
+                 end if
+                 cnt = cnt + 1
+              end do
            end do
         end do
-     end do
-  end if
+     end if
 
-  if (id%temp>0 .or. id%salt>0) then
-     ! Fill halo regions
-     call lbc_lnk_multi('distribute_state_pdaf', tsn(:, :, :, jp_tem), 'T', &
-          1., tsn(:, :, :, jp_sal), 'T', 1.)
+     if (id%temp>0 .or. id%salt>0) then
+        ! Fill halo regions
+        call lbc_lnk_multi('distribute_state_pdaf', tsn(:, :, :, jp_tem), 'T', &
+             1., tsn(:, :, :, jp_sal), 'T', 1.)
 
-     ! Update before fields
-     tsb(:,:,:,jp_tem) = tsb(:,:,:,jp_tem)
-     tsb(:,:,:,jp_sal) = tsb(:,:,:,jp_sal)
-  end if
+        ! Update before fields
+        tsb(:,:,:,jp_tem) = tsb(:,:,:,jp_tem)
+        tsb(:,:,:,jp_sal) = tsb(:,:,:,jp_sal)
+     end if
 
-  ! U
-  if (id%uvel > 0) then
-     cnt = sfields(id%uvel)%off + 1
-     do k = 1, nk_p
-        do j = 1 + j0, nj_p + j0
-           do i = 1 + i0, ni_p + i0
-              if (tmask(i, j, 1) == 1.0_pwp) then
-                 un(i, j, k) = state_p(cnt)
-              end if
-              cnt = cnt + 1
+     ! U
+     if (id%uvel > 0) then
+        cnt = sfields(id%uvel)%off + 1
+        do k = 1, nk_p
+           do j = 1 + j0, nj_p + j0
+              do i = 1 + i0, ni_p + i0
+                 if (tmask(i, j, 1) == 1.0_pwp) then
+                    un(i, j, k) = state_p(cnt)
+                 end if
+                 cnt = cnt + 1
+              end do
            end do
         end do
-     end do
-  end if
+     end if
 
-  ! V
-  if (id%vvel > 0) then
-     cnt = sfields(id%vvel)%off + 1
-     do k = 1, nk_p
-        do j = 1 + j0, nj_p + j0
-           do i = 1 + i0, ni_p + i0
-              if (tmask(i, j, 1) == 1.0_pwp) then
-                 vn(i, j, k) = state_p(cnt)
-              end if
-              cnt = cnt + 1
+     ! V
+     if (id%vvel > 0) then
+        cnt = sfields(id%vvel)%off + 1
+        do k = 1, nk_p
+           do j = 1 + j0, nj_p + j0
+              do i = 1 + i0, ni_p + i0
+                 if (tmask(i, j, 1) == 1.0_pwp) then
+                    vn(i, j, k) = state_p(cnt)
+                 end if
+                 cnt = cnt + 1
+              end do
            end do
         end do
-     end do
-  end if
+     end if
 
-  if (id%uvel>0 .or. id%vvel>0) then
-     ! Fill halo regions
-     call lbc_lnk_multi('distribute_state_pdaf', un, 'U', -1., vn, 'V', -1.)     
+     if (id%uvel>0 .or. id%vvel>0) then
+        ! Fill halo regions
+        call lbc_lnk_multi('distribute_state_pdaf', un, 'U', -1., vn, 'V', -1.)     
 
-     ! Update before fields
-     ub = un
-     vb = vn
-  end if
+        ! Update before fields
+        ub = un
+        vb = vn
+     end if
 
-  ! Set Euler step
-  neuler = 0
+     ! Set Euler step
+     neuler = 0
+     assim_flag = 1
+
+  else coldstart
+
+     ! Ensemble restart using restart fields from NEMO
+
+     if (mype==0) write (*,'(a,4x,a)') 'NEMO-PDAF', 'Ensemble restart - distribute_state inactive'
+
+     ! Set Euler step
+     neuler = 0
+     assim_flag = 1
+
+  end if coldstart
 
 end subroutine distribute_state_init_pdaf

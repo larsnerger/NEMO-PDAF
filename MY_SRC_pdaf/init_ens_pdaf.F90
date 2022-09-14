@@ -75,15 +75,28 @@ subroutine init_ens_pdaf(filtertype, dim_p, dim_ens, state_p, Uinv, &
 
   elseif (type_ens_init == 3) then
      
-     ! Real ensemble states as model snapshots from separate files
+     ! Read ensemble states as model snapshots from separate files
 
      if (mype_filter==0) write (*,'(a,1x,a)') 'NEMO-PDAF', 'Initialize ensemble by sampling from covariance matrix'
 
      CALL gen_ens_from_cov(trim(file_covar), dim_p, dim_ens, state_p, ens_p)
 
+  elseif (type_ens_init == 4) then
+     
+     ! Ensemble restart using restarts read by NEMO
+
+     if (mype_filter==0) write (*,'(a,1x,a)') 'NEMO-PDAF', 'Ensemble restart'
+
+     ! There is nothing to do in case of an ensemble restart
+
+     ens_p = 0.0
+
+     ! Deactivate replacing central state
+     type_central_state = 0
+
   end if
 
-  ! Options to replace the central state of the ensemble (i.e. the ensemble mean)
+  ! *** Options to replace the central state of the ensemble (i.e. the ensemble mean) ***
 
   if (type_central_state == 1) then
 
@@ -101,6 +114,8 @@ subroutine init_ens_pdaf(filtertype, dim_p, dim_ens, state_p, Uinv, &
 
   end if
 
+
+  ! *** Replace the ensemble central state if specified ***
 
   if (type_central_state==1 .or. type_central_state==2) then
 
@@ -125,18 +140,23 @@ subroutine init_ens_pdaf(filtertype, dim_p, dim_ens, state_p, Uinv, &
 
   end if
 
-contains
+end subroutine init_ens_pdaf
+!contains
 ! ===================================================================================
 
 !> Generate ensemble from reading covariance matrix from a file
 !!
     subroutine gen_ens_from_cov(filename_cov, dim_p, dim_ens, state_p, ens_p)
 
+      use mod_kind_pdaf
       use pdaf_interfaces_module, only: PDAF_SampleEns
       use mod_io_pdaf, only: read_eof_cov
+      use mod_assimilation_pdaf, &
+           only: screen, dim_state
       use mod_parallel_pdaf, &
            only: mype=>mype_filter, abort_parallel
 
+      implicit none 
 
 ! *** Arguments ***
       character(*), intent(in) :: filename_cov          !< covariance filename
@@ -146,14 +166,13 @@ contains
       real(pwp), intent(inout) :: ens_p(dim_p, dim_ens) !< ensemble array
 
 ! *** Local variables ***
-      integer :: rank
-      integer :: status_pdaf
-      integer :: verbose_sampleens
-      real(pwp), allocatable :: eofV(:, :)
-      real(pwp), allocatable :: svals(:)
-      logical :: readmean
+      integer :: rank                         ! Rank of variance matrix read from file
+      integer :: status_pdaf                  ! PDAF status flag
+      integer :: verbose_sampleens            ! Set verbosity of PDAF_sampleens
+      real(pwp), allocatable :: eofV(:, :)    ! Array holding singular vectors
+      real(pwp), allocatable :: svals(:)      ! Vector holding singular values
+      logical :: readmean                     ! Whther to read the ensemble mean state from covariance file
 
-      state_p = 0.0
 
       ! *****************************************
       ! *** Generate ensemble of model states ***
@@ -168,6 +187,7 @@ contains
 
       ! get eigenvalue and eigenvectors from file
       readmean = .false.
+      state_p = 0.0
       call read_eof_cov(filename_cov, dim_state, dim_p, rank, state_p, eofV, svals, readmean)
 
       ! *** Generate full ensemble on filter-PE 0 ***
@@ -201,4 +221,4 @@ contains
 
     end subroutine gen_ens_from_cov
 
-end subroutine init_ens_pdaf
+!end subroutine init_ens_pdaf

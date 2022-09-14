@@ -31,7 +31,7 @@ subroutine prepoststep_ens_pdaf(step, dim_p, dim_ens, dim_ens_p, dim_obs_p, &
   use mpi
   use mod_kind_pdaf
   use mod_assimilation_pdaf, &
-        only: step_null
+        only: step_null, ens_restart
   use mod_parallel_pdaf, &
        only: mype=>mype_filter, comm_filter, MPIerr
   use mod_statevector_pdaf, &
@@ -240,7 +240,7 @@ subroutine prepoststep_ens_pdaf(step, dim_p, dim_ens, dim_ens_p, dim_obs_p, &
 
 
    ! *** Write state into nc file ***
-   if (save_State) then
+   if (save_State .and. (.not. (ens_restart .and. forana=='ini')) ) then
 
       ! Store state in state_tmp to avoid changing state_p
       state_tmp = state_p
@@ -252,7 +252,7 @@ subroutine prepoststep_ens_pdaf(step, dim_p, dim_ens, dim_ens_p, dim_obs_p, &
          if (mype == 0) write (*,'(a,5x,a)') 'NEMO-PDAF', '--- Write ensemble mean before analysis step'
          writestep_state = 1
       elseif (forana=='ana') then
-         if (mype == 0) write (*,'(a,5x,a)') 'NEMO-PDAF', '--- Write ensemble mean after analysis step'
+          if (mype == 0) write (*,'(a,5x,a)') 'NEMO-PDAF', '--- Write ensemble mean after analysis step'
          writestep_state = 2
       else
          if (mype == 0) write (*,'(a,5x,a)') 'NEMO-PDAF', '--- Write ensemble mean at initial time'

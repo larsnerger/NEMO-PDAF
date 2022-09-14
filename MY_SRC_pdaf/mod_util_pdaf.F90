@@ -160,7 +160,7 @@ contains
     use mod_assimilation_pdaf, &
          only: screen, dim_ens, ensscale, delt_obs, &
          type_forget, forget, &
-         type_ens_init, type_central_state
+         type_ens_init, type_central_state, ens_restart
     use mod_io_pdaf, &
          only: verbose_io, path_inistate, path_ens, file_ens, file_covar, &
          coupling_nemo, save_var_time, save_state, add_slash
@@ -181,7 +181,7 @@ contains
          save_var_time, save_state, verbose_io
 
     namelist /init_nml/ &
-         type_ens_init, type_central_state, ensscale, &
+         type_ens_init, type_central_state, ensscale, ens_restart, &
          path_inistate, path_ens, file_ens, file_covar, coupling_nemo
 
     namelist /obs_ssh_mgrid_nml/ &
@@ -216,6 +216,11 @@ contains
     call add_slash(path_inistate)
     call add_slash(path_ens)
 
+    ! *** Set flags for ensmeble restart ***
+    if (ens_restart) then
+       type_ens_init = 4
+       type_central_state = 0
+    end if
 
     ! Print PDAF parameters to screen
     showconf: if (mype_ens == 0) then
@@ -233,6 +238,7 @@ contains
        write (*, '(a,5x,a,i10)') 'NEMO-PDAF','delt_obs     ', delt_obs
        write (*, *) ''
        write (*, '(a,3x,a)') 'NEMO-PDAF','[init_nml]:'
+       write (*, '(a,5x,a,l)') 'NEMO-PDAF','ens_restart ', ens_restart
        write (*, '(a,5x,a,i10)') 'NEMO-PDAF','type_ens_init      ', type_ens_init
        write (*, '(a,5x,a,i10)') 'NEMO-PDAF','type_central_state ', type_central_state
        write (*, '(a,5x,a,5x,a)') 'NEMO-PDAF','coupling_nemo        ', coupling_nemo
