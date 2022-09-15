@@ -181,7 +181,7 @@ contains
     call calc_date(step, rdate)
     year = floor(rdate/10000.0_pwp)
     month = floor((rdate-real(year*10000))/100.0_pwp)
-    iday = floor(rdate-real(year*10000)-real(month*100))
+    iday = floor(rdate-real(year*10000)-real(month*100))-1
 
 
 ! **********************************
