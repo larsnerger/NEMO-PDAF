@@ -34,10 +34,10 @@ module mod_io_pdaf
   integer :: verbose_io=1   ! Set verbosity of IO routines (0,1,2,3)
 
   ! Control of IO
-  character(len=4) :: save_var_time='both'   ! Write variance at 'fcst', 'ana', 'both', or 'none'
+  character(len=4) :: save_var_time='none'   ! Write variance at 'fcst', 'ana', 'both', or 'none'
   logical :: save_ens_states=.false.         ! Write a single file of ensmeble state vectors
   logical :: save_ens_fields=.false.         ! Write set of files holding ensemble fields
-  logical :: save_state=.true.               ! Write analysis state to file
+  logical :: save_state=.true.               ! Write forecast and analysis states to file
   logical :: save_incr                       ! Write increment to file
   logical :: do_deflate=.false.              ! Deflate variables in NC files (this seems to fail for parallel nc)
   character(len=3) :: sgldbl_io='sgl'        ! Write PDAF output in single (sgl) or double (dbl) precision

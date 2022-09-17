@@ -12,6 +12,8 @@
    locweight = 2
    delt_obs = 496
    sgldbl_io = 'dbl'
+   save_var_time = 'none'
+   save_state = .true.
 /
 &init_nml
    ensscale = 1.0
