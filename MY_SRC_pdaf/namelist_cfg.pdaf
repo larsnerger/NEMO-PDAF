@@ -4,13 +4,14 @@
 /
 &pdaf_nml
    screen = 2
-   verbose = 2
+   verbose_io = 2
    filtertype = 5
    subtype = 0
    type_forget = 0
    forget = 1.0
    locweight = 2
    delt_obs = 496
+   sgldbl_io = 'dbl'
 /
 &init_nml
    ensscale = 1.0

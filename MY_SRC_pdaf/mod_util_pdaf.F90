@@ -163,7 +163,7 @@ contains
          type_ens_init, type_central_state, ens_restart
     use mod_io_pdaf, &
          only: verbose_io, path_inistate, path_ens, file_ens, file_covar, &
-         coupling_nemo, save_var_time, save_state, add_slash
+         sgldbl_io, coupling_nemo, save_var_time, save_state, add_slash
     use mod_obs_ssh_mgrid_pdafomi, &
          only: assim_ssh_mgrid, rms_ssh_mgrid, file_ssh_mgrid, &
          lradius_ssh_mgrid, sradius_ssh_mgrid, varname_ssh_mgrid
@@ -178,7 +178,7 @@ contains
     namelist /pdaf_nml/ &
          screen, filtertype, subtype, type_trans, type_sqrt, &
          type_forget, forget, locweight, delt_obs, &
-         save_var_time, save_state, verbose_io
+         save_var_time, save_state, verbose_io, sgldbl_io
 
     namelist /init_nml/ &
          type_ens_init, type_central_state, ensscale, ens_restart, &
@@ -216,7 +216,7 @@ contains
     call add_slash(path_inistate)
     call add_slash(path_ens)
 
-    ! *** Set flags for ensmeble restart ***
+    ! *** Set flags for ensemble restart ***
     if (ens_restart) then
        type_ens_init = 4
        type_central_state = 0
@@ -236,6 +236,9 @@ contains
        write (*, '(a,5x,a,f10.3)') 'NEMO-PDAF','forget       ', forget
        write (*, '(a,5x,a,i10)') 'NEMO-PDAF','locweight    ', locweight
        write (*, '(a,5x,a,i10)') 'NEMO-PDAF','delt_obs     ', delt_obs
+       write (*, '(a,5x,a,6x,a)')'NEMO-PDAF','save_var_time', trim(save_var_time)
+       write (*, '(a,5x,a,l)')   'NEMO-PDAF','save_state   ', save_state
+       write (*, '(a,5x,a,6x,a)')   'NEMO-PDAF','sgldbl_io ', sgldbl_io
        write (*, *) ''
        write (*, '(a,3x,a)') 'NEMO-PDAF','[init_nml]:'
        write (*, '(a,5x,a,l)') 'NEMO-PDAF','ens_restart ', ens_restart
@@ -248,7 +251,7 @@ contains
        write (*, '(a,5x,a,5x,l)') 'NEMO-PDAF','assim_ssh_mgrid      ', assim_ssh_mgrid
        if (assim_ssh_mgrid) then
           write (*, '(a,5x,a,f12.4)') 'NEMO-PDAF','rms_ssh_mgrid      ', rms_ssh_mgrid
-          write (*, '(a,5x,a,a)') 'NEMO-PDAF','file_ssh_mgrid     ', trim(file_ssh_mgrid)
+          write (*, '(a,5x,a,a)') 'NEMO-PDAF','file_ssh_mgrid        ', trim(file_ssh_mgrid)
           write (*, '(a,5x,a,a)') 'NEMO-PDAF','varname_ssh_mgrid     ', trim(varname_ssh_mgrid)
           write (*, '(a,5x,a,es12.4)') 'NEMO-PDAF','lradius_ssh_mgrid      ', lradius_ssh_mgrid
           write (*, '(a,5x,a,es12.4)') 'NEMO-PDAF','sradius_ssh_mgrid      ', sradius_ssh_mgrid
@@ -258,7 +261,7 @@ contains
        write (*, '(a,5x,a,5x,l)') 'NEMO-PDAF','assim_sst_cmems      ', assim_sst_cmems
        if (assim_sst_cmems) then
           write (*, '(a,5x,a,f12.4)') 'NEMO-PDAF','rms_obs_sst_cmems  ', rms_obs_sst_cmems
-          write (*, '(a,5x,a,a)') 'NEMO-PDAF','file_sst_cmems     ', trim(file_sst_cmems)
+          write (*, '(a,5x,a,a)') 'NEMO-PDAF','file_sst_cmems        ', trim(file_sst_cmems)
           write (*, '(a,5x,a,a)') 'NEMO-PDAF','varname_sst_cmems     ', trim(varname_sst_cmems)
           write (*, '(a,5x,a,es12.4)') 'NEMO-PDAF','lradius_sst_cmems      ', lradius_sst_cmems
           write (*, '(a,5x,a,es12.4)') 'NEMO-PDAF','sradius_sst_cmems      ', sradius_sst_cmems

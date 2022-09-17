@@ -23,6 +23,7 @@ module mod_nemo_pdaf
   
   ! *** Other grid variables
   real(pwp), allocatable :: tmp_4d(:,:,:,:)     ! 4D array used to represent full NEMO grid box
+  real(4), allocatable :: stmp_4d(:,:,:,:)      ! 4D array used to represent full NEMO grid box
   real(pwp), allocatable :: lat1(:), lon1(:)    ! Vectors holding latitude and latitude
 
   integer :: dim_2d                        ! Dimension of 2d grid box    
