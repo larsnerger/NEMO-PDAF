@@ -193,7 +193,7 @@ contains
        sfields(id_var)%name_rest_b = 'sb'
        sfields(id_var)%file = 'ORCA2_1d_'
        sfields(id_var)%rst_file = 'restart_in.nc'
-       sfields(id_var)%unit = '1e-3'
+       sfields(id_var)%unit = 'psu'
        sfields(id_var)%limit = 1             ! Apply lower limit
        sfields(id_var)%min_limit = 0.0_pwp   ! Salinity is never negative
     endif
