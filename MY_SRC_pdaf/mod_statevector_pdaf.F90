@@ -163,7 +163,7 @@ contains
        sfields(id_var)%name_incr = 'bckineta'
        sfields(id_var)%name_rest_n = 'sshn'
        sfields(id_var)%name_rest_b = 'sshb'
-       sfields(id_var)%file = 'NORDIC_1d_SURF_grid_T_'
+       sfields(id_var)%file = 'files_surf_T.txt'
        sfields(id_var)%rst_file = 'restart_in.nc'
        sfields(id_var)%unit = 'm'
        sfields(id_var)%transform = 0
@@ -180,7 +180,7 @@ contains
        sfields(id_var)%name_incr = 'bckint'
        sfields(id_var)%name_rest_n = 'tn'
        sfields(id_var)%name_rest_b = 'tb'
-       sfields(id_var)%file = 'NORDIC_1d_grid_T_'
+       sfields(id_var)%file = 'files_T.txt'
        sfields(id_var)%rst_file = 'restart_in.nc'
        sfields(id_var)%unit = 'degC'
        sfields(id_var)%transform = 0
@@ -196,7 +196,7 @@ contains
        sfields(id_var)%name_incr = 'bckins'
        sfields(id_var)%name_rest_n = 'sn'
        sfields(id_var)%name_rest_b = 'sb'
-       sfields(id_var)%file = 'NORDIC_1d_grid_T_'
+       sfields(id_var)%file = 'files_T.txt'
        sfields(id_var)%rst_file = 'restart_in.nc'
        sfields(id_var)%unit = 'psu'
        sfields(id_var)%transform = 0
@@ -212,7 +212,7 @@ contains
        sfields(id_var)%name_incr = 'bckinu'
        sfields(id_var)%name_rest_n = 'un'
        sfields(id_var)%name_rest_b = 'ub'
-       sfields(id_var)%file = 'NORDIC_1d_grid_U_'
+       sfields(id_var)%file = 'files_U.txt'
        sfields(id_var)%rst_file = 'restart_in.nc'
        sfields(id_var)%unit = 'm/s'
        sfields(id_var)%transform = 0
@@ -228,7 +228,7 @@ contains
        sfields(id_var)%name_incr = 'bckinv'
        sfields(id_var)%name_rest_n = 'vn'
        sfields(id_var)%name_rest_b = 'vb'
-       sfields(id_var)%file = 'NORDIC_1d_grid_V_'
+       sfields(id_var)%file = 'files_V.txt'
        sfields(id_var)%rst_file = 'restart_in.nc'
        sfields(id_var)%unit = 'm/s'
        sfields(id_var)%transform = 0
