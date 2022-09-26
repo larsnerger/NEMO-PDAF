@@ -159,13 +159,16 @@ contains
     if (id_var>0) then
        sfields(id_var)%ndims = 2
        sfields(id_var)%dim = sdim2d
-       sfields(id_var)%variable = 'zos'
+       sfields(id_var)%variable = 'SSH_inst'
        sfields(id_var)%name_incr = 'bckineta'
        sfields(id_var)%name_rest_n = 'sshn'
        sfields(id_var)%name_rest_b = 'sshb'
-       sfields(id_var)%file = 'ORCA2_1d_'
+       sfields(id_var)%file = 'NORDIC_1d_SURF_grid_T_'
        sfields(id_var)%rst_file = 'restart_in.nc'
        sfields(id_var)%unit = 'm'
+       sfields(id_var)%transform = 0
+       sfields(id_var)%trafo_shift = 0.0
+       sfields(id_var)%limit = 0
     endif
 
     ! Temperature
@@ -173,13 +176,15 @@ contains
     if (id_var>0) then
        sfields(id_var)%ndims = 3
        sfields(id_var)%dim = sdim3d
-       sfields(id_var)%variable = 'thetao'
+       sfields(id_var)%variable = 'votemper'
        sfields(id_var)%name_incr = 'bckint'
        sfields(id_var)%name_rest_n = 'tn'
        sfields(id_var)%name_rest_b = 'tb'
-       sfields(id_var)%file = 'ORCA2_1d_'
+       sfields(id_var)%file = 'NORDIC_1d_grid_T_'
        sfields(id_var)%rst_file = 'restart_in.nc'
        sfields(id_var)%unit = 'degC'
+       sfields(id_var)%transform = 0
+       sfields(id_var)%trafo_shift = 0.0
     endif
 
     ! Salinity
@@ -187,15 +192,15 @@ contains
     if (id_var>0) then
        sfields(id_var)%ndims = 3
        sfields(id_var)%dim = sdim3d
-       sfields(id_var)%variable = 'so'
+       sfields(id_var)%variable = 'vosaline'
        sfields(id_var)%name_incr = 'bckins'
        sfields(id_var)%name_rest_n = 'sn'
        sfields(id_var)%name_rest_b = 'sb'
-       sfields(id_var)%file = 'ORCA2_1d_'
+       sfields(id_var)%file = 'NORDIC_1d_grid_T_'
        sfields(id_var)%rst_file = 'restart_in.nc'
-       sfields(id_var)%unit = '1e-3'
-       sfields(id_var)%limit = 1             ! Apply lower limit
-       sfields(id_var)%min_limit = 0.0_pwp   ! Salinity is never negative
+       sfields(id_var)%unit = 'psu'
+       sfields(id_var)%transform = 0
+       sfields(id_var)%trafo_shift = 0.0
     endif
 
     ! U-velocity
@@ -203,12 +208,15 @@ contains
     if (id_var>0) then
        sfields(id_var)%ndims = 3
        sfields(id_var)%dim = sdim3d
-       sfields(id_var)%variable = 'uo'
+       sfields(id_var)%variable = 'uos'
        sfields(id_var)%name_incr = 'bckinu'
        sfields(id_var)%name_rest_n = 'un'
        sfields(id_var)%name_rest_b = 'ub'
+       sfields(id_var)%file = 'NORDIC_1d_grid_U_'
        sfields(id_var)%rst_file = 'restart_in.nc'
        sfields(id_var)%unit = 'm/s'
+       sfields(id_var)%transform = 0
+       sfields(id_var)%trafo_shift = 0.0
     endif
 
     ! V-velocity
@@ -216,12 +224,15 @@ contains
     if (id_var>0) then
        sfields(id_var)%ndims = 3
        sfields(id_var)%dim = sdim3d
-       sfields(id_var)%variable = 'vo'
+       sfields(id_var)%variable = 'vos'
        sfields(id_var)%name_incr = 'bckinv'
        sfields(id_var)%name_rest_n = 'vn'
        sfields(id_var)%name_rest_b = 'vb'
+       sfields(id_var)%file = 'NORDIC_1d_grid_V_'
        sfields(id_var)%rst_file = 'restart_in.nc'
        sfields(id_var)%unit = 'm/s'
+       sfields(id_var)%transform = 0
+       sfields(id_var)%trafo_shift = 0.0
     endif
 
     open (500,file='namelist_cfg.pdaf')
