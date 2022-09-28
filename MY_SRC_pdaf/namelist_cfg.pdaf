@@ -16,7 +16,7 @@
    save_state = .true.
 /
 &init_nml
-   ensscale = 1.0
+   ens_restart = .false.  ! .true. for ensemble restarting / overwrites type_ens_init and type_central_state
    type_ens_init = 3
    type_central_state = 0
    ensscale = 1.0
