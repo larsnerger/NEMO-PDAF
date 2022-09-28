@@ -75,7 +75,7 @@ subroutine init_ens_pdaf(filtertype, dim_p, dim_ens, state_p, Uinv, &
 
   elseif (type_ens_init == 3) then
      
-     ! Read ensemble states as model snapshots from separate files
+     ! Initialize from covariance matrix
 
      if (mype_filter==0) write (*,'(a,1x,a)') 'NEMO-PDAF', 'Initialize ensemble by sampling from covariance matrix'
 
