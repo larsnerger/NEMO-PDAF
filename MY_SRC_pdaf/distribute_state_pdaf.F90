@@ -113,8 +113,8 @@ subroutine distribute_state_pdaf(dim_p, state_p)
              1., tsn(:, :, :, jp_sal), 'T', 1.)
 
         ! Update before fields
-        tsb(:,:,:,jp_tem) = tsb(:,:,:,jp_tem)
-        tsb(:,:,:,jp_sal) = tsb(:,:,:,jp_sal)
+        tsb(:,:,:,jp_tem) = tsn(:,:,:,jp_tem)
+        tsb(:,:,:,jp_sal) = tsn(:,:,:,jp_sal)
      end if
 
      ! U
