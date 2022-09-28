@@ -1,6 +1,6 @@
-# NEMO-PDAF
+# NEMO-(ERGOM)-PDAF
 
-NEMO-PDAF coupling routines. 
+NEMO-PDAF coupling routines adapted for including ERGOM.
 
 **MY_SRC_pdaf** contains the pdaf user routines
 
