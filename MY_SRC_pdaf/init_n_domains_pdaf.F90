@@ -35,7 +35,6 @@ subroutine init_n_domains_pdaf(step, n_domains_p)
   !
   ! *******************************************
 
-  ! Note: nwet=-1 if there are no wet points
-  n_domains_p = abs(nwet)
+  n_domains_p = nwet
 
 end subroutine init_n_domains_pdaf
