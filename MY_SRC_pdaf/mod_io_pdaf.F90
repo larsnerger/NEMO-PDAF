@@ -8,7 +8,7 @@ module mod_io_pdaf
   ! Include dimension information for model grid
   use mod_nemo_pdaf, &
        only: nlvls=>jpk, nlats=>jpjglo, nlons=>jpiglo, &
-       depths=>gdept_1d, lons=>glamt, lats=>gphit, &
+       depths=>gdept_1d, lons, lats, i0, j0, &
        tmp_4d, ni_p, nj_p, nk_p, istart, jstart, &
        nimpp, njmpp, nlei, nlej, stmp_4d
 
@@ -842,12 +842,12 @@ end subroutine gen_ens_mv
        countz(1)=nlvls
 
        startC(1) = nimpp
-       countC(1) = nlei
+       countC(1) = nlei-i0
        startC(2) = njmpp
-       countC(2) = nlej
+       countC(2) = nlej-j0
 
-       call check( nf90_put_var(ncid,id_lon,lons,startC,countC))
-       call check( nf90_put_var(ncid,id_lat,lats,startC,countC))
+       call check( nf90_put_var(ncid, id_lon, lons, startC, countC))
+       call check( nf90_put_var(ncid, id_lat, lats, startC, countC))
 
        if (mype==0) then
           call check( nf90_put_var(ncid,id_lev,depths,startz,countz))

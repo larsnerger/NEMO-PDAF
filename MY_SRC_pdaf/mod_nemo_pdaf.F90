@@ -44,6 +44,7 @@ module mod_nemo_pdaf
   integer :: istart, jstart                 ! Start indices for internal local domain
   integer :: dim_2d_p, dim_3d_p             ! Dimension of 2d/3d grid box of sub-domain   
   real(pwp), allocatable :: lat1_p(:), lon1_p(:) ! Vectors holding latitude and latitude for decomposition
+  real(pwp), allocatable :: lats(:,:), lons(:,:) ! Arrays for interior coordinates (no halo)
   integer :: sdim2d, sdim3d                 ! 2D/3D dimension of field in state vector
 
   ! *** File name and path to read grid information
@@ -97,6 +98,15 @@ contains
     allocate(lat1_p(nj_p), lon1_p(ni_p))
     lat1_p = gphit(1, j0 + 1 : j0 + nj_p)
     lon1_p = glamt(i0 + 1 : i0 + ni_p, 1)
+
+    ! Store interior coordinates
+    allocate(lons(ni_p, nj_p), lats(ni_p, nj_p))
+    do j = 1, nj_p
+       do i = 1, ni_p
+          lats(i,j) = gphit(i0+i, j0+j)
+          lons(i,j) = glamt(i0+i, j0+j)
+       end do
+    end do
 
     ! Count number of wet surface points
     nwet = 0
