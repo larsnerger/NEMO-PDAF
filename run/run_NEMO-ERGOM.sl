@@ -60,16 +60,15 @@ restart_out='output/restarts'
 archive='/scratch/usr/hzfblner/SEAMLESS/forcing_ergom_allEuler'
 archive_ln='/scratch/usr/hzfblner/SEAMLESS/forcings'
 #inputs_ln='/scratch/usr/hzfblner/SEAMLESS/inputs'
-inputs_ln='/scratch/usr/hzfblner/SEAMLESS/inputs_allEuler'
-inputs_nc='/scratch/usr/hzfblner/SEAMLESS/run/Eens/inputs_nc'
+inputs_nc='/scratch/usr/hzfblner/SEAMLESS/run/inputs_allEuler_nc4'
 setup_store='/scratch/usr/hbkycsun/data/setup_store'
-setup_store_allEular='/scratch/usr/hbkycsun/data/setup_ERGOM_allEuler'
+setup_store_allEuler='/scratch/usr/hbkycsun/data/setup_ERGOM_allEuler'
 initialdir='/scratch/usr/hzfblner/SEAMLESS/restart'
-disrestartdir='/scratch/usr/hzfblner/SEAMLESS/run/Eens/restart_20150101'
+disrestartdir='/scratch/usr/hzfblner/SEAMLESS/run/restart_dist_20150101'
 # ---------------------------------------------------------------------------------------------------
 
 # Prepare PDAF namelist
-cp $setup_store_allEular/namelist_cfg.pdaf_template ./
+cp $setup_store_allEuler/namelist_cfg.pdaf_template ./
 cat namelist_cfg.pdaf_template     \
    | sed -e "s:_DIMENS_:$NENS:"     \
    > namelist_cfg.pdaf
@@ -80,19 +79,19 @@ for((i=1;i<=$NENS;i++))
      ENSstr=`printf %03d $i`
      ENSstr2=`printf %02d $i`
      echo 'preparing context_nemo.xml...'
-     cat $setup_store_allEular/context_nemoXXX.xml_template   \
+     cat $setup_store_allEuler/context_nemoXXX.xml_template   \
 	    | sed -e "s:_DIMENS3_:${ENSstr}:g"   \
 	    > context_nemo${ENSstr}.xml
      echo 'preparing file_def_nemo-ice.xml...'
-	   cat $setup_store_allEular/file_def_nemo-iceXXX.xml_template   \
+	   cat $setup_store_allEuler/file_def_nemo-iceXXX.xml_template   \
 	    | sed -e "{s:_DIMENS3_:${ENSstr}:g;s:_DIMENS2_:${ENSstr2}:g}"   \
 	    > file_def_nemo-ice${ENSstr}.xml
      echo 'preparing file_def_nemo-oce.xml...'
-	   cat $setup_store_allEular/file_def_nemo-oceXXX.xml_template   \
+	   cat $setup_store_allEuler/file_def_nemo-oceXXX.xml_template   \
 	    | sed -e "{s:_DIMENS3_:${ENSstr}:g;s:_DIMENS2_:${ENSstr2}:g}"   \
 	    > file_def_nemo-oce${ENSstr}.xml
      echo 'preparing file_def_nemo-ergom.xml...'
-     cat $setup_store_allEular/file_def_nemo-ergomXXX.xml_template   \
+     cat $setup_store_allEuler/file_def_nemo-ergomXXX.xml_template   \
  	    | sed -e "{s:_DIMENS3_:${ENSstr}:g;s:_DIMENS2_:${ENSstr2}:g}"   \
  	    > file_def_nemo-ergom${ENSstr}.xml
 done
@@ -189,10 +188,10 @@ for((i=1;i<=$NENS;i++))
            ln -s $initialdir/NORDIC_2015010100_restart_trc.nc $wdir/initialstate/restart_trc_in.nc
         fi
         if [ ! -f $wdir/initialstate/NORDIC-NS1_restart_ptrc_in_iowfix.nc ]; then
-           ln -s $inputs_ln/initialstate/NORDIC-NS1_restart_ptrc_in_iowfix.nc $wdir/initialstate/NORDIC-NS1_restart_ptrc_in_iowfix.nc
+           ln -s $inputs_nc/initialstate/NORDIC-NS1_restart_ptrc_in_iowfix.nc $wdir/initialstate/NORDIC-NS1_restart_ptrc_in_iowfix.nc
         fi
         if [ ! -f $wdir/initialstate/NORDIC-NS1_restart_ptrc_in.nc ]; then
-           ln -s $inputs_ln/initialstate/NORDIC-NS1_restart_ptrc_in.nc $wdir/initialstate/NORDIC-NS1_restart_ptrc_in.nc
+           ln -s $inputs_nc/initialstate/NORDIC-NS1_restart_ptrc_in.nc $wdir/initialstate/NORDIC-NS1_restart_ptrc_in.nc
         fi
       else
         echo "Link distributed restart files"
@@ -269,7 +268,7 @@ for((i=1;i<=$NENS;i++))
     ln -s $inputs_nc/z2d_ben201401.nc       $wdir/
 
     # for PDAF
-    ln -s $setup_store_allEular/*.txt       $wdir/
+    ln -s $setup_store_allEuler/*.txt       $wdir/
 
 done
 
@@ -377,7 +376,7 @@ done
 # Prepare namelists
    echo 'Prepare namelist files'
 
-   cp $setup_store_allEular/ACCESS ./
+   cp $setup_store_allEuler/ACCESS ./
 
    ACCESS=`cat ACCESS | head`
    echo 'ACCESS: ' $ACCESS
@@ -447,10 +446,10 @@ done
        ENSstr=`printf %03d $i`
        wdir=`pwd`/${ENSstr}
        export wdir
-       cp $setup_store_allEular/*.nml $wdir/
-       cp $setup_store_allEular/*.xml $wdir/
-       cp $setup_store_allEular/namelist* $wdir/
-       cp $setup_store_allEular/ACCESS $wdir/
+       cp $setup_store_allEuler/*.nml $wdir/
+       cp $setup_store_allEuler/*.xml $wdir/
+       cp $setup_store_allEuler/namelist* $wdir/
+       cp $setup_store_allEuler/ACCESS $wdir/
        cp $setup_store/ens_dates.txt $wdir/
        #cp $setup_store/files*.txt $wdir/
        cp `pwd`/namelist_cfg.pdaf $wdir/
