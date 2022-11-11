@@ -1,0 +1,69 @@
+&tasks_nml
+  tasks=_DIMENS_
+  screen=1
+/
+
+&state_vector
+  screen=1
+  sv_ssh=.true.
+  sv_temp=.true.
+  sv_salt=.true.
+  sv_uvel=.true.
+  sv_vvel=.true.
+  !sv_bgc1 contains the undiagnosed variables in ERGOM
+  ! 1:NH4  2:NO3   3:PO4   4:DIA  5:FLA  6:CYA  7:MEZ  8:MIZ
+  ! 9:DET 10:DETs 11:LDON 12:SIL 13:DIC 14:OXY 15:ALK 16:FE
+  !sv_bgc2 contains the diagnosed variables in ERGOM
+  ! 1:pCO2  2:PH   3:CHL 
+  sv_bgc1(1)=.true.
+  sv_bgc1(2)=.true.
+  sv_bgc2(1)=.true.
+/
+
+&pdaf_nml
+  screen=2
+  verbose_io=2
+  delt_obs=960
+  forget=1.0
+  save_var_time = 'fcst'
+  save_state = .true.
+/
+
+&init_nml
+  ens_restart = .false.      ! Ensemble restarting
+  type_ens_init = 3          ! 3: covariance matrix (if ens_restart=.false.)
+  type_central_state = 2
+  ensscale = 0.1
+  file_covar = '/scratch/usr/hzfblner/SEAMLESS/covar/covar_N60.nc'
+  path_ens = '/scratch/usr/hzfblner/SEAMLESS/out_free'
+  path_inistate = '/scratch/usr/hzfblner/SEAMLESS/out_free'
+/
+
+&obs_ssh_mgrid_nml
+  assim_ssh_mgrid = .false.
+  varname_ssh_mgrid = 'SSH_inst'
+/
+
+&obs_sst_cmems_nml
+! Settings for CMEMS SST
+  assim_sst_cmems = .false.
+  path_sst_cmems = '/scratch/usr/hzfblner/SEAMLESS/run/Nens/inputs_nc4'
+  !file_sst_cmems = 'sst_multi_201801.nc'
+  file_sst_cmems = 'sst_rep_L4_201501.nc'
+  varname_sst_cmems = 'analysed_sst'
+  mode_sst_cmems = 0     ! 0 for linear interpolation onto observation grid
+  dist_sst_cmems = 'geo' ! 'geo' for geographic in km; 'gp' for grid point distance
+  rms_obs_sst_cmems = 0.8
+  lradius_sst_cmems = 30000.0 !5.0
+  sradius_sst_cmems = 30000.0 !5.0
+/
+
+&sfields_nml
+  sfields(1)%variable = 'SSH_inst'
+  sfields(1)%file = 'files_surf_T.txt'
+  sfields(2)%file = 'files_T.txt'
+  sfields(3)%file = 'files_T.txt'
+  sfields(4)%file = 'files_U.txt'
+  sfields(5)%file = 'files_V.txt'
+  sfields(6:)%file = 'files_BGC.txt'
+/
