@@ -46,7 +46,7 @@ module mod_io_pdaf
   character(len=100) :: file_PDAF_incr='incr'         ! File name for increment
   character(len=100) :: file_PDAF_variance='variance' ! File name for ensemble variance
   character(len=200) :: path_inistate      ! Path to NEMO files
-  character(len=200) :: path_ens           ! Path of ensemble file  
+  character(len=200) :: path_ens           ! Path of ensemble file
   character(len=200) :: file_ens           ! File name of ensemble file
   character(len=200) :: file_covar         ! File name of file holding covariance matrix
   character(len=200) :: path_restart       ! Path of restart file
@@ -61,7 +61,7 @@ module mod_io_pdaf
 
   ! Missing value in netcdf file
   real(pwp) :: missing_value
-    
+
 contains
 ! ===================================================================================
 
@@ -70,16 +70,16 @@ contains
   subroutine read_state_mv(path, dim_p, itime, coupling, state)
 
     use netcdf
-    
+
     implicit none
-    
+
     character(len = *), intent(in)    :: path          !< Path to file
     integer(4),         intent(in)    :: dim_p         !< PE-local state dimension
     integer(4),         intent(in)    :: itime         !< Time to read in file
     character(len = *), intent(in)    :: coupling      !< Type of NEMO coupling
     real(pwp),          intent(inout) :: state(dim_p)  !< State vector
-    
-    ! Local variables 
+
+    ! Local variables
     integer(4) :: i               ! Counters
     integer(4) :: varid           ! Variable ID
     integer(4) :: ncid            ! NC file id
@@ -95,9 +95,9 @@ contains
     state = 0.0_pwp
 
     do i = 1, n_fields
-    
+
        filename = trim(sfields(i)%file_state)
-       if (verbose_io>1 .and. mype==0) then 
+       if (verbose_io>1 .and. mype==0) then
           write(*,'(a,2x,a)') 'NEMO-PDAF', trim(path)//trim(filename)
           write (*,'(a,i5,a,a,a,i10)') &
                'NEMO-PDAF', i, 'Variable: ',trim(sfields(i)%variable), ',  offset', sfields(i)%off
@@ -130,7 +130,7 @@ contains
        call field2state(tmp_4d, state, sfields(i)%off, sfields(i)%ndims, missing_value)
 
     end do
-   
+
     ! Potentially transform fields
     call transform_field_mv(1, state)
 
@@ -146,23 +146,23 @@ contains
   end subroutine read_state_mv
 
 
-!=============================================================================== 
+!===============================================================================
 
 !> Read an ensemble of model fields into the ensemble array
-!!  
+!!
   subroutine read_ens_mv_loop(path, dim_p, dim_ens, coupling, ens)
 
     use netcdf
-    
+
     implicit none
 
-! *** Arguments ***    
+! *** Arguments ***
     character(len = *), intent(in)   :: path                 !< Path of file
     integer(4),         intent(in)   :: dim_p                !< State dimension
     integer(4),         intent(in)   :: dim_ens              !< Ensemble size
     character(len = *), intent(in)   :: coupling             !< Type of NEMO coupling
     real(pwp),          intent(inout):: ens(dim_p, dim_ens)  !< Ensemble array
-    
+
 ! *** Local variables ***
     integer(4) :: i, member        ! Counters
     integer(4) :: ncid             ! NC file ID
@@ -238,22 +238,22 @@ contains
   end subroutine read_ens_mv_loop
 
 
-!===============================================================================  
+!===============================================================================
 
 !!> Read ensemble as state vectors from ensemble file
-!!  
+!!
   subroutine read_ens(ensfile_fullname, dim_state, dim_ens, ens)
 
     use netcdf
-    
+
     implicit none
-    
+
     character(len=*), intent(in)    :: ensfile_fullname        !< Name and path of ensemble file
     integer(4),       intent(in)    :: dim_state               !< PE-local state dimension
     integer(4),       intent(in)    :: dim_ens                 !< Ensemble size
     real(pwp),        intent(inout) :: ens(dim_state, dim_ens) !< Ensemble array
-    
-    ! Local variables  
+
+    ! Local variables
     integer(4) :: i                     ! Counter
     integer(4) :: ncid                  ! NC file id
     integer(4) :: dim_state_file        ! state dimension in file
@@ -274,11 +274,11 @@ contains
     end do
 
 ! *** Read file
-    
+
     if (verbose_io>0 .and. mype==0) then
        write(*,'(1x,a,a)') "--- Read ensemble file: ", trim(ensfile_fullname)
     end if
-    
+
     ! Open the file
     call check( nf90_open(ensfile_fullname, nf90_nowrite, ncid) )
 
@@ -287,12 +287,12 @@ contains
 
     ! Check consistency of state vector setup
     if (trim(varstr) == trim(varstr_file)) then
-    
+
        ! Get the dimensions
-       call check( nf90_inq_dimid(ncid, 'dim_state', dimstate_dimid) )  
+       call check( nf90_inq_dimid(ncid, 'dim_state', dimstate_dimid) )
        call check(nf90_inquire_dimension(ncid,dimstate_dimid,len=dim_state_file))
-  
-       call check( nf90_inq_dimid(ncid, 'dim_ens', dimens_dimid) )  
+
+       call check( nf90_inq_dimid(ncid, 'dim_ens', dimens_dimid) )
        call check(nf90_inquire_dimension(ncid,dimens_dimid,len=dim_ens_file))
 
        ! Check consistency of state dimension
@@ -303,26 +303,26 @@ contains
 
              !  Read ensemble
              call check( nf90_inq_varid(ncid, 'ensemble', ens_varid) )
- 
+
              call check( nf90_get_var(ncid, ens_varid, ens, start=(/1,1/),count=(/dim_state,dim_ens/)) )
 
              if (dim_ens_file> dim_ens) &
                   write (*,*) 'Notice: Ensemble in file is larger than dim_ens'
           else
              write (*,'(1x,a)') 'ERROR: Ensemble in file is too small'
-             write (*,'(1x,a)')  'Stopping program!' 
+             write (*,'(1x,a)')  'Stopping program!'
              call abort_parallel()
           end if
 
        else
           write (*,'(1x,a)') 'ERROR: inconsistent state dimension'
-          write (*,'(1x,a)')  'Stopping program!' 
+          write (*,'(1x,a)')  'Stopping program!'
           call abort_parallel()
        end if
 
     else
        write (*,'(1x,a)') 'ERROR: inconsistent variables in state'
-       write (*,'(1x,a)')  'Stopping program!' 
+       write (*,'(1x,a)')  'Stopping program!'
        call abort_parallel()
     end if
 
@@ -338,7 +338,7 @@ contains
   subroutine gen_ens_mv(flate, zeromean, inpath, dim_p, dim_ens, ens)
 
   implicit none
-  
+
 ! *** Arguments ***
   real(pwp),          intent(in)    :: flate        !< inflation
   character(len=*),   intent(in)    :: inpath       !< Path to input files
@@ -383,7 +383,7 @@ contains
      if (iens==dim_ens) exit ensloop
 
   enddo ensloop
-  
+
   do i = 1, n_fields
      close(10 + i)
   enddo
@@ -391,11 +391,11 @@ contains
   ! Check ensemble size
   if (iens<dim_ens) then
      write (*,'(/1x,a)') 'ERROR: Available files less than ensemble size!'
-     write (*,'(1x,a)')  'Stopping program!' 
+     write (*,'(1x,a)')  'Stopping program!'
      call abort_parallel()
   end if
 
- 
+
 ! *** Subtract ensemble mean and inflate ensemble perturbations ***
 
   if (zeromean) then
@@ -425,23 +425,23 @@ contains
 end subroutine gen_ens_mv
 
 
-!=============================================================================== 
+!===============================================================================
 
 !> Read a model field into the state vector of an ensemble array
-!!  
+!!
   subroutine read_ens_mv(path, filenames, dim_p, itime, state)
 
     use netcdf
-    
+
     implicit none
 
-! *** Arguments ***    
+! *** Arguments ***
     character(len = *), intent(in)   :: path         !< Path of file
     character(len = *), intent(in)   :: filenames(:) !< filenames of all fields
     integer(4),         intent(in)   :: dim_p        !< State dimension
     integer(4),         intent(in)   :: itime        !< Time in file to read
     real(pwp),          intent(inout):: state(dim_p) !< State vector
-    
+
 ! *** Local variables ***
     integer(4) :: i                ! Counters
     integer(4) :: ncid             ! NC file ID
@@ -460,7 +460,7 @@ end subroutine gen_ens_mv
 
        filename = filenames(i)
 
-       if (verbose_io>1 .and. mype==0) then 
+       if (verbose_io>1 .and. mype==0) then
           write(*,'(a,2x,a)') 'NEMO-PDAF', trim(path)//trim(filename)
           write (*,'(a,i5,1x,a,a,a,i10)') &
                'NEMO-PDAF', i, 'Variable: ',trim(sfields(i)%variable), ',  offset', sfields(i)%off
@@ -490,7 +490,7 @@ end subroutine gen_ens_mv
        call field2state(tmp_4d, state, sfields(i)%off, sfields(i)%ndims, missing_value)
 
     end do
- 
+
     ! Potentially transform fields
     call transform_field_mv(1, state)
 
@@ -568,7 +568,7 @@ end subroutine gen_ens_mv
       call check( NF90_CLOSE(ncid) )
       call abort_parallel()
     END IF checkdim
-  
+
     ! read singular values
     call check( NF90_INQ_VARID(ncid, 'sigma', varid) )
     call check( NF90_GET_VAR(ncid, varid, svals, start=[1], count=[rank]) )
@@ -583,7 +583,8 @@ end subroutine gen_ens_mv
       endif
 
       ! loop over all fields
-      do i_field = 1, n_fields
+      !do i_field = 1, n_fields
+      do i_field = 1, 5 !Change n_fields to 5 to avoid reading ERGOM vairables from covariance matrix file.
 
         call check( NF90_INQ_VARID(ncid, &
                    trim(sfields(i_field)%variable)//trim(vartypes(i_var)), &
@@ -624,15 +625,15 @@ end subroutine gen_ens_mv
 
     use netcdf
 
-    implicit none 
+    implicit none
 
-! *** Arguments *** 
+! *** Arguments ***
     character(len=*), intent(in):: file          !< File name
     integer(4),       intent(in):: dim_state     !< state dimension
     integer(4),       intent(in):: dim_ens       !< Ensemble size
     real(pwp),        intent(in):: ens(:,:)      !< Ensemble array
 
-! *** Local variables *** 
+! *** Local variables ***
     integer(4) :: i          ! Counter
     integer(4) :: fileid     ! NC file id
     integer(4) :: dimids(2)  ! dimension ids
@@ -660,12 +661,12 @@ end subroutine gen_ens_mv
 
 ! *** Write ensemble of state vectors ***
 
-    ! *** Open file and initialize dimensions and fields *** 
+    ! *** Open file and initialize dimensions and fields ***
     call check( NF90_CREATE(trim(filestr),NF90_NETCDF4,fileid) )
     call check( NF90_PUT_ATT(fileid,NF90_GLOBAL,'title', &
          'Ensemble matrix for NEMO') )
     call check( nf90_put_att(fileid, NF90_GLOBAL, "state_fields", trim(varstr)) )
-  
+
     ! define dimensions
     call check( NF90_DEF_DIM(fileid,'dim_state',dim_state,dimids(1)) )
     call check( NF90_DEF_DIM(fileid,'dim_ens',dim_ens,dimids(2)) )
@@ -679,7 +680,7 @@ end subroutine gen_ens_mv
 
     ! End define mode
     call check( NF90_ENDDEF(fileid) )
- 
+
     do i=1,dim_ens
        startv(1) = 1
        startv(2) = i
@@ -702,8 +703,8 @@ end subroutine gen_ens_mv
 
     use netcdf
 
-    implicit none 
- 
+    implicit none
+
 ! *** Arguments ***
     character(len=*), intent(in) :: path        !< Path of file
     character(len=*), intent(in) :: file_ens    !< Name stub of file
@@ -722,7 +723,7 @@ end subroutine gen_ens_mv
     time=10.0_pwp !TO DO: this is random, time has to be read in pdaf.nml and set here
 
     titleEns='Ensemble perturbation (ens-mean) for PDAF'
-    
+
     do i=1,dim_ens
 
        file_ensemble=trim(path)//trim(file_ens)//'_'//trim(str(i))//'.nc'
@@ -738,9 +739,9 @@ end subroutine gen_ens_mv
 !!
   subroutine write_field_mv(state, filename, title, &
        attime, nsteps, step)
-    
+
     use netcdf
-   
+
     implicit none
 
 ! *** Arguments ***
@@ -788,19 +789,19 @@ end subroutine gen_ens_mv
           call check( NF90_CREATE_PAR(trim(filename), NF90_NETCDF4, comm_filter, MPI_INFO_NULL, ncid))
        end if
        call check( NF90_PUT_ATT(ncid, NF90_GLOBAL, 'title', trim(title)))
-     
+
        ! define dimensions for NEMO-input file
        call check( NF90_DEF_DIM(ncid,'t', nsteps, dimid_time))
        call check( NF90_DEF_DIM(ncid, 'z', nlvls, dimid_lvls))
        call check( NF90_DEF_DIM(ncid, 'y', nlats, dimid_lat) )
        call check( NF90_DEF_DIM(ncid, 'x', nlons, dimid_lon) )
        call check( NF90_DEF_DIM(ncid, 'one', 1, dimid_one) )
-   
+
        dimids_field(4)=dimid_time
        dimids_field(3)=dimid_lvls
        dimids_field(2)=dimid_lat
        dimids_field(1)=dimid_lon
-       
+
        ! define variables
        call check( NF90_DEF_VAR(ncid, 'time', NF90_DOUBLE, id_time))
        call check( NF90_DEF_VAR(ncid, 'nav_lat', NF90_FLOAT, dimids_field(1:2), id_lat))
@@ -833,7 +834,7 @@ end subroutine gen_ens_mv
              call check( nf90_put_att(ncid, id_field, "missing_value", sfillval) )
           end if
        end do
-       
+
        ! End define mode
        call check( NF90_ENDDEF(ncid) )
 
@@ -872,7 +873,7 @@ end subroutine gen_ens_mv
     call check( nf90_VAR_PAR_ACCESS(NCID, id_time, NF90_COLLECTIVE) )
 !    call check( nf90_put_vara(ncid, id_time, timeField, start=(/step/), count=(/1/)))
     startt(1) = step
-    countt(1) = 1 
+    countt(1) = 1
     call check( nf90_put_var(ncid, id_time, timeField, startt(1:1), countt(1:1)))
 
     ! Backwards transformation of state
@@ -885,7 +886,7 @@ end subroutine gen_ens_mv
           tmp_4d = 1.0e20_pwp
           call state2field(state, tmp_4d, sfields(i)%off, sfields(i)%ndims)
        else
-          stmp_4d = 1.0e20 
+          stmp_4d = 1.0e20
           call state2field(state, stmp_4d, sfields(i)%off, sfields(i)%ndims)
        end if
 
@@ -902,8 +903,8 @@ end subroutine gen_ens_mv
        startt(3) = 1
        countt(3) = nlvls
        startt(4) = step
-       countt(4) = 1 
-    
+       countt(4) = 1
+
        if (sfields(i)%ndims==3) then
           startt(3) = 1
           countt(3) = nlvls
@@ -915,7 +916,7 @@ end subroutine gen_ens_mv
           end if
        else
           startt(3) = step
-          countt(3) = 1 
+          countt(3) = 1
 
           if (sgldbl_io=='dbl') then
              call check( nf90_put_var(ncid, id_field, tmp_4d, startt(1:3), countt(1:3)))
@@ -937,9 +938,9 @@ end subroutine gen_ens_mv
 !> Write increment file
 !!
   subroutine write_increment(state, filename, id_field)
-    
+
     use netcdf
-   
+
     implicit none
 
 ! *** Arguments ***
@@ -967,7 +968,7 @@ end subroutine gen_ens_mv
     ! Fixme
     timeInIncr(1)=incrTime !time for direct initialisation in Nemo (time of restart file which is used for adding to increment file)
     bgnTimeInterv(1)=startEnsTime !Start date of interval on which increment is valid (later for time ramp initialisation of  increment)
-    finTimeInterv(1)=endEnsTime !End date of interval on which increment is valid (later for time rap init of increment)! 
+    finTimeInterv(1)=endEnsTime !End date of interval on which increment is valid (later for time rap init of increment)!
 
     if (verbose_io>0 .and. mype==0) &
          write (*,'(8x,a)') '--- Write increment file'
@@ -982,18 +983,18 @@ end subroutine gen_ens_mv
 
     call check( NF90_PUT_ATT(ncid,  NF90_GLOBAL, 'title', &
          'Increment matrix for NEMO-PDAF coupling'))
-     
+
     ! define dimensions for NEMO-input file
     call check( NF90_DEF_DIM(ncid, 't', 1, dimid_time))
     call check( NF90_DEF_DIM(ncid, 'z', nlvls, dimid_lvls))
     call check( NF90_DEF_DIM(ncid, 'y', nlats, dimid_lat) )
     call check( NF90_DEF_DIM(ncid, 'x', nlons, dimid_lon) )
-   
+
     dimids_field(4)=dimid_time
     dimids_field(3)=dimid_lvls
     dimids_field(2)=dimid_lat
     dimids_field(1)=dimid_lon
-       
+
     ! define variables
     call check( NF90_DEF_VAR(ncid, 'nav_lat', NF90_FLOAT, dimids_field(1:2), id_lat))
     call check( NF90_DEF_VAR(ncid, 'nav_lon', NF90_FLOAT, dimids_field(1:2), id_lon))
@@ -1006,7 +1007,7 @@ end subroutine gen_ens_mv
 
     call check( NF90_DEF_VAR(ncid, 'time', NF90_DOUBLE, id_time))
     call check( NF90_DEF_VAR(ncid, 'z_inc_dateb', NF90_DOUBLE, id_dateb))
-    call check( NF90_DEF_VAR(ncid, 'z_inc_datef', NF90_DOUBLE, id_datef)) 
+    call check( NF90_DEF_VAR(ncid, 'z_inc_datef', NF90_DOUBLE, id_datef))
 
     do i = 1, n_fields
 
@@ -1028,7 +1029,7 @@ end subroutine gen_ens_mv
        call check( nf90_put_att(ncid, id_incr, "_FillValue", fillval) )
        call check( nf90_put_att(ncid, id_incr, "missing_value", fillval) )
     end do
-       
+
     ! End define mode
     call check( NF90_ENDDEF(ncid) )
 
@@ -1075,13 +1076,13 @@ end subroutine gen_ens_mv
        startt(3) = 1
        countt(3) = nlvls
        startt(4) = 1
-       countt(4) = 1 
-           
+       countt(4) = 1
+
        if (sfields(i)%ndims==3) then
           countt(3) = nlvls
           call check( nf90_put_var(ncid, id_incr, tmp_4d, startt, countt))
        else
-          countt(3) = 1 
+          countt(3) = 1
           call check( nf90_put_var(ncid, id_incr, tmp_4d, startt(1:3), countt(1:3)))
        end if
 
@@ -1100,7 +1101,7 @@ end subroutine gen_ens_mv
   subroutine update_restart_mv(state, state_tmp)
 
     use netcdf
-   
+
     implicit none
 
 ! *** Arguments ***
@@ -1116,16 +1117,16 @@ end subroutine gen_ens_mv
     character(len=30) :: rst_file     ! Name of restart file
 
 
-    ! Attention in run script copy restart file from time of DA to file 'restart_trc_in_befDA.nc' 
+    ! Attention in run script copy restart file from time of DA to file 'restart_trc_in_befDA.nc'
 
-    !Write oxy to TRNOXY of restart file (now, time t) -> 
+    !Write oxy to TRNOXY of restart file (now, time t) ->
     !restart Nemo with nn_euler=0 (TRBOXY is oxy for t-Delta t)
 
     ! Store name of restart file
     rst_file = sfields(1)%rst_file
 
     if (verbose_io>0) &
-         write (*,'(a,3x,a,1x,a)') 'NEMO-PDAF', '--- Overwrite restart file:',trim(path_restart)//trim(rst_file) 
+         write (*,'(a,3x,a,1x,a)') 'NEMO-PDAF', '--- Overwrite restart file:',trim(path_restart)//trim(rst_file)
 
     if (.not. allocated(tmp_4d)) allocate(tmp_4d(ni_p, nj_p, nk_p, 1))
 
@@ -1144,14 +1145,14 @@ end subroutine gen_ens_mv
        if (trim(sfields(i)%rst_file) /= trim(rst_file)) then
        ! Open other restart file and retrieve field ids
           if (verbose_io>0 .and. mype==0) &
-               write (*,'(a, 3x,a,1x,a)') 'NEMO-PDAF', '--- Open restart file:',trim(path_restart)//trim(sfields(i)%rst_file) 
+               write (*,'(a, 3x,a,1x,a)') 'NEMO-PDAF', '--- Open restart file:',trim(path_restart)//trim(sfields(i)%rst_file)
           if (npes==1) then
              call check( nf90_open(trim(path_restart)//trim(sfields(i)%rst_file),NF90_WRITE, ncid))
           else
              call check( nf90_open_par(trim(path_restart)//trim(sfields(i)%rst_file), &
                   NF90_WRITE, comm_filter, MPI_INFO_NULL, ncid))
           end if
-          
+
           ! Store name of restart file
           rst_file = sfields(i)%rst_file
 
@@ -1159,7 +1160,7 @@ end subroutine gen_ens_mv
 
        ! Retrieve field IDs
        call check( nf90_inq_varid(ncid, trim(sfields(i)%name_rest_n), id_var_n))
-       call check( nf90_inq_varid(ncid, trim(sfields(i)%name_rest_b), id_var_b)) 
+       call check( nf90_inq_varid(ncid, trim(sfields(i)%name_rest_b), id_var_b))
 
 
        ! backwards transformation state - only if not done by write_increment before
@@ -1176,8 +1177,8 @@ end subroutine gen_ens_mv
        startt(3) = 1
        countt(3) = nlvls
        startt(4) = 1
-       countt(4) = 1 
-       
+       countt(4) = 1
+
        if (sfields(i)%ndims==3) then
           call check( nf90_put_var(ncid, id_var_n, tmp_4d, startt, countt))
        else
@@ -1222,7 +1223,7 @@ end subroutine gen_ens_mv
 !================================================================================
 
 !> Check status of NC operation
-!!   
+!!
   subroutine check(status)
 
     use netcdf
@@ -1230,13 +1231,13 @@ end subroutine gen_ens_mv
 ! *** Aruments ***
     integer, intent ( in) :: status   ! Reading status
 
-    if(status /= nf90_noerr) then 
+    if(status /= nf90_noerr) then
        print *, trim(nf90_strerror(status))
        call abort_parallel()
     end if
 
   end subroutine check
- 
+
 
 ! ==============================================================================
 
@@ -1261,7 +1262,7 @@ end subroutine gen_ens_mv
     if (path(strlength:strlength) /= '/') then
        path = trim(path) // '/'
     end if
-    
+
   end subroutine add_slash
 
 

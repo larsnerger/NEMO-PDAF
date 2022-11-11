@@ -29,6 +29,9 @@ module mod_statevector_pdaf
      integer :: salt = 0
      integer :: uvel = 0
      integer :: vvel = 0
+     ! Biogeochemistry
+     integer,dimension(16) :: bgc1 = 0
+     integer,dimension(3)  :: bgc2 = 0
   end type field_ids
 
   ! Declare Fortran type holding the definitions for model fields
@@ -66,6 +69,15 @@ module mod_statevector_pdaf
   ! Variables to handle multiple fields in the state vector
   integer :: n_fields      !< number of fields in state vector
 
+  ! Variables to activate a field from the namelist
+  logical :: sv_temp = .false. ! Whether to include temperature in state vector
+  logical :: sv_salt = .false. ! Whether to include salinity in state vector
+  logical :: sv_ssh = .false.  ! Whether to include SSH in state vector
+  logical :: sv_uvel = .false. ! Whether to include u-velocity in state vector
+  logical :: sv_vvel = .false. ! Whether to include v-velocity in state vector
+  logical,dimension(16) :: sv_bgc1 = .false. ! Whether to include ERGOM in state vector
+  logical,dimension(3)  :: sv_bgc2 = .false. ! Whether to include diagnosed ERGOM variables
+
 contains
 
 !> This routine initializes the array id
@@ -77,15 +89,8 @@ contains
 ! *** Arguments ***
     integer, intent(out) :: nfields
 
-! *** Local variables *** 
+! *** Local variables ***
     integer :: cnt               ! Counter
-
-    ! Variables to activate a field from the namelist
-    logical :: sv_temp = .false. ! Whether to include temperature in state vector
-    logical :: sv_salt = .false. ! Whether to include salinity in state vector
-    logical :: sv_ssh = .false.  ! Whether to include SSH in state vector
-    logical :: sv_uvel = .false. ! Whether to include u-velocity in state vector
-    logical :: sv_vvel = .false. ! Whether to include v-velocity in state vector
 
     ! Namelist to define active parts of state vector
     namelist /state_vector/ screen, &
@@ -130,6 +135,20 @@ contains
        id%vvel = cnt
     end if
 
+    do id_bgc1 = 1, 16
+      if (sv_bgc1(id_bgc1)) then
+        cnt = cnt + 1
+        id%bgc1(id_bgc1) = cnt
+      end if
+    end do
+
+    do id_bgc2 = 1, 3
+      if (sv_bgc2(id_bgc2)) then
+        cnt = cnt + 1
+        id%bgc2(id_bgc2) = cnt
+      end if
+    end do
+
     ! Set number of fields in state vector
     nfields = cnt
 
@@ -148,7 +167,7 @@ contains
 
     implicit none
 
-! *** Local variables *** 
+! *** Local variables ***
     integer :: id_var            ! Index of a variable in state vector
 
     namelist /sfields_nml/ sfields
@@ -235,6 +254,151 @@ contains
        sfields(id_var)%trafo_shift = 0.0
     endif
 
+    ! BGC
+    do id_bgc1 = 1, 16
+      if (sv_bgc1(id_bgc1)) then
+        id_var=id%bgc1(id_bgc1)
+        sfields(id_var)%ndims = 3
+        sfields(id_var)%dim = sdim3d
+        sfields(id_var)%file = 'NORDIC_1d_ERGOM_T_'
+        sfields(id_var)%rst_file = 'restart_trc_in.nc'
+        sfields(id_var)%transform = 0
+        sfields(id_var)%trafo_shift = 0.0
+
+        select case (id_bgc1)
+        case (1)
+          sfields(id_var)%variable = 'NH4'
+          sfields(id_var)%name_incr = 'bckinnh4'
+          sfields(id_var)%name_rest_n = 'TRNNH4'
+          sfields(id_var)%name_rest_b = 'TRBNH4'
+          sfields(id_var)%unit = 'mmol m-3'
+        case (2)
+          sfields(id_var)%variable = 'NO3'
+          sfields(id_var)%name_incr = 'bckinno3'
+          sfields(id_var)%name_rest_n = 'TRNNO3'
+          sfields(id_var)%name_rest_b = 'TRBNO3'
+          sfields(id_var)%unit = 'mmol m-3'
+        case (3)
+          sfields(id_var)%variable = 'PO4'
+          !sfields(id_var)%name_incr = 'bckinpo3'
+          sfields(id_var)%name_rest_n = 'TRNPO4'
+          sfields(id_var)%name_rest_b = 'TRBPO4'
+          sfields(id_var)%unit = 'mmol m-3'
+        case (4)
+          sfields(id_var)%variable = 'DIA'
+          sfields(id_var)%name_incr = 'bckindia'
+          sfields(id_var)%name_rest_n = 'TRNDIA'
+          sfields(id_var)%name_rest_b = 'TRBDIA'
+          sfields(id_var)%unit = 'mmol m-3'
+        case (5)
+          sfields(id_var)%variable = 'FLA'
+          sfields(id_var)%name_incr = 'bckinfla'
+          sfields(id_var)%name_rest_n = 'TRNFLA'
+          sfields(id_var)%name_rest_b = 'TRBFLA'
+          sfields(id_var)%unit = 'mmol m-3'
+        case (6)
+          sfields(id_var)%variable = 'CYA'
+          sfields(id_var)%name_incr = 'bckincya'
+          sfields(id_var)%name_rest_n = 'TRNCYA'
+          sfields(id_var)%name_rest_b = 'TRBCYA'
+          sfields(id_var)%unit = 'mmol m-3'
+        case (7)
+          sfields(id_var)%variable = 'MEZ'
+          !sfields(id_var)%name_incr = ''
+          sfields(id_var)%name_rest_n = 'TRNMEZ'
+          sfields(id_var)%name_rest_b = 'TRBMEZ'
+          sfields(id_var)%unit = 'mmol m-3'
+        case (8)
+          sfields(id_var)%variable = 'MIZ'
+          !sfields(id_var)%name_incr = ''
+          sfields(id_var)%name_rest_n = 'TRNMIZ'
+          sfields(id_var)%name_rest_b = 'TRBMIZ'
+          sfields(id_var)%unit = 'mmol m-3'
+        case (9)
+          sfields(id_var)%variable = 'DET'
+          !sfields(id_var)%name_incr = ''
+          sfields(id_var)%name_rest_n = 'TRNDET'
+          sfields(id_var)%name_rest_b = 'TRBDET'
+          sfields(id_var)%unit = 'mmol m-3'
+        case (10)
+          sfields(id_var)%variable = 'DETs'
+          !sfields(id_var)%name_incr = ''
+          sfields(id_var)%name_rest_n = 'TRNDETs'
+          sfields(id_var)%name_rest_b = 'TRBDETs'
+          sfields(id_var)%unit = 'mmol m-3'
+        case (11)
+          sfields(id_var)%variable = 'LDON'
+          !sfields(id_var)%name_incr = ''
+          sfields(id_var)%name_rest_n = 'TRNLDON'
+          sfields(id_var)%name_rest_b = 'TRBLDON'
+          sfields(id_var)%unit = 'mmol m-3'
+        case (12)
+          sfields(id_var)%variable = 'SIL'
+          !sfields(id_var)%name_incr = ''
+          sfields(id_var)%name_rest_n = 'TRNSIL'
+          sfields(id_var)%name_rest_b = 'TRBSIL'
+          sfields(id_var)%unit = 'mmol m-3'
+        case (13)
+          sfields(id_var)%variable = 'DIC'
+          !sfields(id_var)%name_incr = ''
+          sfields(id_var)%name_rest_n = 'TRNDIC'
+          sfields(id_var)%name_rest_b = 'TRBDIC'
+          sfields(id_var)%unit = 'mmol m-3'
+        case (14)
+          sfields(id_var)%variable = 'OXY'
+          sfields(id_var)%name_incr = 'bckinoxy'
+          sfields(id_var)%name_rest_n = 'TRNOXY'
+          sfields(id_var)%name_rest_b = 'TRBOXY'
+          sfields(id_var)%unit = 'mmol m-3'
+        case (15)
+          sfields(id_var)%variable = 'ALK'
+          !sfields(id_var)%name_incr = ''
+          sfields(id_var)%name_rest_n = 'TRNALK'
+          sfields(id_var)%name_rest_b = 'TRBALK'
+          sfields(id_var)%unit = 'mmol m-3'
+        case (16)
+          sfields(id_var)%variable = 'FE'
+          !sfields(id_var)%name_incr = ''
+          sfields(id_var)%name_rest_n = 'TRNFE'
+          sfields(id_var)%name_rest_b = 'TRBFE'
+          sfields(id_var)%unit = 'mmol m-3'
+        end select
+      end if
+    end do
+
+    do id_bgc2 = 1, 3
+      if (sv_bgc2(id_bgc2)) then
+        id_var=id%bgc2(id_bgc2)
+        sfields(id_var)%ndims = 3
+        sfields(id_var)%dim = sdim3d
+        sfields(id_var)%file = 'NORDIC_1d_ERGOM_T_'
+        !sfields(id_var)%rst_file = ''
+        sfields(id_var)%transform = 0
+        sfields(id_var)%trafo_shift = 0.0
+
+        select case (id_bgc2)
+        case (1)
+          sfields(id_var)%variable = 'xpco2'
+          !sfields(id_var)%name_incr = ''
+          !sfields(id_var)%name_rest_n = ''
+          !sfields(id_var)%name_rest_b = ''
+          sfields(id_var)%unit = 'micro atm'
+        case (2)
+          sfields(id_var)%variable = 'xph'
+          !sfields(id_var)%name_incr = ''
+          !sfields(id_var)%name_rest_n = ''
+          !sfields(id_var)%name_rest_b = ''
+          sfields(id_var)%unit = '-'
+        case (3)
+          sfields(id_var)%variable = 'xchl'
+          !sfields(id_var)%name_incr = ''
+          !sfields(id_var)%name_rest_n = ''
+          !sfields(id_var)%name_rest_b = ''
+          sfields(id_var)%unit = 'mg m-3'
+        end select
+      end if
+    end do
+
     open (500,file='namelist_cfg.pdaf')
     read (500,NML=sfields_nml)
     close (500)
@@ -269,7 +433,7 @@ contains
     integer, intent(out) :: dim_state    !< Global dimension of state vector
     integer, intent(out) :: dim_state_p  !< Local dimension of state vector
 
-! *** Local variables *** 
+! *** Local variables ***
     integer :: i                 ! Counters
 
 
@@ -301,8 +465,8 @@ contains
 
 ! *** Write information about the state vector ***
 
-    if (mype==0) then 
-       write (*,'(/a,2x,a)') 'NEMO-PDAF', '*** Setup of state vector ***' 
+    if (mype==0) then
+       write (*,'(/a,2x,a)') 'NEMO-PDAF', '*** Setup of state vector ***'
        write (*,'(a,5x,a,i5)') 'NEMO-PDAF', '--- Number of fields in state vector:', n_fields
        if (npes==1) then
           write (*,'(a,5x,a2,3x,a8,6x,a5,7x,a3,7x,a6)') 'NEMO-PDAF','ID', 'variable', 'ndims', 'dim', 'offset'
