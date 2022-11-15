@@ -91,10 +91,12 @@ contains
 
 ! *** Local variables ***
     integer :: cnt               ! Counter
+    integer :: id_bgc1           ! Counter
+    integer :: id_bgc2           ! Counter
 
     ! Namelist to define active parts of state vector
     namelist /state_vector/ screen, &
-         sv_temp, sv_salt, sv_ssh, sv_uvel, sv_vvel
+         sv_temp, sv_salt, sv_ssh, sv_uvel, sv_vvel, sv_bgc1, sv_bgc2
 
 
 ! **********************
@@ -169,6 +171,8 @@ contains
 
 ! *** Local variables ***
     integer :: id_var            ! Index of a variable in state vector
+    integer :: id_bgc1           ! Counter
+    integer :: id_bgc2           ! Counter
 
     namelist /sfields_nml/ sfields
 ! *** Specifications for each model field in state vector ***
