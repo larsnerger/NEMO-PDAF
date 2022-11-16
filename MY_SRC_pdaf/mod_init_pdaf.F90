@@ -216,6 +216,13 @@ contains
 ! *****************************************************
 
     call PDAF_set_comm_pdaf(COMM_ensemble)
+      
+
+! **************************************
+! *** Initialise PDAF arrays for IAU ***
+! **************************************
+
+    call asm_inc_init_PDAF()
 
 
 ! *****************************************************
@@ -263,13 +270,6 @@ contains
             ' in initialization of PDAF - stopping! (PE ', mype_ens, ')'
        call abort_parallel()
     end if
-      
-
-! **************************************
-! *** Initialise PDAF arrays for IAU ***
-! **************************************
-
-    call asm_inc_init_PDAF()
 
 
 ! **********************************
