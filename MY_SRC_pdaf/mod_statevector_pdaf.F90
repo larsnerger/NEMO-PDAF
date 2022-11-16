@@ -41,7 +41,7 @@ module mod_statevector_pdaf
      character(len=20) :: name_rest_n = '' ! Name of field in restart file (n-field)
      character(len=20) :: name_rest_b = '' ! Name of field in restart file (b-field)
      character(len=50) :: file = ''        ! File name stub to read field from
-     character(len=50) :: file_state = ''  ! File name stub to read field from
+     character(len=50) :: file_state = ''  ! File name to read model state 
      character(len=30) :: rst_file = ''    ! Name of restart file
      character(len=20) :: unit = ''        ! Unit of variable
      integer :: transform = 0              ! Type of variable transformation
@@ -50,6 +50,7 @@ module mod_statevector_pdaf
                      ! 0: no limits, 1: lower limit, 2: upper limit, 3: both limits
      real(pwp) :: max_limit = 0.0_pwp      ! Upper limit of variable
      real(pwp) :: min_limit = 0.0_pwp      ! Lower limit of variable
+     real(pwp) :: ensscale = 1.0           ! Scale factor for initial ensemble perturbations
   end type state_field
 
 

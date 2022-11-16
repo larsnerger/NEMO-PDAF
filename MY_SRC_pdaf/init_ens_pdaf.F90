@@ -28,6 +28,8 @@ subroutine init_ens_pdaf(filtertype, dim_p, dim_ens, state_p, Uinv, &
        only: path_inistate, path_ens, file_ens, file_covar, &
              read_state_mv, &
              read_ens_mv_loop, read_ens, gen_ens_mv
+  use mod_statevector_pdaf, &
+       only: n_fields, sfields
 
   implicit none
 
@@ -44,6 +46,7 @@ subroutine init_ens_pdaf(filtertype, dim_p, dim_ens, state_p, Uinv, &
 
 ! *** Local variables ***
   integer :: i, member              ! Counters
+  integer :: id_field               ! Id of field in state vector
   real(pwp) :: ens_mean             ! Ensemble mean value
   real(pwp) :: inv_dim_ens          ! Inverse ensemble size
 
@@ -115,7 +118,7 @@ subroutine init_ens_pdaf(filtertype, dim_p, dim_ens, state_p, Uinv, &
   end if
 
 
-  ! *** Replace the ensemble central state if specified ***
+  ! *** Replace the ensemble central state if specified and scale variance of model fields ***
 
   if (type_central_state==1 .or. type_central_state==2) then
 
@@ -125,19 +128,31 @@ subroutine init_ens_pdaf(filtertype, dim_p, dim_ens, state_p, Uinv, &
 
      if (mype_filter==0) write (*,'(a, 1x,a)') 'NEMO-PDAF', 'Set central state of ensemble'
 
-!$OMP PARALLEL DO private(k, ens_mean)
-     do i = 1, dim_p
-        ens_mean = 0.0_pwp
-        do member = 1, dim_ens
-           ens_mean = ens_mean + inv_dim_ens*ens_p(i, member)
-        end do
-        
-        do member = 1, dim_ens
-           ens_p(i, member ) = ensscale*(ens_p(i, member) - ens_mean) + state_p(i)
-        end do
-     end do
-!$OMP END PARALLEL DO
 
+     ! Scale ensemble perturbations - either all using 'ensscale' or field-wise
+     do id_field = 1, n_fields
+
+        ! Check general setting of ensscale
+        if (ensscale /= 1.0 .and. sfields(id_field)%ensscale == 1.0) &
+             sfields(id_field)%ensscale = ensscale
+
+        if (mype_filter==0) write (*,'(a, 1x,a,1x,a,1x,a,f12.4)') &
+             'NEMO-PDAF', 'Scale field variance',sfields(id_field)%variable,'by',sfields(id_field)%ensscale
+
+!$OMP PARALLEL DO private(member, ens_mean)
+        do i = 1 + sfields(id_field)%off, sfields(id_field)%off + sfields(id_field)%dim
+           ens_mean = 0.0_pwp
+           do member = 1, dim_ens
+              ens_mean = ens_mean + inv_dim_ens*ens_p(i, member)
+           end do
+        
+           do member = 1, dim_ens
+              ens_p(i, member ) = sfields(id_field)%ensscale * (ens_p(i, member) - ens_mean) + state_p(i)
+           end do
+        end do
+!$OMP END PARALLEL DO
+     end do
+     
   end if
 
 end subroutine init_ens_pdaf
