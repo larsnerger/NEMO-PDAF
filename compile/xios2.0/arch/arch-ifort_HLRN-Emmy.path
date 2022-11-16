@@ -1,0 +1,7 @@
+NETCDF_INCDIR="-I/sw/dataformats/netcdf-parallel/ompi/intel.22/4.9.1/skl/include"
+NETCDF_LIBDIR="-L/sw/dataformats/netcdf-parallel/ompi/intel.22/4.9.1/skl/lib"
+NETCDF_LIB="-lnetcdf -lnetcdff -lm -ldl"
+HDF5_INCDIR="-I/sw/dataformats/hdf5-parallel/ompi/intel.22/1.12.1/skl/include"
+HDF5_LIBDIR="-L/sw/dataformats/hdf5-parallel/ompi/intel.22/1.12.1/skl/lib"
+HDF5_LIB="-lhdf5_hl -lhdf5 -lhdf5 -lz -lcurl"
+
