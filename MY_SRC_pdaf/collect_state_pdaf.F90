@@ -45,7 +45,7 @@ subroutine collect_state_pdaf(dim_p, state_p)
      cnt = sfields(id%ssh)%off + 1
      do j = 1 + j0, nj_p + j0
         do i = 1 + i0, ni_p + i0
-           state_p(cnt) = sshb(i, j)
+           state_p(cnt) = sshn(i, j)
            cnt = cnt + 1
         end do
      end do
@@ -62,7 +62,7 @@ subroutine collect_state_pdaf(dim_p, state_p)
      do k = 1, nk_p
         do j = 1 + j0, nj_p + j0
            do i = 1 + i0, ni_p + i0
-              state_p(cnt) = tsb(i, j, k, jp_tem)
+              state_p(cnt) = tsn(i, j, k, jp_tem)
               cnt = cnt + 1
            end do
         end do
@@ -75,7 +75,7 @@ subroutine collect_state_pdaf(dim_p, state_p)
      do k = 1, nk_p
         do j = 1 + j0, nj_p + j0
            do i = 1 + i0, ni_p + i0
-              state_p(cnt) = tsb(i, j, k, jp_sal)
+              state_p(cnt) = tsn(i, j, k, jp_sal)
               cnt = cnt + 1
            end do
         end do
@@ -88,7 +88,7 @@ subroutine collect_state_pdaf(dim_p, state_p)
      do k = 1, nk_p
         do j = 1 + j0, nj_p + j0
            do i = 1 + i0, ni_p + i0
-              state_p(cnt) = ub(i, j, k)
+              state_p(cnt) = un(i, j, k)
               cnt = cnt + 1
            end do
         end do
@@ -101,7 +101,7 @@ subroutine collect_state_pdaf(dim_p, state_p)
      do k = 1, nk_p
         do j = 1 + j0, nj_p + j0
            do i = 1 + i0, ni_p + i0
-              state_p(cnt) = vb(i, j, k)
+              state_p(cnt) = vn(i, j, k)
               cnt = cnt + 1
            end do
         end do
