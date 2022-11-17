@@ -15,6 +15,8 @@
 module mod_statevector_pdaf
 
   use mod_kind_pdaf
+  use par_trc, &
+       only: jptra
   implicit none
   save
 
@@ -30,8 +32,8 @@ module mod_statevector_pdaf
      integer :: uvel = 0
      integer :: vvel = 0
      ! Biogeochemistry
-     integer,dimension(16) :: bgc1 = 0
-     integer,dimension(3)  :: bgc2 = 0
+     integer, allocatable  :: bgc1(:)
+     integer, allocatable  :: bgc2(:)
   end type field_ids
 
   ! Declare Fortran type holding the definitions for model fields
@@ -39,6 +41,7 @@ module mod_statevector_pdaf
      integer :: ndims = 0                  ! Number of field dimensions (2 or 3)
      integer :: dim = 0                    ! Dimension of the field
      integer :: off = 0                    ! Offset of field in state vector
+     integer :: jptrc = 0                  ! index of the tracer in nemo tracer variable
      character(len=10) :: variable = ''    ! Name of field
      character(len=20) :: name_incr = ''   ! Name of field in increment file
      character(len=20) :: name_rest_n = '' ! Name of field in restart file (n-field)
@@ -60,6 +63,11 @@ module mod_statevector_pdaf
 
   integer :: screen=1          ! Verbosity flag
 
+  integer :: n_trc = 0         !< number of tracer fields
+  integer :: n_bgc1 = 0         !< number of undiagnosed tracer fields
+  integer :: n_bgc2 = 0         !< number of diagnosed tracer fields
+  integer, parameter :: jptra2 = 3         !< number of total diagnosed tracer fields
+
   ! Type variable holding field IDs in state vector
   type(field_ids) :: id
 
@@ -75,8 +83,8 @@ module mod_statevector_pdaf
   logical :: sv_ssh = .false.  ! Whether to include SSH in state vector
   logical :: sv_uvel = .false. ! Whether to include u-velocity in state vector
   logical :: sv_vvel = .false. ! Whether to include v-velocity in state vector
-  logical,dimension(16) :: sv_bgc1 = .false. ! Whether to include ERGOM in state vector
-  logical,dimension(3)  :: sv_bgc2 = .false. ! Whether to include diagnosed ERGOM variables
+  logical, allocatable :: sv_bgc1(:) ! Whether to include ERGOM in state vector
+  logical, allocatable :: sv_bgc2(:) ! Whether to include diagnosed ERGOM variables
 
 contains
 
@@ -94,10 +102,19 @@ contains
     integer :: id_bgc1           ! Counter
     integer :: id_bgc2           ! Counter
 
+    allocate(id%bgc1(jptra))
+    allocate(id%bgc2(jptra2))
+    id%bgc1(:)=0
+    id%bgc2(:)=0
+
+    allocate(sv_bgc1(jptra))
+    allocate(sv_bgc2(jptra2))
+    sv_bgc1(:) = .false.
+    sv_bgc2(:) = .false.
+
     ! Namelist to define active parts of state vector
     namelist /state_vector/ screen, &
          sv_temp, sv_salt, sv_ssh, sv_uvel, sv_vvel, sv_bgc1, sv_bgc2
-
 
 ! **********************
 ! *** Initialization ***
@@ -137,22 +154,25 @@ contains
        id%vvel = cnt
     end if
 
-    do id_bgc1 = 1, 16
+    do id_bgc1 = 1, jptra
       if (sv_bgc1(id_bgc1)) then
         cnt = cnt + 1
         id%bgc1(id_bgc1) = cnt
+        n_bgc1=n_bgc1+1
       end if
     end do
 
-    do id_bgc2 = 1, 3
+    do id_bgc2 = 1, jptra2
       if (sv_bgc2(id_bgc2)) then
         cnt = cnt + 1
         id%bgc2(id_bgc2) = cnt
+        n_bgc2=n_bgc2+1
       end if
     end do
 
     ! Set number of fields in state vector
     nfields = cnt
+    n_trc=n_bgc1+n_bgc2
 
   end subroutine init_id
 ! ===================================================================================
@@ -259,11 +279,12 @@ contains
     endif
 
     ! BGC
-    do id_bgc1 = 1, 16
+    do id_bgc1 = 1, jptra
       if (sv_bgc1(id_bgc1)) then
         id_var=id%bgc1(id_bgc1)
         sfields(id_var)%ndims = 3
         sfields(id_var)%dim = sdim3d
+        sfields(id_var)%jptrc = id_bgc1
         sfields(id_var)%file = 'NORDIC_1d_ERGOM_T_'
         sfields(id_var)%rst_file = 'restart_trc_in.nc'
         sfields(id_var)%transform = 0
@@ -370,11 +391,12 @@ contains
       end if
     end do
 
-    do id_bgc2 = 1, 3
+    do id_bgc2 = 1, jptra2
       if (sv_bgc2(id_bgc2)) then
         id_var=id%bgc2(id_bgc2)
         sfields(id_var)%ndims = 3
         sfields(id_var)%dim = sdim3d
+        sfields(id_var)%jptrc = id_bgc2
         sfields(id_var)%file = 'NORDIC_1d_ERGOM_T_'
         !sfields(id_var)%rst_file = ''
         sfields(id_var)%transform = 0

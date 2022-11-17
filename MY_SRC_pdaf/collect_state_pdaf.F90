@@ -2,26 +2,28 @@
 !!
 !! The routine has to initialize the statevector of PDAF
 !! from the fields of the model.
-!! 
+!!
 !! The routine is executed by each process that is
 !! participating in the model integrations.
-!! 
+!!
 !! **Calling Sequence**
-!! 
+!!
 !!  - Called from:* `PDAFomi_assimilate_local`/`mod_assimilation_pdaf` (as U_coll_state)
-!! 
+!!
 subroutine collect_state_pdaf(dim_p, state_p)
 
   use mod_kind_pdaf
-  use mod_parallel_pdaf, &
-       only: mype=>mype_ens
   use mod_statevector_pdaf, &
-       only: sfields, id
+       only: sfields, id, n_trc, n_bgc1, n_bgc2, &
+       jptra, jptra2, sv_bgc1, sv_bgc2
+  use mod_aux_pdaf, &
+       only: field2state, transform_field_mv
+
   use mod_nemo_pdaf, &
        only: ni_p, nj_p, nk_p, i0, j0, &
-       jp_tem, jp_sal, ndastp
-  use oce, &
-       only: sshb, tsb, ub, vb
+       jp_tem, jp_sal, ndastp, &
+       trb, sshb, tsb, ub, vb, &
+       xph, xpco2, xchl
 
   implicit none
 
@@ -30,7 +32,8 @@ subroutine collect_state_pdaf(dim_p, state_p)
   real(pwp), intent(inout) :: state_p(dim_p) !< PE-local state vector
 
 ! *** Local variables ***
-  integer :: i, j, k, cnt       ! Counters
+  real(pwp) :: missing_value = 1e20
+  integer :: i       ! Counters
 
 
   ! *********************************
@@ -42,13 +45,9 @@ subroutine collect_state_pdaf(dim_p, state_p)
 
   ! SSH
   if (id%ssh > 0) then
-     cnt = sfields(id%ssh)%off + 1
-     do j = 1 + j0, nj_p + j0
-        do i = 1 + i0, ni_p + i0
-           state_p(cnt) = sshb(i, j)
-           cnt = cnt + 1
-        end do
-     end do
+     call field2state(sshb(1+i0:ni_p+i0, 1+j0:nj_p+j0), &
+                      state_p, &
+                      sfields(id%ssh)%off, sfields(id%ssh)%ndims, missing_value)
   end if
 
 
@@ -58,54 +57,59 @@ subroutine collect_state_pdaf(dim_p, state_p)
 
   ! T
   if (id%temp > 0) then
-     cnt = sfields(id%temp)%off + 1
-     do k = 1, nk_p
-        do j = 1 + j0, nj_p + j0
-           do i = 1 + i0, ni_p + i0
-              state_p(cnt) = tsb(i, j, k, jp_tem)
-              cnt = cnt + 1
-           end do
-        end do
-     end do
+     call field2state(tsb(1+i0:ni_p+i0, 1+j0:nj_p+j0, 1:nk_p, jp_tem), &
+                      state_p, &
+                      sfields(id%temp)%off, sfields(id%temp)%ndims, missing_value)
   end if
 
   ! S
   if (id%salt > 0) then
-     cnt = sfields(id%salt)%off + 1
-     do k = 1, nk_p
-        do j = 1 + j0, nj_p + j0
-           do i = 1 + i0, ni_p + i0
-              state_p(cnt) = tsb(i, j, k, jp_sal)
-              cnt = cnt + 1
-           end do
-        end do
-     end do
+     call field2state(tsb(1+i0:ni_p+i0, 1+j0:nj_p+j0, 1:nk_p, jp_sal), &
+                      state_p, &
+                      sfields(id%salt)%off, sfields(id%salt)%ndims, missing_value)
   end if
 
   ! U
   if (id%uvel > 0) then
-     cnt = sfields(id%uvel)%off + 1
-     do k = 1, nk_p
-        do j = 1 + j0, nj_p + j0
-           do i = 1 + i0, ni_p + i0
-              state_p(cnt) = ub(i, j, k)
-              cnt = cnt + 1
-           end do
-        end do
-     end do
+       call field2state(ub(1+i0:ni_p+i0, 1+j0:nj_p+j0, 1:nk_p), &
+                      state_p, &
+                      sfields(id%uvel)%off, sfields(id%uvel)%ndims, missing_value)
   end if
 
   ! V
   if (id%vvel > 0) then
-     cnt = sfields(id%vvel)%off + 1
-     do k = 1, nk_p
-        do j = 1 + j0, nj_p + j0
-           do i = 1 + i0, ni_p + i0
-              state_p(cnt) = vb(i, j, k)
-              cnt = cnt + 1
-           end do
-        end do
-     end do
+      call field2state(vb(1+i0:ni_p+i0, 1+j0:nj_p+j0, 1:nk_p), &
+                   state_p, &
+                   sfields(id%vvel)%off, sfields(id%vvel)%ndims, missing_value)
   end if
+
+  do i = 1, jptra
+    if (sv_bgc1(i)) then
+      call field2state(trb(1+i0:ni_p+i0, 1+j0:nj_p+j0, 1:nk_p, sfields(id%bgc1(i))%jptrc), &
+             state_p, &
+             sfields(id%bgc1(i))%off, sfields(id%bgc1(i))%ndims, missing_value)
+    end if
+  end do
+
+  do i = 1, jptra2
+    if (sv_bgc2(i)) then
+      select case (i)
+      case (1)
+      call field2state(xpco2(1+i0:ni_p+i0, 1+j0:nj_p+j0, 1:nk_p), &
+             state_p, &
+             sfields(id%bgc2(i))%off, sfields(id%bgc2(i))%ndims, missing_value)
+      case (2)
+      call field2state(xph(1+i0:ni_p+i0, 1+j0:nj_p+j0, 1:nk_p), &
+             state_p, &
+             sfields(id%bgc2(i))%off, sfields(id%bgc2(i))%ndims, missing_value)
+      case (3)
+      call field2state(xchl(1+i0:ni_p+i0, 1+j0:nj_p+j0, 1:nk_p), &
+             state_p, &
+             sfields(id%bgc2(i))%off, sfields(id%bgc2(i))%ndims, missing_value)
+      end select
+    end if
+  end do
+
+  call transform_field_mv(1, state_p)
 
 end subroutine collect_state_pdaf
