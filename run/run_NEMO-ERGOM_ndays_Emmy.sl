@@ -8,7 +8,7 @@
 #SBATCH --partition=standard96
 ##SBATCH --mail-user=
 #SBATCH --mail-type=END
-##SBATCH -A 
+##SBATCH -A  PROJECT-ID
 
 # Run script for HLRN-EMMY using Intel compiler version 2022
 
@@ -44,8 +44,8 @@ restart_dis=1
 
 # Whether the script prepares the run directories, runs the experiment, does posptprocessing
 prepare=1
-dorun=0
-postproc=0
+dorun=1
+postproc=1
 
 # ---------------------------------------------------------------------------------------------------
 
