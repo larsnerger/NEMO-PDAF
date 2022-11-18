@@ -7,9 +7,19 @@ module mod_nemo_pdaf
        only: jpk, jpiglo, jpjglo
   use dom_oce, &
        only: nldi, nldj, nlei, nlej, glamt, gphit, &
-       nimpp, njmpp, tmask, gdept_1d, ndastp
+       nimpp, njmpp, tmask, gdept_1d, ndastp, neuler
   use par_oce, &
        only: jp_tem, jp_sal
+  use trc, &
+       only: trb, trn
+  use oce, &
+       only: sshb, tsb, ub, vb, &
+            sshn, tsn, un, vn
+  use lbclnk, &
+       only: lbc_lnk, lbc_lnk_multi
+  use sms_ergom, &
+       only: xph, xpco2, xchl
+
 
   ! *** NEMO model variables
 !  integer :: jpiglo, jpjglo, jpk        ! Global NEMO grid dimensions
@@ -20,13 +30,13 @@ module mod_nemo_pdaf
 !  real, allocatable :: glamt(:,:)       ! Longitudes
 !  real, allocatable :: gphit(:,:)       ! Latitudes
 !  real, allocatable :: gdept_1d(:)      ! Depths
-  
+
   ! *** Other grid variables
   real(pwp), allocatable :: tmp_4d(:,:,:,:)     ! 4D array used to represent full NEMO grid box
   real(4), allocatable :: stmp_4d(:,:,:,:)      ! 4D array used to represent full NEMO grid box
   real(pwp), allocatable :: lat1(:), lon1(:)    ! Vectors holding latitude and latitude
 
-  integer :: dim_2d                        ! Dimension of 2d grid box    
+  integer :: dim_2d                        ! Dimension of 2d grid box
   integer :: nwet                          ! Number of surface wet grid points
   integer :: nwet3d                        ! Number of 3d wet grid points
   integer, allocatable :: wet_pts(:,:)     ! Index array for wet grid points
@@ -36,13 +46,13 @@ module mod_nemo_pdaf
   integer, allocatable :: nlev_wet_2d(:,:) ! Number of wet layers for ij position in 2d box
 
   integer :: use_wet_state=0               ! 1: State vector contains full columns when surface grid point is wet
-                                           ! 2: State vector only contains wet grid points 
+                                           ! 2: State vector only contains wet grid points
                                            ! other: State vector contains 2d/3d grid box
 
   integer :: i0, j0                         ! PE-local halo offsets
   integer :: ni_p, nj_p, nk_p               ! Size of decomposed grid
   integer :: istart, jstart                 ! Start indices for internal local domain
-  integer :: dim_2d_p, dim_3d_p             ! Dimension of 2d/3d grid box of sub-domain   
+  integer :: dim_2d_p, dim_3d_p             ! Dimension of 2d/3d grid box of sub-domain
   real(pwp), allocatable :: lat1_p(:), lon1_p(:) ! Vectors holding latitude and latitude for decomposition
   real(pwp), allocatable :: lats(:,:), lons(:,:) ! Arrays for interior coordinates (no halo)
   integer :: sdim2d, sdim3d                 ! 2D/3D dimension of field in state vector
@@ -61,7 +71,7 @@ contains
   !!
   subroutine set_nemo_grid()
 
-    use mod_kind_pdaf 
+    use mod_kind_pdaf
     use mod_parallel_pdaf, &
          only: mype_model
     use PDAFomi, &
@@ -74,7 +84,7 @@ contains
     integer :: i, j, k
     integer :: cnt, cnt_all, cnt_layers
     real(pwp) :: lim_coords(2,2)      ! Limiting coordinates of sub-domain
-    
+
 ! *** set dimension of 2d and 3d fields in state vector ***
 
     ! Local dimensions
@@ -134,7 +144,7 @@ contains
              if (tmask(i + i0, j + j0, 1) == 1.0_pwp) then
                 cnt = cnt + 1
 
-                wet_pts(1,cnt) = i + nimpp + nldi - 2     ! Global longitude index 
+                wet_pts(1,cnt) = i + nimpp + nldi - 2     ! Global longitude index
                 wet_pts(2,cnt) = j + njmpp + nldj - 2     ! Global latitude index
                 wet_pts(6,cnt) = i                ! Longitude index in subdomain
                 wet_pts(7,cnt) = j                ! Latitidue index in subdomain
@@ -165,7 +175,7 @@ contains
 
     end if
 
-  ! Initialize index arrays 
+  ! Initialize index arrays
   ! - for mapping from vector of wet points to 2d box
   ! - for mapping from vector model grid point coordinats to wet point index
   ! - for retrieving number of wet layers at a grid point coordinate
@@ -196,7 +206,7 @@ contains
 ! ********************************************************
 ! *** Set dimension of 2D and 3D field in state vector ***
 ! ********************************************************
-  
+
     if (use_wet_state==1) then
        ! State vector contains full columns when surface grid point is wet
        sdim3d = abs(nwet)*jpk

@@ -15,27 +15,34 @@ module mod_aux_pdaf
   implicit none
   save
 
-  interface state2field
-     module procedure state2field_dbl
-     module procedure state2field_sgl
-  end interface
+  interface field2state
+    module procedure field2state_2d
+    module procedure field2state_3d
+    module procedure field2state_4d
+  end interface 
   
+  interface state2field
+    module procedure state2field_2d
+    module procedure state2field_3d
+    module procedure state2field_4d_dbl
+    module procedure state2field_4d_sgl
+  end interface state2field
 contains
 !===============================================================================
 
 
 !> Convert from NEMO model field to state vector
 !!
-  subroutine field2state(field, state, offset, ndims, missval)
+  subroutine field2state_4d(field, state, offset, ndims, missval)
 
     implicit none
 
 ! *** Arguments ***
     real(pwp), intent(in)    :: field(:,:,:,:)   !< Model field
     real(pwp), intent(inout) :: state(:)         !< State vector
-    integer, intent(in) :: offset           !< Offset in state vector
-    integer, intent(in) :: ndims            !< Number of dimensions in field
-    real(pwp), intent(in) :: missval             !< missing value
+    integer,   intent(in)    :: offset           !< Offset in state vector
+    integer,   intent(in)    :: ndims            !< Number of dimensions in field
+    real(pwp), intent(in)    :: missval          !< missing value
 
 ! *** Local variables ***
     integer :: i, j, k
@@ -106,21 +113,140 @@ contains
        enddo
     end if
 
-  end subroutine field2state
+  end subroutine field2state_4d
+!==============================================================================
+
+!> Convert from NEMO model field to state vector
+!!
+  subroutine field2state_3d(field, state, offset, ndims, missval)
+
+    implicit none
+
+! *** Arguments ***
+    real(pwp), intent(in)    :: field(:,:,:)     !< Model field
+    real(pwp), intent(inout) :: state(:)         !< State vector
+    integer,   intent(in)    :: offset           !< Offset in state vector
+    integer,   intent(in)    :: ndims            !< Number of dimensions in field
+    real(pwp), intent(in)    :: missval          !< missing value
+
+! *** Local variables ***
+    integer :: i, j, k
+    integer :: cnt
+    integer :: n_levels
+
+
+! *** Set number of model layers ***
+    if (ndims == 3) then
+       n_levels = nlvls
+    else
+       n_levels = 1
+    end if
+
+
+! *** Initialize state vector from model field ***
+
+    if (use_wet_state==1) then
+       
+       do k = 1, n_levels
+!$OMP PARALLEL DO PRIVATE (i, cnt)
+          do i = 1, nwet
+             cnt = i + nwet*(k-1) + offset
+             if (k <= wet_pts(3,i)) then
+                state(cnt) = field(wet_pts(6, i), wet_pts(7, i), k)
+             end if
+          end do
+!$OMP END PARALLEL DO
+       end do
+
+    elseif (use_wet_state==2) then
+
+       if (ndims == 3) then
+          do i = 1, nwet
+             cnt = wet_pts(5,i) - 1 + offset
+             do k = 1, wet_pts(3,i)
+                state(cnt + k) = field(wet_pts(6, i), wet_pts(7, i), k)
+             end do
+          end do
+
+       else
+          do i = 1, nwet
+             cnt = offset + i
+             state(cnt) = field(wet_pts(6, i), wet_pts(7, i), 1)
+          end do
+       end if
+
+    else
+       cnt = 1 + offset
+       do k = 1, n_levels
+          do j = 1,nj_p
+             do i = 1, ni_p
+                if (abs(field(i,j,k)- missval) > 0.1_pwp) then 
+                   state(cnt) = field(i,j,k)
+                else
+                   state(cnt) = 0.0_pwp
+                endif
+                cnt = cnt + 1
+             enddo
+          enddo
+       enddo
+    end if
+
+  end subroutine field2state_3d
+!==============================================================================
+
+  !> Convert from NEMO model field to state vector
+!!
+  subroutine field2state_2d(field, state, offset, ndims, missval)
+
+    implicit none
+
+! *** Arguments ***
+    real(pwp), intent(in)    :: field(:,:)       !< Model field
+    real(pwp), intent(inout) :: state(:)         !< State vector
+    integer,   intent(in)    :: offset           !< Offset in state vector
+    integer,   intent(in)    :: ndims            !< Number of dimensions in field
+    real(pwp), intent(in)    :: missval          !< missing value
+
+! *** Local variables ***
+    integer :: i, j
+    integer :: cnt
+
+! *** Initialize state vector from model field ***
+
+    if ((use_wet_state==1) .or. (use_wet_state==2)) then
+       do i = 1, nwet
+          cnt = i + offset
+          state(cnt) = field(wet_pts(6, i), wet_pts(7, i))
+       end do
+    else
+       cnt = 1 + offset
+       do j = 1,nj_p
+          do i = 1, ni_p
+             if (abs(field(i,j)- missval) > 0.1_pwp) then 
+                state(cnt) = field(i,j)
+             else
+                state(cnt) = 0.0_pwp
+             endif
+             cnt = cnt + 1
+          enddo
+       enddo
+    end if
+
+  end subroutine field2state_2d
 
 !==============================================================================
 
 !> Convert from state vector to NEMO model field
 !!
-  subroutine state2field_dbl(state, field, offset, ndims)
+  subroutine state2field_4d_dbl(state, field, offset, ndims)
 
     implicit none
 
 ! *** Arguments ***
     real(pwp), intent(in)    :: state(:)         !< State vector
     real(pwp), intent(out)   :: field(:,:,:,:)   !< Model field
-    integer, intent(in) :: offset           !< Offset in state vector
-    integer, intent(in) :: ndims            !< Number of dimensions in field
+    integer,   intent(in)    :: offset           !< Offset in state vector
+    integer,   intent(in)    :: ndims            !< Number of dimensions in field
 
 ! *** Local variables ***
     integer :: i, j, k
@@ -186,21 +312,20 @@ contains
 
     end if
 
-  end subroutine state2field_dbl
-
+  end subroutine state2field_4d_dbl
 !==============================================================================
 
 !> Convert from state vector to NEMO model field
 !!
-  subroutine state2field_sgl(state, field, offset, ndims)
+  subroutine state2field_4d_sgl(state, field, offset, ndims)
 
     implicit none
 
 ! *** Arguments ***
     real(pwp), intent(in)    :: state(:)         !< State vector
-    real(4), intent(out)   :: field(:,:,:,:)   !< Model field
-    integer, intent(in) :: offset           !< Offset in state vector
-    integer, intent(in) :: ndims            !< Number of dimensions in field
+    real(4), intent(out)     :: field(:,:,:,:)   !< Model field
+    integer,   intent(in)    :: offset           !< Offset in state vector
+    integer,   intent(in)    :: ndims            !< Number of dimensions in field
 
 ! *** Local variables ***
     integer :: i, j, k
@@ -266,23 +391,136 @@ contains
 
     end if
 
-  end subroutine state2field_sgl
-
+  end subroutine state2field_4d_sgl
 !==============================================================================
 
+!> Convert from state vector to NEMO model field
+!!
+  subroutine state2field_3d(state, field, offset, ndims)
+
+    implicit none
+
+! *** Arguments ***
+    real(pwp), intent(in)    :: state(:)         !< State vector
+    real(pwp), intent(out)   :: field(:,:,:)     !< Model field
+    integer,   intent(in)    :: offset           !< Offset in state vector
+    integer,   intent(in)    :: ndims            !< Number of dimensions in field
+
+! *** Local variables ***
+    integer :: i, j, k
+    integer :: cnt
+    integer :: n_levels
+
+
+! *** Set number of model layers ***
+    if (ndims == 3) then
+       n_levels = nlvls
+    else
+       n_levels = 1
+    end if
+
+
+! *** Initialize model field from state vector
+
+    if (use_wet_state==1) then
+       
+       do k = 1, nlvls
+!$OMP PARALLEL DO PRIVATE (i, cnt)
+          do i = 1, nwet
+             cnt = i + nwet*(k-1) + offset
+             field(wet_pts(6, i), wet_pts(7, i), k) = state(cnt)
+          end do
+!$OMP END PARALLEL DO
+       end do
+
+    elseif (use_wet_state==2) then
+
+       if (ndims == 3) then
+
+!!!!$OMP PARALLEL DO PRIVATE (i, cnt)
+          do i = 1, nwet
+             cnt = wet_pts(5,i) - 1 + offset
+             do k = 1, wet_pts(3,i)
+                field(wet_pts(6, i), wet_pts(7, i), k) = state(cnt + k)
+             end do
+!!!!$OMP END PARALLEL DO
+          end do
+
+       else
+
+!!!!$OMP PARALLEL DO PRIVATE (i, cnt)
+          do i = 1, nwet
+             cnt = offset + i
+             field(wet_pts(6, i), wet_pts(7, i), 1) = state(cnt)
+!!!!$OMP END PARALLEL DO
+          end do
+
+       end if
+    else
+
+       cnt = 1 + offset
+       do k = 1, n_levels
+          do j = 1, nj_p
+             do i = 1, ni_p
+                field(i,j,k) = state(cnt) !convert to NEMO format (ntimec,nlvls,nlats,nlons)
+                cnt = cnt + 1
+             enddo
+          enddo
+       enddo
+
+    end if
+
+  end subroutine state2field_3d
+!==============================================================================
+!> Convert from state vector to NEMO model field
+!!
+  subroutine state2field_2d(state, field, offset, ndims)
+
+    implicit none
+
+! *** Arguments ***
+    real(pwp), intent(in)    :: state(:)         !< State vector
+    real(pwp), intent(out)   :: field(:,:)       !< Model field
+    integer,   intent(in)    :: offset           !< Offset in state vector
+    integer,   intent(in)    :: ndims            !< Number of dimensions in field
+
+! *** Local variables ***
+    integer :: i, j
+    integer :: cnt
+
+
+! *** Initialize model field from state vector
+
+    if ((use_wet_state==1) .or. (use_wet_state==2)) then
+       do i = 1, nwet
+          cnt = i + offset
+          field(wet_pts(6, i), wet_pts(7, i)) = state(cnt)
+       end do
+    else
+       cnt = 1 + offset
+       do j = 1, nj_p
+          do i = 1, ni_p
+             field(i,j) = state(cnt) !convert to NEMO format (ntimec,nlvls,nlats,nlons)
+             cnt = cnt + 1
+          enddo
+       enddo
+    end if
+
+  end subroutine state2field_2d
+!==============================================================================
 !> Transform field, e.g. to log and back
 !!
   subroutine transform_field(type, trafo, shift, state, dim, off, var)
 
     implicit none
 
-    integer, intent(in) :: type     !< Direction transformation
-    integer, intent(in) :: trafo    !< Type of transformation
-    real(pwp), intent(in)    :: shift    !< constant for shifting value in transformation
-    real(pwp), intent(inout) :: state(:) !< State vector
-    integer, intent(in) :: dim      !< dimension of field in state vector
-    integer, intent(in) :: off      !< Offset of field in state vector
-    character(len=*),intent(in) :: var      !< Name of variable
+    integer,         intent(in)    :: type     !< Direction transformation
+    integer,         intent(in)    :: trafo    !< Type of transformation
+    real(pwp),       intent(in)    :: shift    !< constant for shifting value in transformation
+    real(pwp),       intent(inout) :: state(:) !< State vector
+    integer,         intent(in)    :: dim      !< dimension of field in state vector
+    integer,         intent(in)    :: off      !< Offset of field in state vector
+    character(len=*),intent(in)    :: var      !< Name of variable
 
 
     if (type==1) then
@@ -334,19 +572,19 @@ contains
     implicit none
 
 ! *** Arguments ***
-    integer, intent(in) :: type     !< Direction of transformation
+    integer,   intent(in)    :: type     !< Direction of transformation
     real(pwp), intent(inout) :: state(:) !< State vector
 
 ! *** Local variables ***
-    integer :: i          ! Counters
-    integer :: trafo      ! Type of transformation
-    real(pwp)    :: shift      ! constant for shifting value in transformation
-    integer :: dim        ! dimension of field in state vector
-    integer :: off        ! Offset of field in state vector
-    character(len=10) :: var      ! Name of variable
-    integer :: dolimit    ! Whether to apply a min/max limit
-    real(pwp)    :: max_limit  ! Maximum limiting value
-    real(pwp)    :: min_limit  ! Minimum limiting value
+    integer           :: i          ! Counters
+    integer           :: trafo      ! Type of transformation
+    real(pwp)         :: shift      ! constant for shifting value in transformation
+    integer           :: dim        ! dimension of field in state vector
+    integer           :: off        ! Offset of field in state vector
+    character(len=10) :: var        ! Name of variable
+    integer           :: dolimit    ! Whether to apply a min/max limit
+    real(pwp)         :: max_limit  ! Maximum limiting value
+    real(pwp)         :: min_limit  ! Minimum limiting value
 
 
     do i = 1, n_fields
@@ -423,13 +661,13 @@ contains
     real(pwp), intent(inout) :: state(:) !< State vector
 
 ! *** Local variables ***
-    integer :: i, j       ! Counters
-    integer :: dim        ! dimension of field in state vector
-    integer :: off        ! Offset of field in state vector
-    character(len=10) :: var      ! Name of variable
-    integer :: dolimit    ! Whether to apply a min/max limit
-    real(pwp)    :: max_limit  ! Maximum limiting value
-    real(pwp)    :: min_limit  ! Minimum limiting value
+    integer           :: i, j       ! Counters
+    integer           :: dim        ! dimension of field in state vector
+    integer           :: off        ! Offset of field in state vector
+    character(len=10) :: var        ! Name of variable
+    integer           :: dolimit    ! Whether to apply a min/max limit
+    real(pwp)         :: max_limit  ! Maximum limiting value
+    real(pwp)         :: min_limit  ! Minimum limiting value
 
 
     do i = 1, n_fields
