@@ -10,10 +10,10 @@
   sv_salt=.true.
   sv_uvel=.true.
   sv_vvel=.true.
-  !sv_bgc1 contains the undiagnosed variables in ERGOM
+  !sv_bgc1 contains the prognostic variables in ERGOM
   ! 1:NH4  2:NO3   3:PO4   4:DIA  5:FLA  6:CYA  7:MEZ  8:MIZ
   ! 9:DET 10:DETs 11:LDON 12:SIL 13:DIC 14:OXY 15:ALK 16:FE
-  !sv_bgc2 contains the diagnosed variables in ERGOM
+  !sv_bgc2 contains the diagnostic variables in ERGOM
   ! 1:pCO2  2:PH   3:CHL 
   sv_bgc1(1)=.true.
   sv_bgc1(2)=.true.
