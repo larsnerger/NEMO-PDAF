@@ -47,7 +47,7 @@ module mod_statevector_pdaf
      character(len=20) :: name_rest_n = '' ! Name of field in restart file (n-field)
      character(len=20) :: name_rest_b = '' ! Name of field in restart file (b-field)
      character(len=50) :: file = ''        ! File name stub to read field from
-     character(len=50) :: file_state = ''  ! File name stub to read field from
+     character(len=50) :: file_state = ''  ! File name to read model state 
      character(len=30) :: rst_file = ''    ! Name of restart file
      character(len=20) :: unit = ''        ! Unit of variable
      integer :: transform = 0              ! Type of variable transformation
@@ -56,6 +56,7 @@ module mod_statevector_pdaf
                      ! 0: no limits, 1: lower limit, 2: upper limit, 3: both limits
      real(pwp) :: max_limit = 0.0_pwp      ! Upper limit of variable
      real(pwp) :: min_limit = 0.0_pwp      ! Lower limit of variable
+     real(pwp) :: ensscale = 1.0           ! Scale factor for initial ensemble perturbations
   end type state_field
 
 
@@ -64,8 +65,8 @@ module mod_statevector_pdaf
   integer :: screen=1          ! Verbosity flag
 
   integer :: n_trc = 0         !< number of tracer fields
-  integer :: n_bgc1 = 0         !< number of undiagnosed tracer fields
-  integer :: n_bgc2 = 0         !< number of diagnosed tracer fields
+  integer :: n_bgc1 = 0         !< number of prognostic tracer fields
+  integer :: n_bgc2 = 0         !< number of diagnostic tracer fields
   integer, parameter :: jptra2 = 3         !< number of total diagnosed tracer fields
 
   ! Type variable holding field IDs in state vector
@@ -310,70 +311,70 @@ contains
           sfields(id_var)%name_rest_b = 'TRBPO4'
           sfields(id_var)%unit = 'mmol m-3'
         case (4)
-          sfields(id_var)%variable = 'DIA'
-          sfields(id_var)%name_incr = 'bckindia'
-          sfields(id_var)%name_rest_n = 'TRNDIA'
-          sfields(id_var)%name_rest_b = 'TRBDIA'
-          sfields(id_var)%unit = 'mmol m-3'
-        case (5)
-          sfields(id_var)%variable = 'FLA'
-          sfields(id_var)%name_incr = 'bckinfla'
-          sfields(id_var)%name_rest_n = 'TRNFLA'
-          sfields(id_var)%name_rest_b = 'TRBFLA'
-          sfields(id_var)%unit = 'mmol m-3'
-        case (6)
-          sfields(id_var)%variable = 'CYA'
-          sfields(id_var)%name_incr = 'bckincya'
-          sfields(id_var)%name_rest_n = 'TRNCYA'
-          sfields(id_var)%name_rest_b = 'TRBCYA'
-          sfields(id_var)%unit = 'mmol m-3'
-        case (7)
-          sfields(id_var)%variable = 'MEZ'
-          !sfields(id_var)%name_incr = ''
-          sfields(id_var)%name_rest_n = 'TRNMEZ'
-          sfields(id_var)%name_rest_b = 'TRBMEZ'
-          sfields(id_var)%unit = 'mmol m-3'
-        case (8)
-          sfields(id_var)%variable = 'MIZ'
-          !sfields(id_var)%name_incr = ''
-          sfields(id_var)%name_rest_n = 'TRNMIZ'
-          sfields(id_var)%name_rest_b = 'TRBMIZ'
-          sfields(id_var)%unit = 'mmol m-3'
-        case (9)
-          sfields(id_var)%variable = 'DET'
-          !sfields(id_var)%name_incr = ''
-          sfields(id_var)%name_rest_n = 'TRNDET'
-          sfields(id_var)%name_rest_b = 'TRBDET'
-          sfields(id_var)%unit = 'mmol m-3'
-        case (10)
-          sfields(id_var)%variable = 'DETs'
-          !sfields(id_var)%name_incr = ''
-          sfields(id_var)%name_rest_n = 'TRNDETs'
-          sfields(id_var)%name_rest_b = 'TRBDETs'
-          sfields(id_var)%unit = 'mmol m-3'
-        case (11)
-          sfields(id_var)%variable = 'LDON'
-          !sfields(id_var)%name_incr = ''
-          sfields(id_var)%name_rest_n = 'TRNLDON'
-          sfields(id_var)%name_rest_b = 'TRBLDON'
-          sfields(id_var)%unit = 'mmol m-3'
-        case (12)
           sfields(id_var)%variable = 'SIL'
           !sfields(id_var)%name_incr = ''
           sfields(id_var)%name_rest_n = 'TRNSIL'
           sfields(id_var)%name_rest_b = 'TRBSIL'
           sfields(id_var)%unit = 'mmol m-3'
+        case (5)
+          sfields(id_var)%variable = 'DIA'
+          sfields(id_var)%name_incr = 'bckindia'
+          sfields(id_var)%name_rest_n = 'TRNDIA'
+          sfields(id_var)%name_rest_b = 'TRBDIA'
+          sfields(id_var)%unit = 'mmol m-3'
+        case (6)
+          sfields(id_var)%variable = 'FLA'
+          sfields(id_var)%name_incr = 'bckinfla'
+          sfields(id_var)%name_rest_n = 'TRNFLA'
+          sfields(id_var)%name_rest_b = 'TRBFLA'
+          sfields(id_var)%unit = 'mmol m-3'
+        case (7)
+          sfields(id_var)%variable = 'CYA'
+          sfields(id_var)%name_incr = 'bckincya'
+          sfields(id_var)%name_rest_n = 'TRNCYA'
+          sfields(id_var)%name_rest_b = 'TRBCYA'
+          sfields(id_var)%unit = 'mmol m-3'
+        case (8)
+          sfields(id_var)%variable = 'MEZ'
+          !sfields(id_var)%name_incr = ''
+          sfields(id_var)%name_rest_n = 'TRNMEZ'
+          sfields(id_var)%name_rest_b = 'TRBMEZ'
+          sfields(id_var)%unit = 'mmol m-3'
+        case (9)
+          sfields(id_var)%variable = 'MIZ'
+          !sfields(id_var)%name_incr = ''
+          sfields(id_var)%name_rest_n = 'TRNMIZ'
+          sfields(id_var)%name_rest_b = 'TRBMIZ'
+          sfields(id_var)%unit = 'mmol m-3'
+        case (10)
+          sfields(id_var)%variable = 'DET'
+          !sfields(id_var)%name_incr = ''
+          sfields(id_var)%name_rest_n = 'TRNDET'
+          sfields(id_var)%name_rest_b = 'TRBDET'
+          sfields(id_var)%unit = 'mmol m-3'
+        case (11)
+          sfields(id_var)%variable = 'DETs'
+          !sfields(id_var)%name_incr = ''
+          sfields(id_var)%name_rest_n = 'TRNDETs'
+          sfields(id_var)%name_rest_b = 'TRBDETs'
+          sfields(id_var)%unit = 'mmol m-3'
+        case (12)
+          sfields(id_var)%variable = 'FE'
+          !sfields(id_var)%name_incr = ''
+          sfields(id_var)%name_rest_n = 'TRNFE'
+          sfields(id_var)%name_rest_b = 'TRBFE'
+          sfields(id_var)%unit = 'mmol m-3'
         case (13)
+          sfields(id_var)%variable = 'LDON'
+          !sfields(id_var)%name_incr = ''
+          sfields(id_var)%name_rest_n = 'TRNLDON'
+          sfields(id_var)%name_rest_b = 'TRBLDON'
+          sfields(id_var)%unit = 'mmol m-3'
+        case (14)
           sfields(id_var)%variable = 'DIC'
           !sfields(id_var)%name_incr = ''
           sfields(id_var)%name_rest_n = 'TRNDIC'
           sfields(id_var)%name_rest_b = 'TRBDIC'
-          sfields(id_var)%unit = 'mmol m-3'
-        case (14)
-          sfields(id_var)%variable = 'OXY'
-          sfields(id_var)%name_incr = 'bckinoxy'
-          sfields(id_var)%name_rest_n = 'TRNOXY'
-          sfields(id_var)%name_rest_b = 'TRBOXY'
           sfields(id_var)%unit = 'mmol m-3'
         case (15)
           sfields(id_var)%variable = 'ALK'
@@ -382,10 +383,10 @@ contains
           sfields(id_var)%name_rest_b = 'TRBALK'
           sfields(id_var)%unit = 'mmol m-3'
         case (16)
-          sfields(id_var)%variable = 'FE'
-          !sfields(id_var)%name_incr = ''
-          sfields(id_var)%name_rest_n = 'TRNFE'
-          sfields(id_var)%name_rest_b = 'TRBFE'
+          sfields(id_var)%variable = 'OXY'
+          sfields(id_var)%name_incr = 'bckinoxy'
+          sfields(id_var)%name_rest_n = 'TRNOXY'
+          sfields(id_var)%name_rest_b = 'TRBOXY'
           sfields(id_var)%unit = 'mmol m-3'
         end select
       end if
