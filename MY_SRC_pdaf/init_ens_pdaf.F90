@@ -202,6 +202,7 @@ end subroutine init_ens_pdaf
 
       ! get eigenvalue and eigenvectors from file
       readmean = .false.
+      eofV = 0.0
       state_p = 0.0
       call read_eof_cov(filename_cov, dim_state, dim_p, rank, state_p, eofV, svals, readmean)
 
