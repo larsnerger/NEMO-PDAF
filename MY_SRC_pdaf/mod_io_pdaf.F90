@@ -582,9 +582,10 @@ end subroutine gen_ens_mv
         n_rank = 1
       endif
 
+if (mype==0) write (*,*) 'WARNING: reading of fields from covariance matrix fixed to 5!!!!!!'
       ! loop over all fields
       !do i_field = 1, n_fields
-      do i_field = 1, 5 !Change n_fields to 5 to avoid reading ERGOM vairables from covariance matrix file.
+      do i_field = 1, 5 !Change n_fields to 5 to avoid reading ERGOM variables from covariance matrix file.
 
         call check( NF90_INQ_VARID(ncid, &
                    trim(sfields(i_field)%variable)//trim(vartypes(i_var)), &
