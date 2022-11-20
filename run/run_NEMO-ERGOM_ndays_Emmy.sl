@@ -6,9 +6,9 @@
 #SBATCH --time=1:00:00
 ##SBATCH --partition=standard96:test
 #SBATCH --partition=standard96
-##SBATCH --mail-user=
+#SBATCH --mail-user=lars.nerger@awi.de
 #SBATCH --mail-type=END
-##SBATCH -A  PROJECT-ID
+#SBATCH -A zzz0002
 
 # Run script for HLRN-EMMY using Intel compiler version 2022
 
@@ -80,14 +80,37 @@ export archive
 
 # ---------------------------------------------------------------------------------------------------
 
+tstr0=`date +%Y%m%d`
+
+sdte=`date --date "$dte0 0 day" +'%Y-%m-%d %H:%M:%S'`
+yyp1=`date +'%Y' -d"$sdte"`                     #  formating
+mmp1=`date +'%m' -d"$sdte"`
+ddp1=`date +'%d' -d"$sdte"`
+tstr="$yy$mm$dd"
+tstr_ini=$tstr    # Store date at start of run
+
+# ---------------------------------------------------------------------------------------------------
+
 # Prepare run directories and files
 if [ $prepare -eq 1 ]; then
 
-    # Prepare PDAF namelist
-    cp $setup_store/namelist_cfg.pdaf_template ./
-    cat namelist_cfg.pdaf_template     \
-	| sed -e "s:_DIMENS_:$NENS:"     \
-	> namelist_cfg.pdaf
+    if [ $tstr -eq $initial_date ]; then
+
+	# Prepare PDAF namelist
+	cp $setup_store/namelist_cfg.pdaf_template ./
+	cat namelist_cfg.pdaf_template     \
+	    | sed -e "s:_DIMENS_:$NENS:"     \
+	    | sed -e "s:_RESTART_:.false.:"     \
+	    > namelist_cfg.pdaf
+    else
+
+    	# Prepare PDAF namelist
+	cat namelist_cfg.pdaf_template     \
+	    | sed -e "s:_DIMENS_:$NENS:"     \
+	    | sed -e "s:_RESTART_:.true.:"     \
+	    > namelist_cfg.pdaf
+
+    fi # if [ $tstr -eq $initial_date ]
 
     echo 'Prepare XML files ...'
     for((i=1;i<=$NENS;i++))
@@ -120,53 +143,58 @@ if [ $prepare -eq 1 ]; then
     done
     echo "</simulation>" >> iodef.xml
 
-    # set working directories for different ensemble members
-    echo ' '
-    echo 'Creating ensemble working directories...'
-    for((i=1;i<=$NENS;i++))
-      do
-      ENSstr=`printf %03d $i`
-      if [ ! -d ${ENSstr} ]; then
-	  mkdir -p ${ENSstr}
-      else
-	  rm -rf ${ENSstr}    # delete output from previous test runs
-      fi
-      wdir=`pwd`/${ENSstr}
-      export wdir
-      mkdir -p $wdir/output/restarts
-      mkdir -p $wdir/output/log
-      mkdir -p $wdir/output/data
-      mkdir -p $wdir/output/DA
-      mkdir -p $wdir/initialstate
-      mkdir -p $wdir/forcing
+    if [ $tstr -eq $initial_date ]; then
 
-      echo 'Run directory: ' $wdir
-    done
-    echo ' '
+        # set working directories for different ensemble members
+	echo ' '
+	echo 'Creating ensemble working directories...'
+	for((i=1;i<=$NENS;i++))
+	  do
+	  ENSstr=`printf %03d $i`
+	  if [ ! -d ${ENSstr} ]; then
+	      mkdir -p ${ENSstr}
+	  else
+	      rm -rf ${ENSstr}    # delete output from previous test runs
+	  fi
+	  wdir=`pwd`/${ENSstr}
+	  export wdir
+	  mkdir -p $wdir/output/restarts
+	  mkdir -p $wdir/output/log
+	  mkdir -p $wdir/output/data
+	  mkdir -p $wdir/output/DA
+	  mkdir -p $wdir/initialstate
+	  mkdir -p $wdir/forcing
+
+	  echo 'Run directory: ' $wdir
+	done
+	echo ' '
 
 # ---------------------------------------------------------------------------------------------------
-    echo 'linking executables...'
-    for((i=1;i<=$NENS;i++))
-      do
-      ENSstr=`printf %03d $i`
-      wdir=`pwd`/${ENSstr}
-      export wdir
-      if [ ! -f ${ENSstr}/xios_server.exe ]; then
-	  ln -s $xios_exe_dir/xios_server.exe $wdir/
-      fi
-      if [ ! -f ${ENSstr}/nemo.exe ]; then
-	  ln -s $nemo_exe_dir/nemo.exe $wdir/
-      fi
-    done
-# ---------------------------------------------------------------------------------------------------
-    tstr0=`date +%Y%m%d`
+	echo 'linking executables...'
+	for((i=1;i<=$NENS;i++))
+	  do
+	  ENSstr=`printf %03d $i`
+	  wdir=`pwd`/${ENSstr}
+	  export wdir
+	  if [ ! -f ${ENSstr}/xios_server.exe ]; then
+	      ln -s $xios_exe_dir/xios_server.exe $wdir/
+	  fi
+	  if [ ! -f ${ENSstr}/nemo.exe ]; then
+	      ln -s $nemo_exe_dir/nemo.exe $wdir/
+	  fi
+	done
 
-    sdte=`date --date "$dte0 0 day" +'%Y-%m-%d %H:%M:%S'`
-    yyp1=`date +'%Y' -d"$sdte"`                     #  formating
-    mmp1=`date +'%m' -d"$sdte"`
-    ddp1=`date +'%d' -d"$sdte"`
-    tstr="$yy$mm$dd"
-    tstr_ini=$tstr    # Store date at start of run
+    fi # if [ $tstr -eq $initial_date ]
+    
+# ---------------------------------------------------------------------------------------------------
+#    tstr0=`date +%Y%m%d`
+
+#    sdte=`date --date "$dte0 0 day" +'%Y-%m-%d %H:%M:%S'`
+#    yyp1=`date +'%Y' -d"$sdte"`                     #  formating
+#    mmp1=`date +'%m' -d"$sdte"`
+#    ddp1=`date +'%d' -d"$sdte"`
+#    tstr="$yy$mm$dd"
+#    tstr_ini=$tstr    # Store date at start of run
 
     echo 'Simulation with nemo executable from ' $nemo_exe_dir
 
@@ -220,50 +248,52 @@ if [ $prepare -eq 1 ]; then
     echo 'Preparing forcing'
     echo 'Time period from ' $tstr 'until' $tstr2
 
-    echo 'Linking files with fixed values ...'
-    for((i=1;i<=$NENS;i++))
-      do
-      ENSstr=`printf %03d $i`
-      wdir=`pwd`/${ENSstr}
-      export wdir
-    #echo 'linking input...'
-      if [ ! -f $wdir/forcing/river_data.nc ]; then
-	  ln -s $inputs_nc/river_data.nc $wdir/forcing
-      fi
-      if [ ! -f $wdir/forcing/dum12_y2015.nc ]; then
-	  ln -s $inputs_nc/dum12_y2015.nc $wdir/forcing
-      fi
-      if [ ! -f $wdir/forcing/weights_bilin.nc ]; then
-	  ln -s $inputs_nc/weights_bilin.nc $wdir/forcing
-	  ln -s $inputs_nc/weights_bilin.nc $wdir/
-      fi
-      if [ ! -f $wdir/forcing/weights_bicubic.nc ]; then
-	  ln -s $inputs_nc/weights_bicubic.nc $wdir/forcing
-	  ln -s $inputs_nc/weights_bicubic.nc $wdir/
-      fi
+    if [ $tstr -eq $initial_date ]; then
 
-      ln -s $inputs_nc/bdytide*.nc            $wdir/
-      ln -s $inputs_nc/coordinates.bdy.nc     $wdir/
-      ln -s $inputs_nc/chlorophyll.nc         $wdir/
-      ln -s $inputs_nc/benthos_null.nc        $wdir/
-      ln -s $inputs_nc/domain_cfg.nc          $wdir/
-      ln -s $inputs_nc/eddy_viscosity_3D.nc   $wdir/
-      ln -s $inputs_nc/eddy_diffusivity_3D.nc $wdir/
+	echo 'Linking files with fixed values ...'
+	for((i=1;i<=$NENS;i++))
+	  do
+	  ENSstr=`printf %03d $i`
+	  wdir=`pwd`/${ENSstr}
+	  export wdir
+    #echo 'linking input...'
+	  if [ ! -f $wdir/forcing/river_data.nc ]; then
+	      ln -s $inputs_nc/river_data.nc $wdir/forcing
+	  fi
+	  if [ ! -f $wdir/forcing/dum12_y2015.nc ]; then
+	      ln -s $inputs_nc/dum12_y2015.nc $wdir/forcing
+	  fi
+	  if [ ! -f $wdir/forcing/weights_bilin.nc ]; then
+	      ln -s $inputs_nc/weights_bilin.nc $wdir/forcing
+	      ln -s $inputs_nc/weights_bilin.nc $wdir/
+	  fi
+	  if [ ! -f $wdir/forcing/weights_bicubic.nc ]; then
+	      ln -s $inputs_nc/weights_bicubic.nc $wdir/forcing
+	      ln -s $inputs_nc/weights_bicubic.nc $wdir/
+	  fi
+
+	  ln -s $inputs_nc/bdytide*.nc            $wdir/
+	  ln -s $inputs_nc/coordinates.bdy.nc     $wdir/
+	  ln -s $inputs_nc/chlorophyll.nc         $wdir/
+	  ln -s $inputs_nc/benthos_null.nc        $wdir/
+	  ln -s $inputs_nc/domain_cfg.nc          $wdir/
+	  ln -s $inputs_nc/eddy_viscosity_3D.nc   $wdir/
+	  ln -s $inputs_nc/eddy_diffusivity_3D.nc $wdir/
     #ln -s $inputs_nc/np_ergom.nc            $wdir/
 
     # for ERGOM_allEuler
-      ln -s $inputs_nc/bfr_roughness.nc       $wdir/
-      ln -s $inputs_nc/carbon.nc              $wdir/
-      ln -s $inputs_nc/iron_dummy.nc          $wdir/
-      ln -s $inputs_nc/np_ergom_c16.nc        $wdir/
-      ln -s $inputs_nc/sed_init_1k.nc         $wdir/
-      ln -s $inputs_nc/z2d_ben201401.nc       $wdir/
+	  ln -s $inputs_nc/bfr_roughness.nc       $wdir/
+	  ln -s $inputs_nc/carbon.nc              $wdir/
+	  ln -s $inputs_nc/iron_dummy.nc          $wdir/
+	  ln -s $inputs_nc/np_ergom_c16.nc        $wdir/
+	  ln -s $inputs_nc/sed_init_1k.nc         $wdir/
+	  ln -s $inputs_nc/z2d_ben201401.nc       $wdir/
 
     # for PDAF
-      ln -s $setup_store/*.txt       $wdir/
-
-    done
-
+	  ln -s $setup_store/*.txt       $wdir/
+	done
+    fi # if [ $tstr -eq $initial_date ]
+    
     #Loop over dates
 
     ndays=0
@@ -409,7 +439,7 @@ if [ $prepare -eq 1 ]; then
     FILE40Xflag=.false. #oce grid_V
     FILE50Xflag=.false. #oce grid_W
     FILE60Xflag=.false. #ice ice_grid_T
-    FILE70Xflag=.false. #.false. #ergom _ERGOM_T
+    FILE70Xflag=.true. #.false. #ergom _ERGOM_T
 
     for((i=1;i<=$NENS;i++))
       do
