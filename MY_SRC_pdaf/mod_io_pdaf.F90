@@ -14,7 +14,7 @@ module mod_io_pdaf
 
   ! Include information on state vector
   use mod_statevector_pdaf, &
-       only: id, sfields, n_fields
+       only: id, sfields, n_fields, n_fields_covar
 
   ! Include parallelization information
   use mod_parallel_pdaf, &
@@ -530,6 +530,7 @@ end subroutine gen_ens_mv
     integer                :: maxvar                   ! Counter to distinguish reading EOFs and mean state
     integer                :: i_rank, i_field, i_var   ! counter
     integer                :: n_rank                   ! last dimension of variables
+    integer                :: n_fields_read            ! Number of fields to read
     real(pwp)              :: missing_value=1.e+20_pwp ! missing value in variables
     character(len=5)       :: vartypes(2)              ! variable types: svd and mean
 
@@ -582,10 +583,17 @@ end subroutine gen_ens_mv
         n_rank = 1
       endif
 
-if (mype==0) write (*,*) 'WARNING: reading of fields from covariance matrix fixed to 5!!!!!!'
+      ! Determine number of fields to read from covariance matrix
+      if (n_fields_covar <= 0) THEN
+         n_fields_read = n_fields
+      else
+         n_fields_read = n_fields_covar
+         if (verbose_io>0 .and. mype==0) &
+              WRITE(*, '(a,1x,a,i)') 'NEMO-PDAF', '--- Number of fields to read', n_fields_read
+      end if
+
       ! loop over all fields
-      !do i_field = 1, n_fields
-      do i_field = 1, 5 !Change n_fields to 5 to avoid reading ERGOM variables from covariance matrix file.
+      do i_field = 1, n_fields_read
 
         call check( NF90_INQ_VARID(ncid, &
                    trim(sfields(i_field)%variable)//trim(vartypes(i_var)), &

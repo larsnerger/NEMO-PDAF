@@ -5,14 +5,15 @@
 
 &state_vector
   screen=1
+  n_fields_covar=5  ! Number of fileds in covar file (=0 to read full state)
   sv_ssh=.true.
   sv_temp=.true.
   sv_salt=.true.
   sv_uvel=.true.
   sv_vvel=.true.
   !sv_bgc1 contains the prognostic variables in ERGOM
-  ! 1:NH4  2:NO3   3:PO4   4:DIA  5:FLA  6:CYA  7:MEZ  8:MIZ
-  ! 9:DET 10:DETs 11:LDON 12:SIL 13:DIC 14:OXY 15:ALK 16:FE
+  !  1:NH4  2:NO3  3:PO4   4:SIL  5:DIA   6:FLA  7:CYA  8:MEZ  
+  !  9:MIZ 10:DET 10:DETs 12:FE  13:LDON 14:DIC 15:ALK 16:OXY
   !sv_bgc2 contains the diagnostic variables in ERGOM
   ! 1:pCO2  2:PH   3:CHL 
   sv_bgc1(1)=.true.

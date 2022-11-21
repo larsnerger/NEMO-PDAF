@@ -76,16 +76,17 @@ module mod_statevector_pdaf
   type(state_field), allocatable :: sfields(:)
 
   ! Variables to handle multiple fields in the state vector
-  integer :: n_fields      !< number of fields in state vector
+  integer :: n_fields          !< number of fields in state vector
+  integer :: n_fields_covar=0  !< number of fields to read from covariance matrix file
 
   ! Variables to activate a field from the namelist
-  logical :: sv_temp = .false. ! Whether to include temperature in state vector
-  logical :: sv_salt = .false. ! Whether to include salinity in state vector
-  logical :: sv_ssh = .false.  ! Whether to include SSH in state vector
-  logical :: sv_uvel = .false. ! Whether to include u-velocity in state vector
-  logical :: sv_vvel = .false. ! Whether to include v-velocity in state vector
-  logical, allocatable :: sv_bgc1(:) ! Whether to include ERGOM in state vector
-  logical, allocatable :: sv_bgc2(:) ! Whether to include diagnosed ERGOM variables
+  logical :: sv_temp = .false. !< Whether to include temperature in state vector
+  logical :: sv_salt = .false. !< Whether to include salinity in state vector
+  logical :: sv_ssh = .false.  !< Whether to include SSH in state vector
+  logical :: sv_uvel = .false. !< Whether to include u-velocity in state vector
+  logical :: sv_vvel = .false. !< Whether to include v-velocity in state vector
+  logical, allocatable :: sv_bgc1(:) !< Whether to include ERGOM in state vector
+  logical, allocatable :: sv_bgc2(:) !< Whether to include diagnosed ERGOM variables
 
 contains
 
@@ -114,8 +115,9 @@ contains
     sv_bgc2(:) = .false.
 
     ! Namelist to define active parts of state vector
-    namelist /state_vector/ screen, &
-         sv_temp, sv_salt, sv_ssh, sv_uvel, sv_vvel, sv_bgc1, sv_bgc2
+    namelist /state_vector/ screen, n_fields_covar, &
+         sv_temp, sv_salt, sv_ssh, sv_uvel, sv_vvel, &
+         sv_bgc1, sv_bgc2
 
 ! **********************
 ! *** Initialization ***
