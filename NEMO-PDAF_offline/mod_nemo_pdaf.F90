@@ -5,6 +5,8 @@ module mod_nemo_pdaf
   integer :: nldi, nldj                 ! first inner index in i/j direction of sub-domain
   integer :: nlei, nlej                 ! last inner index in i/j direction of sub-domain
   integer :: nimpp, njmpp               ! start i,j of subdomain including halo
+  integer :: jptra = 16                 ! Number of prognostic ERGOM tracers
+  integer :: jptra2 = 3                 ! Number of diagnostic ERGOM tracers
 
   real, allocatable :: glamt(:,:)       ! Longitudes
   real, allocatable :: gphit(:,:)       ! Latitudes

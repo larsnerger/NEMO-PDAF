@@ -22,22 +22,24 @@ module mod_statevector_pdaf
      integer :: vvel
 
      ! ERGOM
-     integer :: oxy
+     integer, allocatable  :: bgc1(:)
+     integer, allocatable  :: bgc2(:)
   end type field_ids
 
   ! Declare Fortran type holding the definitions for model fields
   type state_field
-     integer :: ndims                  ! Number of field dimensions (2 or 3)
-     integer :: dim                    ! Dimension of the field
-     integer :: off                    ! Offset of field in state vector
-     character(len=10) :: variable     ! Name of field
-     character(len=20) :: name_incr    ! Name of field in increment file
-     character(len=20) :: name_rest_n  ! Name of field in restart file (n-field)
-     character(len=20) :: name_rest_b  ! Name of field in restart file (b-field)
-     character(len=30) :: file=''      ! File name stub to read field from
-     character(len=30) :: file_post='' ! File name part after dates
-     character(len=30) :: rst_file     ! Name of restart file
-     character(len=20) :: unit         ! Unit of variable
+     integer :: ndims                      ! Number of field dimensions (2 or 3)
+     integer :: dim                        ! Dimension of the field
+     integer :: off                        ! Offset of field in state vector
+     integer :: jptrc = 0                  ! index of the tracer in nemo tracer variable
+     character(len=10) :: variable = ''    ! Name of field
+     character(len=20) :: name_incr = ''   ! Name of field in increment file
+     character(len=20) :: name_rest_n = '' ! Name of field in restart file (n-field)
+     character(len=20) :: name_rest_b = '' ! Name of field in restart file (b-field)
+     character(len=30) :: file = ''        ! File name stub to read field from
+     character(len=30) :: file_post = ''   ! File name part after dates
+     character(len=30) :: rst_file = ''    ! Name of restart file
+     character(len=20) :: unit = ''        ! Unit of variable
      integer :: transform = 0          ! Type of variable transformation
      real :: trafo_shift = 0.0         ! Constant to shift value in transformation
      integer :: limit = 0              ! Whether to limit the value of the variable
@@ -58,6 +60,11 @@ module mod_statevector_pdaf
   ! Variables to handle multiple fields in the state vector
   integer :: n_fields      !< number of fields in state vector
 
+  ! Variables for ERGOM fields
+  integer :: n_trc = 0     !< number of tracer fields
+  integer :: n_bgc1 = 0    !< number of prognostic tracer fields
+  integer :: n_bgc2 = 0    !< number of diagnostic tracer fields
+
 contains
 
   !> This routine calculates the dimension of the local statevector.
@@ -69,7 +76,7 @@ contains
          only: mype=>mype_ens, npes=>npes_ens, task_id, comm_ensemble, &
          comm_model, MPIerr
     use mod_nemo_pdaf, &
-         only: sdim2d, sdim3d
+         only: sdim2d, sdim3d, jptra, jptra2
     use mod_memcount_pdaf, &
          only: memcount
 
@@ -80,6 +87,7 @@ contains
 
 ! *** Local variables *** 
     integer :: i, cnt            ! Counters
+    integer :: id_bgc1, id_bgc2  ! Counters
     integer :: screen=1          ! Verbosity flag
     integer :: id_var            ! Index of a variable in state vector
     integer :: dim_state         ! Global state dimension
@@ -91,11 +99,12 @@ contains
     logical :: sv_ssh = .false.  ! Whether to include SSH in state vector
     logical :: sv_uvel = .false. ! Whether to include u-velocity in state vector
     logical :: sv_vvel = .false. ! Whether to include v-velocity in state vector
-    logical :: sv_oxy = .false.  ! Whether to include oxygen in state vector
+    logical, allocatable :: sv_bgc1(:) ! Whether to include prognostic ERGOM variables 
+    logical, allocatable :: sv_bgc2(:) ! Whether to include diagnostic ERGOM variables
 
     ! Namelist to define active parts of state vector
     namelist /state_vector/ screen, sv_temp, sv_salt, sv_ssh, sv_uvel, sv_vvel, &
-         sv_oxy
+         sv_bgc1, sv_bgc2
 
     !---- End of section to be adapted ----
 
@@ -103,6 +112,18 @@ contains
 ! **********************
 ! *** Initialization ***
 ! **********************
+
+! *** Allocate arrays for ERGOM fields in state vector
+
+    allocate(id%bgc1(jptra))
+    allocate(id%bgc2(jptra2))
+    id%bgc1(:)=0
+    id%bgc2(:)=0
+
+    allocate(sv_bgc1(jptra))
+    allocate(sv_bgc2(jptra2))
+    sv_bgc1(:) = .false.
+    sv_bgc2(:) = .false.
 
 ! *** Read namelist file for state vector setup
 
@@ -140,10 +161,26 @@ contains
        id%vvel = cnt
     end if
 
-    if (sv_oxy) then
-       cnt = cnt + 1
-       id%oxy = cnt
-    end if
+!    if (sv_oxy) then
+!       cnt = cnt + 1
+!       id%oxy = cnt
+!    end if
+
+    do id_bgc1 = 1, jptra
+      if (sv_bgc1(id_bgc1)) then
+        cnt = cnt + 1
+        id%bgc1(id_bgc1) = cnt
+        n_bgc1=n_bgc1+1
+      end if
+    end do
+
+    do id_bgc2 = 1, jptra2
+      if (sv_bgc2(id_bgc2)) then
+        cnt = cnt + 1
+        id%bgc2(id_bgc2) = cnt
+        n_bgc2=n_bgc2+1
+      end if
+    end do
 
     !---- End of section to be adapted ----
 
@@ -154,6 +191,7 @@ contains
 
     ! Number of model fields in state vector
     n_fields = cnt
+    n_trc=n_bgc1+n_bgc2
 
     allocate(sfields(n_fields))
 
@@ -244,23 +282,171 @@ contains
     endif
 
     ! Oxygen
-    id_var = id%oxy
-    if (id_var>0) then
-       sfields(id_var)%ndims = 3
-       sfields(id_var)%dim = sdim3d
-       sfields(id_var)%variable = 'OXY'
-       sfields(id_var)%name_incr = 'bckinoxy'
-       sfields(id_var)%name_rest_n = 'TRNOXY'
-       sfields(id_var)%name_rest_b = 'TRBOXY'
-       sfields(id_var)%file = 'NORDIC_1d_ERGOM_T_'
-       sfields(id_var)%rst_file = 'restart_trc_in.nc'
-       sfields(id_var)%unit = 'mmol m-3'
-       sfields(id_var)%transform = 0
-       sfields(id_var)%trafo_shift = 0.0
-       sfields(id_var)%limit = 3
-       sfields(id_var)%min_limit = -450.0D0
-       sfields(id_var)%max_limit = 450.0D0
-    endif
+!     id_var = id%oxy
+!     if (id_var>0) then
+!        sfields(id_var)%ndims = 3
+!        sfields(id_var)%dim = sdim3d
+!        sfields(id_var)%variable = 'OXY'
+!        sfields(id_var)%name_incr = 'bckinoxy'
+!        sfields(id_var)%name_rest_n = 'TRNOXY'
+!        sfields(id_var)%name_rest_b = 'TRBOXY'
+!        sfields(id_var)%file = 'NORDIC_1d_ERGOM_T_'
+!        sfields(id_var)%rst_file = 'restart_trc_in.nc'
+!        sfields(id_var)%unit = 'mmol m-3'
+!        sfields(id_var)%transform = 0
+!        sfields(id_var)%trafo_shift = 0.0
+!        sfields(id_var)%limit = 3
+!        sfields(id_var)%min_limit = -450.0D0
+!        sfields(id_var)%max_limit = 450.0D0
+!     endif
+
+
+    ! BGC
+    do id_bgc1 = 1, jptra
+      if (sv_bgc1(id_bgc1)) then
+        id_var=id%bgc1(id_bgc1)
+        sfields(id_var)%ndims = 3
+        sfields(id_var)%dim = sdim3d
+        sfields(id_var)%jptrc = id_bgc1
+        sfields(id_var)%file = 'NORDIC_1d_ERGOM_T_'
+        sfields(id_var)%rst_file = 'restart_trc_in.nc'
+        sfields(id_var)%transform = 0
+        sfields(id_var)%trafo_shift = 0.0
+
+        select case (id_bgc1)
+        case (1)
+          sfields(id_var)%variable = 'NH4'
+          sfields(id_var)%name_incr = 'bckinnh4'
+          sfields(id_var)%name_rest_n = 'TRNNH4'
+          sfields(id_var)%name_rest_b = 'TRBNH4'
+          sfields(id_var)%unit = 'mmol m-3'
+        case (2)
+          sfields(id_var)%variable = 'NO3'
+          sfields(id_var)%name_incr = 'bckinno3'
+          sfields(id_var)%name_rest_n = 'TRNNO3'
+          sfields(id_var)%name_rest_b = 'TRBNO3'
+          sfields(id_var)%unit = 'mmol m-3'
+        case (3)
+          sfields(id_var)%variable = 'PO4'
+          !sfields(id_var)%name_incr = 'bckinpo3'
+          sfields(id_var)%name_rest_n = 'TRNPO4'
+          sfields(id_var)%name_rest_b = 'TRBPO4'
+          sfields(id_var)%unit = 'mmol m-3'
+        case (4)
+          sfields(id_var)%variable = 'SIL'
+          !sfields(id_var)%name_incr = ''
+          sfields(id_var)%name_rest_n = 'TRNSIL'
+          sfields(id_var)%name_rest_b = 'TRBSIL'
+          sfields(id_var)%unit = 'mmol m-3'
+        case (5)
+          sfields(id_var)%variable = 'DIA'
+          sfields(id_var)%name_incr = 'bckindia'
+          sfields(id_var)%name_rest_n = 'TRNDIA'
+          sfields(id_var)%name_rest_b = 'TRBDIA'
+          sfields(id_var)%unit = 'mmol m-3'
+        case (6)
+          sfields(id_var)%variable = 'FLA'
+          sfields(id_var)%name_incr = 'bckinfla'
+          sfields(id_var)%name_rest_n = 'TRNFLA'
+          sfields(id_var)%name_rest_b = 'TRBFLA'
+          sfields(id_var)%unit = 'mmol m-3'
+        case (7)
+          sfields(id_var)%variable = 'CYA'
+          sfields(id_var)%name_incr = 'bckincya'
+          sfields(id_var)%name_rest_n = 'TRNCYA'
+          sfields(id_var)%name_rest_b = 'TRBCYA'
+          sfields(id_var)%unit = 'mmol m-3'
+        case (8)
+          sfields(id_var)%variable = 'MEZ'
+          !sfields(id_var)%name_incr = ''
+          sfields(id_var)%name_rest_n = 'TRNMEZ'
+          sfields(id_var)%name_rest_b = 'TRBMEZ'
+          sfields(id_var)%unit = 'mmol m-3'
+        case (9)
+          sfields(id_var)%variable = 'MIZ'
+          !sfields(id_var)%name_incr = ''
+          sfields(id_var)%name_rest_n = 'TRNMIZ'
+          sfields(id_var)%name_rest_b = 'TRBMIZ'
+          sfields(id_var)%unit = 'mmol m-3'
+        case (10)
+          sfields(id_var)%variable = 'DET'
+          !sfields(id_var)%name_incr = ''
+          sfields(id_var)%name_rest_n = 'TRNDET'
+          sfields(id_var)%name_rest_b = 'TRBDET'
+          sfields(id_var)%unit = 'mmol m-3'
+        case (11)
+          sfields(id_var)%variable = 'DETs'
+          !sfields(id_var)%name_incr = ''
+          sfields(id_var)%name_rest_n = 'TRNDETs'
+          sfields(id_var)%name_rest_b = 'TRBDETs'
+          sfields(id_var)%unit = 'mmol m-3'
+        case (12)
+          sfields(id_var)%variable = 'FE'
+          !sfields(id_var)%name_incr = ''
+          sfields(id_var)%name_rest_n = 'TRNFE'
+          sfields(id_var)%name_rest_b = 'TRBFE'
+          sfields(id_var)%unit = 'mmol m-3'
+        case (13)
+          sfields(id_var)%variable = 'LDON'
+          !sfields(id_var)%name_incr = ''
+          sfields(id_var)%name_rest_n = 'TRNLDON'
+          sfields(id_var)%name_rest_b = 'TRBLDON'
+          sfields(id_var)%unit = 'mmol m-3'
+        case (14)
+          sfields(id_var)%variable = 'DIC'
+          !sfields(id_var)%name_incr = ''
+          sfields(id_var)%name_rest_n = 'TRNDIC'
+          sfields(id_var)%name_rest_b = 'TRBDIC'
+          sfields(id_var)%unit = 'mmol m-3'
+        case (15)
+          sfields(id_var)%variable = 'ALK'
+          !sfields(id_var)%name_incr = ''
+          sfields(id_var)%name_rest_n = 'TRNALK'
+          sfields(id_var)%name_rest_b = 'TRBALK'
+          sfields(id_var)%unit = 'mmol m-3'
+        case (16)
+          sfields(id_var)%variable = 'OXY'
+          sfields(id_var)%name_incr = 'bckinoxy'
+          sfields(id_var)%name_rest_n = 'TRNOXY'
+          sfields(id_var)%name_rest_b = 'TRBOXY'
+          sfields(id_var)%unit = 'mmol m-3'
+        end select
+      end if
+    end do
+
+    do id_bgc2 = 1, jptra2
+      if (sv_bgc2(id_bgc2)) then
+        id_var=id%bgc2(id_bgc2)
+        sfields(id_var)%ndims = 3
+        sfields(id_var)%dim = sdim3d
+        sfields(id_var)%jptrc = id_bgc2
+        sfields(id_var)%file = 'NORDIC_1d_ERGOM_T_'
+        !sfields(id_var)%rst_file = ''
+        sfields(id_var)%transform = 0
+        sfields(id_var)%trafo_shift = 0.0
+
+        select case (id_bgc2)
+        case (1)
+          sfields(id_var)%variable = 'xpco2'
+          !sfields(id_var)%name_incr = ''
+          !sfields(id_var)%name_rest_n = ''
+          !sfields(id_var)%name_rest_b = ''
+          sfields(id_var)%unit = 'micro atm'
+        case (2)
+          sfields(id_var)%variable = 'xph'
+          !sfields(id_var)%name_incr = ''
+          !sfields(id_var)%name_rest_n = ''
+          !sfields(id_var)%name_rest_b = ''
+          sfields(id_var)%unit = '-'
+        case (3)
+          sfields(id_var)%variable = 'xchl'
+          !sfields(id_var)%name_incr = ''
+          !sfields(id_var)%name_rest_n = ''
+          !sfields(id_var)%name_rest_b = ''
+          sfields(id_var)%unit = 'mg m-3'
+        end select
+      end if
+    end do
 
     !---- End of section to be adapted ----
 
