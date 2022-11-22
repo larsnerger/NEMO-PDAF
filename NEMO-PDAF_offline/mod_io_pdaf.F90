@@ -468,7 +468,7 @@ end subroutine gen_ens_mv
 
        if (verbose>1) then
           write(*,*) trim(path)//trim(filename)
-          write (*,*) i, 'Variable: ',trim(sfields(i)%variable), ',  offset', sfields(i)%off
+          write (*,*) i, ' Variable: ',trim(sfields(i)%variable), ',  offset', sfields(i)%off
        end if
 
        ! Open the file
@@ -898,6 +898,7 @@ end subroutine read_trajectory_mv
     if (verbose>0 .and. mype==0) then
        write (*,'(1x,a)') 'Write covariance matrix into file'
        write (*,'(1x,a,a)') 'Create file: ', trim(path)//trim(name)
+       if (do_deflate) write (*,'(1x,a)') '--- Apply deflation'
     endif
 
     if (npes==1) then
