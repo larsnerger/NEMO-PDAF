@@ -17,9 +17,10 @@ module mod_nemo_pdaf
             sshn, tsn, un, vn
   use lbclnk, &
        only: lbc_lnk, lbc_lnk_multi
+#if defined key_top
   use sms_ergom, &
        only: xph, xpco2, xchl
-
+#endif
 
   ! *** NEMO model variables
 !  integer :: jpiglo, jpjglo, jpk        ! Global NEMO grid dimensions

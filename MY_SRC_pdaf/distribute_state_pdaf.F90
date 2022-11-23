@@ -21,6 +21,7 @@ subroutine distribute_state_pdaf(dim_p, state_p)
   use mod_kind_pdaf
   use mod_parallel_pdaf, &
        only: mype=>mype_ens
+#if defined key_top
   use mod_iau_pdaf, &
        only: ssh_iau_pdaf, u_iau_pdaf, v_iau_pdaf, t_iau_pdaf, &
        s_iau_pdaf, bgc_iau_pdaf, div_damping_filter
@@ -31,6 +32,17 @@ subroutine distribute_state_pdaf(dim_p, state_p)
              sshb, tsb, ub, vb, tmask, lbc_lnk, lbc_lnk_multi, &
              trn, sshn, tsn, un, vn, &
              xph, xpco2, xchl
+#else
+  use mod_iau_pdaf, &
+       only: ssh_iau_pdaf, u_iau_pdaf, v_iau_pdaf, t_iau_pdaf, &
+       s_iau_pdaf, div_damping_filter
+  use mod_statevector_pdaf, &
+       only: sfields, id
+  use mod_nemo_pdaf, &
+       only: ni_p, nj_p, nk_p, i0, j0, jp_tem, jp_sal, trb, &
+             sshb, tsb, ub, vb, tmask, lbc_lnk, lbc_lnk_multi, &
+             sshn, tsn, un, vn
+#endif
   use mod_aux_pdaf, &
        only: state2field, transform_field_mv
   implicit none
@@ -41,8 +53,10 @@ subroutine distribute_state_pdaf(dim_p, state_p)
 
 ! *** Local variables ***
   logical :: dist_direct = .true. ! Flag for direct update of model fields
-  integer :: i, j, k, cnt, id_var  ! Counters
-
+  integer :: i, j, k, cnt ! Counters
+#if defined key_top
+  integer :: id_var ! Counters
+#endif
 
   ! **********************************************
   ! Only distribute full state on first time step.
@@ -126,6 +140,8 @@ subroutine distribute_state_pdaf(dim_p, state_p)
         vb = vn
      end if
 
+     ! BGC
+#if defined key_top
      do i = 1, jptra
        if (sv_bgc1(i)) then
          id_var=id%bgc1(i)
@@ -163,6 +179,7 @@ subroutine distribute_state_pdaf(dim_p, state_p)
          end select
        end if
      end do
+#endif
 
 !  else direct
 !     ! ***********************************************

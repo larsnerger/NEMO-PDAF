@@ -7,7 +7,9 @@
 MODULE mod_iau_pdaf
 
    USE mod_kind_pdaf
+#if defined key_top
    USE mod_statevector_pdaf, only: n_trc, sfields, id
+#endif
    USE par_oce, &
       ONLY: jpi, jpj, jpk, jpkm1, jp_tem, jp_sal
 
@@ -20,10 +22,12 @@ MODULE mod_iau_pdaf
    REAL(pwp), DIMENSION(:, :, :), ALLOCATABLE :: t_iau_pdaf, s_iau_pdaf
    !> Array to store the U, V IAU
    REAL(pwp), DIMENSION(:, :, :), ALLOCATABLE :: u_iau_pdaf, v_iau_pdaf
+#if defined key_top
    REAL(pwp), DIMENSION(:, :, :, :), ALLOCATABLE :: bgc_iau_pdaf
-   !> 
+#endif
+   !>
    integer :: niaufn = 0     !: Type of IAU weighing function: = 0   Constant weighting
-   !                         !: = 1   Linear hat-like, centred in middle of IAU interval 
+   !                         !: = 1   Linear hat-like, centred in middle of IAU interval
    integer :: iiauper = 1    ! Length of IAU
    integer :: nitiaustr      ! Timestep of start of IAU interval in [0,nitend-nit000-1]
    integer :: nitiaufin      ! Timestep of end of IAU interval in [0,nitend-nit000-1]
@@ -57,30 +61,32 @@ contains
       u_iau_pdaf = 0._pwp
       v_iau_pdaf = 0._pwp
 
+#if defined key_top
       ! tracers
       ALLOCATE (bgc_iau_pdaf(jpi, jpj,jpk, n_trc))
+#endif
 
       ! giving the incremental length
       ALLOCATE( wgtiau( iiauper ) )
       wgtiau(:) = 0._pwp
-      IF( niaufn == 0 ) THEN           ! Constant IAU forcing 
+      IF( niaufn == 0 ) THEN           ! Constant IAU forcing
          !                             !---------------------------------------------------------
          DO jt = 1, iiauper
             wgtiau(jt) = 1.0 / REAL( iiauper, pwp )
          END DO
          !                             !---------------------------------------------------------
-      ELSEIF ( niaufn == 1 ) THEN      ! Linear hat-like, centred in middle of IAU interval 
+      ELSEIF ( niaufn == 1 ) THEN      ! Linear hat-like, centred in middle of IAU interval
          !                             !---------------------------------------------------------
          ! Compute the normalization factor
          znorm = 0._pwp
          IF( MOD( iiauper, 2 ) == 0 ) THEN   ! Even number of time steps in IAU interval
-            imid = iiauper / 2 
+            imid = iiauper / 2
             DO jt = 1, imid
                znorm = znorm + REAL( jt )
             END DO
             znorm = 2.0 * znorm
          ELSE                                ! Odd number of time steps in IAU interval
-            imid = ( iiauper + 1 ) / 2        
+            imid = ( iiauper + 1 ) / 2
             DO jt = 1, imid - 1
                znorm = znorm + REAL( jt )
             END DO
@@ -223,7 +229,7 @@ contains
       REAL(pwp), DIMENSION(:, :, :), INTENT(inout) :: phdivn
 
       integer :: jk
-      real(pwp), dimension(:, :), ALLOCATABLE :: ztim ! local array 
+      real(pwp), dimension(:, :), ALLOCATABLE :: ztim ! local array
 
       ! Check whether to update the tracer tendencies
       CALL ssh_asm_inc_pdaf( kt )
@@ -234,8 +240,8 @@ contains
       ELSE
          ALLOCATE( ztim(jpi,jpj) )
          ztim(:,:) = ssh_iau_pdaf(:,:) / ( ht_n(:,:) + 1.0 - ssmask(:,:) )
-         DO jk = 1, jpkm1                                 
-            phdivn(:,:,jk) = phdivn(:,:,jk) - ztim(:,:) * tmask(:,:,jk) 
+         DO jk = 1, jpkm1
+            phdivn(:,:,jk) = phdivn(:,:,jk) - ztim(:,:) * tmask(:,:,jk)
          END DO
          !
          DEALLOCATE(ztim)
@@ -259,8 +265,8 @@ contains
 
       integer :: jt, jk, jj, ji  ! counter
       REAL(pwp), ALLOCATABLE, DIMENSION(:,:) ::   zhdiv   ! 2D workspace
-      
-      ALLOCATE( zhdiv(jpi,jpj) ) 
+
+      ALLOCATE( zhdiv(jpi,jpj) )
       !
       DO jt = 1, nn_divdmp
          !
@@ -281,14 +287,14 @@ contains
                   u_iau_pdaf(ji,jj,jk) = u_iau_pdaf(ji,jj,jk) &
                      &               + 0.2_pwp * ( zhdiv(ji+1,jj) - zhdiv(ji  ,jj) ) * r1_e1u(ji,jj) * umask(ji,jj,jk)
                   v_iau_pdaf(ji,jj,jk) = v_iau_pdaf(ji,jj,jk) &
-                     &               + 0.2_pwp * ( zhdiv(ji,jj+1) - zhdiv(ji,jj  ) ) * r1_e2v(ji,jj) * vmask(ji,jj,jk) 
+                     &               + 0.2_pwp * ( zhdiv(ji,jj+1) - zhdiv(ji,jj  ) ) * r1_e2v(ji,jj) * vmask(ji,jj,jk)
                END DO
             END DO
          END DO
          !
       END DO
       !
-      DEALLOCATE( zhdiv ) 
+      DEALLOCATE( zhdiv )
    end subroutine div_damping_filter
 
 
@@ -300,10 +306,10 @@ contains
       & trb      
       !!----------------------------------------------------------------------
       !!                    ***  ROUTINE dyn_asm_inc  ***
-      !!          
+      !!
       !! ** Purpose : Apply generic 3D biogeochemistry assimilation increments.
       !!
-      !! ** Action  : 
+      !! ** Action  :
       !!----------------------------------------------------------------------
       INTEGER,  INTENT(IN) :: kt      ! Current time step
       !
@@ -328,7 +334,7 @@ contains
          ! reset to zero at the start of trc_stp, called after this routine
          ! Don't apply increments if they'll take concentrations negative
 
-#if defined key_fabm
+#if defined key_top
          do j = 1, n_trc
             id_var = id%trcs(j)
             jptrc = sfields(id_var)%jptrc

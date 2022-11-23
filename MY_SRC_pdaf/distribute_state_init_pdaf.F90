@@ -21,6 +21,7 @@ subroutine distribute_state_init_pdaf(dim_p, state_p)
   use mod_kind_pdaf
   use mod_parallel_pdaf, &
        only: mype=>mype_ens
+#if defined key_top
   use mod_statevector_pdaf, &
        only: sfields, id, n_trc, n_bgc1, n_bgc2, &
        jptra, jptra2, sv_bgc1, sv_bgc2
@@ -29,6 +30,14 @@ subroutine distribute_state_init_pdaf(dim_p, state_p)
              sshb, tsb, ub, vb, lbc_lnk, lbc_lnk_multi, &
              sshn, tsn, un, vn, trn, neuler, &
              xph, xpco2, xchl
+#else
+  use mod_statevector_pdaf, &
+       only: sfields, id
+  use mod_nemo_pdaf, &
+       only: ni_p, nj_p, nk_p, i0, j0, jp_tem, jp_sal, &
+             sshb, tsb, ub, vb, lbc_lnk, lbc_lnk_multi, &
+             sshn, tsn, un, vn, neuler
+#endif
   use mod_assimilation_pdaf, &
        only: ens_restart, assim_flag
   use mod_aux_pdaf, &
@@ -40,7 +49,10 @@ subroutine distribute_state_init_pdaf(dim_p, state_p)
   real(pwp), intent(inout) :: state_p(dim_p) !< PE-local state vector
 
 ! *** Local variables ***
-  integer :: i, j, k, cnt, id_var ! Counters
+  integer :: i, j, k, cnt ! Counters
+#if defined key_top
+  integer :: id_var ! Counters
+#endif
   logical :: firststep = .true.   ! Flag for first timestep
 
 
@@ -124,6 +136,8 @@ subroutine distribute_state_init_pdaf(dim_p, state_p)
         vb = vn
      end if
 
+     ! BGC
+#if defined key_top
      do i = 1, jptra
        if (sv_bgc1(i)) then
          id_var=id%bgc1(i)
@@ -161,6 +175,7 @@ subroutine distribute_state_init_pdaf(dim_p, state_p)
          end select
        end if
      end do
+#endif
 
      ! Set Euler step
      neuler = 0

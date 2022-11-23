@@ -13,17 +13,27 @@
 subroutine collect_state_pdaf(dim_p, state_p)
 
   use mod_kind_pdaf
+#if defined key_top
   use mod_statevector_pdaf, &
        only: sfields, id, n_trc, n_bgc1, n_bgc2, &
        jptra, jptra2, sv_bgc1, sv_bgc2
-  use mod_aux_pdaf, &
-       only: field2state, transform_field_mv
-
   use mod_nemo_pdaf, &
        only: ni_p, nj_p, nk_p, i0, j0, &
        jp_tem, jp_sal, ndastp, &
        trb, sshb, tsb, ub, vb, &
        xph, xpco2, xchl
+#else
+  use mod_statevector_pdaf, &
+       only: sfields, id
+  use mod_nemo_pdaf, &
+       only: ni_p, nj_p, nk_p, i0, j0, &
+       jp_tem, jp_sal, ndastp, &
+       sshb, tsb, ub, vb
+#endif
+  use mod_aux_pdaf, &
+       only: field2state, transform_field_mv
+
+
 
   implicit none
 
@@ -83,6 +93,8 @@ subroutine collect_state_pdaf(dim_p, state_p)
                    sfields(id%vvel)%off, sfields(id%vvel)%ndims, missing_value)
   end if
 
+#if defined key_top
+  ! BGC
   do i = 1, jptra
     if (sv_bgc1(i)) then
       call field2state(trb(1+i0:ni_p+i0, 1+j0:nj_p+j0, 1:nk_p, sfields(id%bgc1(i))%jptrc), &
@@ -109,6 +121,7 @@ subroutine collect_state_pdaf(dim_p, state_p)
       end select
     end if
   end do
+#endif
 
   call transform_field_mv(1, state_p)
 

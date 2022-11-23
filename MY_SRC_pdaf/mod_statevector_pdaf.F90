@@ -15,8 +15,10 @@
 module mod_statevector_pdaf
 
   use mod_kind_pdaf
+#if defined key_top
   use par_trc, &
        only: jptra
+#endif
   implicit none
   save
 
@@ -31,9 +33,11 @@ module mod_statevector_pdaf
      integer :: salt = 0
      integer :: uvel = 0
      integer :: vvel = 0
+#if defined key_top
      ! Biogeochemistry
      integer, allocatable  :: bgc1(:)
      integer, allocatable  :: bgc2(:)
+#endif
   end type field_ids
 
   ! Declare Fortran type holding the definitions for model fields
@@ -47,7 +51,7 @@ module mod_statevector_pdaf
      character(len=20) :: name_rest_n = '' ! Name of field in restart file (n-field)
      character(len=20) :: name_rest_b = '' ! Name of field in restart file (b-field)
      character(len=50) :: file = ''        ! File name stub to read field from
-     character(len=50) :: file_state = ''  ! File name to read model state 
+     character(len=50) :: file_state = ''  ! File name to read model state
      character(len=30) :: rst_file = ''    ! Name of restart file
      character(len=20) :: unit = ''        ! Unit of variable
      integer :: transform = 0              ! Type of variable transformation
@@ -63,12 +67,12 @@ module mod_statevector_pdaf
   !---- The next variables usually do not need editing -----
 
   integer :: screen=1          ! Verbosity flag
-
+#if defined key_top
   integer :: n_trc = 0         !< number of tracer fields
   integer :: n_bgc1 = 0         !< number of prognostic tracer fields
   integer :: n_bgc2 = 0         !< number of diagnostic tracer fields
   integer, parameter :: jptra2 = 3         !< number of total diagnosed tracer fields
-
+#endif
   ! Type variable holding field IDs in state vector
   type(field_ids) :: id
 
@@ -85,8 +89,10 @@ module mod_statevector_pdaf
   logical :: sv_ssh = .false.  !< Whether to include SSH in state vector
   logical :: sv_uvel = .false. !< Whether to include u-velocity in state vector
   logical :: sv_vvel = .false. !< Whether to include v-velocity in state vector
+#if defined key_top
   logical, allocatable :: sv_bgc1(:) !< Whether to include ERGOM in state vector
   logical, allocatable :: sv_bgc2(:) !< Whether to include diagnosed ERGOM variables
+#endif
 
 contains
 
@@ -101,6 +107,7 @@ contains
 
 ! *** Local variables ***
     integer :: cnt               ! Counter
+#if defined key_top
     integer :: id_bgc1           ! Counter
     integer :: id_bgc2           ! Counter
 
@@ -113,11 +120,17 @@ contains
     allocate(sv_bgc2(jptra2))
     sv_bgc1(:) = .false.
     sv_bgc2(:) = .false.
+#endif
 
     ! Namelist to define active parts of state vector
+#if defined key_top
     namelist /state_vector/ screen, n_fields_covar, &
          sv_temp, sv_salt, sv_ssh, sv_uvel, sv_vvel, &
          sv_bgc1, sv_bgc2
+#else
+    namelist /state_vector/ screen, n_fields_covar, &
+         sv_temp, sv_salt, sv_ssh, sv_uvel, sv_vvel
+#endif
 
 ! **********************
 ! *** Initialization ***
@@ -157,6 +170,7 @@ contains
        id%vvel = cnt
     end if
 
+#if defined key_top
     do id_bgc1 = 1, jptra
       if (sv_bgc1(id_bgc1)) then
         cnt = cnt + 1
@@ -172,11 +186,13 @@ contains
         n_bgc2=n_bgc2+1
       end if
     end do
+#endif
 
     ! Set number of fields in state vector
     nfields = cnt
+#if defined key_top
     n_trc=n_bgc1+n_bgc2
-
+#endif
   end subroutine init_id
 ! ===================================================================================
 
@@ -194,8 +210,10 @@ contains
 
 ! *** Local variables ***
     integer :: id_var            ! Index of a variable in state vector
+#if defined key_top
     integer :: id_bgc1           ! Counter
     integer :: id_bgc2           ! Counter
+#endif
 
     namelist /sfields_nml/ sfields
 ! *** Specifications for each model field in state vector ***
@@ -281,6 +299,7 @@ contains
        sfields(id_var)%trafo_shift = 0.0
     endif
 
+#if defined key_top
     ! BGC
     do id_bgc1 = 1, jptra
       if (sv_bgc1(id_bgc1)) then
@@ -427,6 +446,7 @@ contains
         end select
       end if
     end do
+#endif
 
     open (500,file='namelist_cfg.pdaf')
     read (500,NML=sfields_nml)
