@@ -48,9 +48,8 @@
 &obs_sst_cmems_nml
 ! Settings for CMEMS SST
   assim_sst_cmems = .false.
-  path_sst_cmems = '/scratch/usr/hzfblner/SEAMLESS/run/Nens/inputs_nc4'
-  !file_sst_cmems = 'sst_multi_201801.nc'
-  file_sst_cmems = 'sst_rep_L4_201501.nc'
+  path_sst_cmems = '/scratch/usr/hzfblner/SEAMLESS/observations/SST_2015'
+  file_sst_cmems = 'sst_REP_L4_201501.nc'
   varname_sst_cmems = 'analysed_sst'
   mode_sst_cmems = 0     ! 0 for linear interpolation onto observation grid
   dist_sst_cmems = 'geo' ! 'geo' for geographic in km; 'gp' for grid point distance
