@@ -8,7 +8,7 @@ MODULE mod_iau_pdaf
 
    USE mod_kind_pdaf
 #if defined key_top
-   USE mod_statevector_pdaf, only: n_trc, sfields, id
+   USE mod_statevector_pdaf, only: n_trc, sfields, id, jptra, sv_bgc1
 #endif
    USE par_oce, &
       ONLY: jpi, jpj, jpk, jpkm1, jp_tem, jp_sal
@@ -303,7 +303,7 @@ contains
       use lib_mpp, only: ctl_stop
       USE trc, ONLY:           & ! passive tracer variables
       & trn,                &
-      & trb      
+      & trb
       !!----------------------------------------------------------------------
       !!                    ***  ROUTINE dyn_asm_inc  ***
       !!
@@ -335,14 +335,16 @@ contains
          ! Don't apply increments if they'll take concentrations negative
 
 #if defined key_top
-         do j = 1, n_trc
-            id_var = id%trcs(j)
+         do j = 1, jptra
+           if (sv_bgc1(j)) then
+            id_var = id%bgc1(j)
             jptrc = sfields(id_var)%jptrc
             WHERE( bgc_iau_pdaf(:,:,:,j) > 0.0_pwp .OR. &
                  & trn(:,:,:,jptrc) + bgc_iau_pdaf(:,:,:,j) * zincwgt > 0.0_pwp )
                trn(:,:,:,jptrc) = trn(:,:,:,jptrc) + bgc_iau_pdaf(:,:,:,j) * zincwgt
                trb(:,:,:,jptrc) = trb(:,:,:,jptrc) + bgc_iau_pdaf(:,:,:,j) * zincwgt
             END WHERE
+          end if
          end do
 #else
          CALL ctl_stop ( ' bgc3d_asm_inc: no compatible BGC model defined' )
