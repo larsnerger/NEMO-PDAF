@@ -55,7 +55,7 @@ contains
          only: dim_state, dim_state_p, screen, filtertype, subtype, dim_ens, &
          incremental, type_forget, forget, rank_analysis_enkf, &
          type_trans, type_sqrt, delt_obs, locweight, type_ens_init, &
-         type_central_state
+         type_central_state, perturb_params, stddev_params
     use mod_iau_pdaf, &
          only: asm_inc_init_pdaf
     use mod_nemo_pdaf, &
@@ -225,6 +225,13 @@ contains
     call asm_inc_init_PDAF()
 
 
+! ********************************
+! *** Perturb ERGOM parameters ***
+! ********************************
+
+    if (perturb_params) call param_perturb(stddev_params)
+
+
 ! *****************************************************
 ! *** Call PDAF initialization routine on all PEs.  ***
 ! *****************************************************
@@ -282,3 +289,4 @@ contains
   end subroutine init_pdaf
 
 end module mod_init_pdaf
+

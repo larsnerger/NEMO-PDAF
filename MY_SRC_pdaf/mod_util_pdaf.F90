@@ -156,7 +156,7 @@ contains
          only: mype_ens
     use mod_assimilation_pdaf, &
          only: filtertype, subtype, type_trans, type_sqrt, &
-         locweight  
+         locweight, perturb_params, stddev_params
     use mod_assimilation_pdaf, &
          only: screen, dim_ens, ensscale, delt_obs, &
          type_forget, forget, &
@@ -178,7 +178,8 @@ contains
     namelist /pdaf_nml/ &
          screen, filtertype, subtype, type_trans, type_sqrt, &
          type_forget, forget, locweight, delt_obs, &
-         save_var_time, save_state, verbose_io, sgldbl_io
+         save_var_time, save_state, verbose_io, sgldbl_io, &
+         perturb_params, stddev_params
 
     namelist /init_nml/ &
          type_ens_init, type_central_state, ensscale, ens_restart, &

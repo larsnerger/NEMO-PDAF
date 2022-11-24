@@ -177,6 +177,9 @@ module mod_assimilation_pdaf
                            ! (2) amplitude of stddev relative of ensemble variance
   real(pwp) :: pf_noise_amp ! Noise amplitude (>=0.0, only used if pf_noise_type>0)
 
+  logical :: perturb_params = .false.   ! Whether to perturb ERGOM parameters
+  real(pwp) :: stddev_params = 0.125    ! Relatibe stddev to perturb ERGOM parameters lognormally
+
 !    ! Other variables - _NOT_ available as command line options!
   real(pwp) :: time        !< model time
 
