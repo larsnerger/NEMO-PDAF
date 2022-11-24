@@ -178,10 +178,10 @@ contains
     if (npes_filter>1) thisobs%use_global_obs = 0
 
     ! Determine current day
-    call calc_date(step, rdate)
+    call calc_date(step-1, rdate)
     year = floor(rdate/10000.0_pwp)
     month = floor((rdate-real(year*10000))/100.0_pwp)
-    iday = floor(rdate-real(year*10000)-real(month*100))-1
+    iday = floor(rdate-real(year*10000)-real(month*100))
 
 
 ! **********************************
