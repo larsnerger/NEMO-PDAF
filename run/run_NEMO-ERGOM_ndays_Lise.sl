@@ -4,26 +4,25 @@
 #SBATCH --nodes=8
 #SBATCH --ntasks-per-node=96
 #SBATCH --time=1:00:00
-##SBATCH --partition=standard96:test
-#SBATCH --partition=standard96
+#SBATCH --partition=standard96:test
+##SBATCH --partition=standard96
 #SBATCH --mail-user=_EMAIL-ADDRESS_
 #SBATCH --mail-type=END
 #SBATCH -A _PROJECT-ID_
 
-# Run script for HLRN-EMMY using Intel compiler version 2022
+# Run script for HLRN-Lise using OpenMPI 4.1.4
 
 # To prepare only the run directories without running
 # set $prepare=1, $dorun=0, $postproc=0 
 # and run interactively in the shell
 
-module load intel/2022.2
+module load intel/18.0.6
 module load openmpi/intel/4.1.4
-#module load hdf5-parallel/ompi/intel/1.12.1
-#module load netcdf-parallel/ompi/intel.22/4.9.1
+#module load netcdf-parallel/ompi/intel.18/4.7.4
 
 ulimit -s unlimited
 
-export LD_LIBRARY_PATH=/sw/dataformats/netcdf-parallel/ompi/intel.22/4.9.1/skl/lib:/sw/dataformats/hdf5-parallel/ompi/intel.22/1.12.1/skl/lib:/sw/tools/oneapi/2022.2/compiler/2022.1.0/linux/compiler/lib/intel64_lin:/sw/tools/oneapi/2022.2/mkl/2022.1.0/lib/intel64
+export LD_LIBRARY_PATH=/sw/dataformats/netcdf-parallel/ompi/intel.18/4.7.4/skl/lib:/sw/dataformats/hdf5-parallel/ompi/intel.18/1.10.6/skl/lib:/sw/compiler/intel/compilers_and_libraries_2018.6.288/linux/compiler/lib/intel64_lin:/sw/compiler/intel/compilers_and_libraries_2018.6.288/linux/mkl/lib/intel64_lin
 
 # ---------------------------------------------------------------------------------------------------
 
@@ -58,16 +57,13 @@ initial_date=20150101
 #set -xv #debugging
 
 # ---------------------------------------------------------------------------------------------------
-#nemo_exe_dir='/home/hbkycsun/nemo4_dev-nemo4_ergom_allEuler/cfgs/NEMO_ERGOM_PDAF/BLD/bin'
-#nemo_exe_dir='/home/hzfblner/SEAMLESS/nemo4_dev_allEuler/cfgs/NEMO-ERGOM-PDAF/BLD/bin'
-nemo_exe_dir='/home/hzfblner/SEAMLESS/nemo4_dev_allEuler/cfgs/NEMO-ERGOM-PDAF_intel22/BLD/bin'
-xios_exe_dir='/home/hzfblner/SEAMLESS/xios-2.0_par_intel22/bin'
+nemo_exe_dir='/home/hzfblner/SEAMLESS/nemo4_dev_allEuler/cfgs/NEMO-ERGOM-PDAF_ompi414/BLD/bin'
+xios_exe_dir='/home/hzfblner/SEAMLESS/xios-2.0_par_ompi414/bin'
 #rebuild='/home_ad/bm1405/balmfc_git/nemo4_dev/tools/REBUILD_NEMO/'
 restart_out='output/restarts'
 archive='/scratch/usr/hzfblner/SEAMLESS/forcing_ergom_allEuler'
 archive_ln='/scratch/usr/hzfblner/SEAMLESS/forcings'
 inputs_nc='/scratch/usr/hzfblner/SEAMLESS/run/inputs_allEuler_nc4'
-#setup_store='/scratch/usr/hbkycsun/data/setup_store'
 setup_store='/scratch/usr/hzfblner/SEAMLESS/run/config_ERGOM_allEuler'
 initialdir='/scratch/usr/hzfblner/SEAMLESS/restart'
 disrestartdir='/scratch/usr/hzfblner/SEAMLESS/run/restart_dist_20150101'
