@@ -595,6 +595,10 @@ end subroutine gen_ens_mv
       ! loop over all fields
       do i_field = 1, n_fields_read
 
+        if (verbose_io>1 .and. mype==0) &
+             WRITE(*, '(a,1x,a,i)') 'NEMO-PDAF', '--- read field', &
+             trim(sfields(i_field)%variable)//trim(vartypes(i_var))
+
         call check( NF90_INQ_VARID(ncid, &
                    trim(sfields(i_field)%variable)//trim(vartypes(i_var)), &
                    varid) &
