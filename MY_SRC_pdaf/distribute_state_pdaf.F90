@@ -26,7 +26,8 @@ subroutine distribute_state_pdaf(dim_p, state_p)
        only: ssh_iau_pdaf, u_iau_pdaf, v_iau_pdaf, t_iau_pdaf, &
        s_iau_pdaf, bgc_iau_pdaf, div_damping_filter
   use mod_statevector_pdaf, &
-       only: sfields, id, n_trc, jptra, jptra2, sv_bgc1, sv_bgc2
+       only: sfields, id, n_trc, jptra, jptra2, sv_bgc1, sv_bgc2, &
+       update_phys
   use mod_nemo_pdaf, &
        only: ni_p, nj_p, nk_p, i0, j0, jp_tem, jp_sal, trb, &
              sshb, tsb, ub, vb, tmask, lbc_lnk, lbc_lnk_multi, &
@@ -58,13 +59,11 @@ subroutine distribute_state_pdaf(dim_p, state_p)
   integer :: id_var ! Counters
 #endif
 
+
   ! **********************************************
   ! Only distribute full state on first time step.
   ! Otherwise compute increment.
   ! **********************************************
-
-  ! Note: The loop limits account for the halo offsets i0 and j0
-    ! if (mype==0) write (*,'(a,4x,a)') 'NEMO-PDAF', 'distribute state - DEACTIVATED'
 
   call transform_field_mv(2, state_p)
 
@@ -78,8 +77,9 @@ subroutine distribute_state_pdaf(dim_p, state_p)
      ! SSH
 
      if (id%ssh > 0) then
-        call state2field(state_p, sshn(1+i0:ni_p+i0, 1+j0:nj_p+j0), &
-                      sfields(id%ssh)%off, sfields(id%ssh)%ndims)
+        if (update_phys) &
+             call state2field(state_p, sshn(1+i0:ni_p+i0, 1+j0:nj_p+j0), &
+             sfields(id%ssh)%off, sfields(id%ssh)%ndims)
 
         ! Fill halo regions
         call lbc_lnk('distribute_state_pdaf', sshn, 'T', 1.)
@@ -94,14 +94,14 @@ subroutine distribute_state_pdaf(dim_p, state_p)
      ! ************************************
 
      ! T
-     if (id%temp > 0) then
+     if (id%temp > 0 .and. update_phys) then
         call state2field(state_p, &
                       tsn(1+i0:ni_p+i0, 1+j0:nj_p+j0, 1:nk_p, jp_tem), &
                       sfields(id%temp)%off, sfields(id%temp)%ndims)
      end if
 
      ! S
-     if (id%salt > 0) then
+     if (id%salt > 0 .and. update_phys) then
         call state2field(state_p, &
                 tsn(1+i0:ni_p+i0, 1+j0:nj_p+j0, 1:nk_p, jp_sal), &
                 sfields(id%salt)%off, sfields(id%salt)%ndims)
@@ -118,14 +118,14 @@ subroutine distribute_state_pdaf(dim_p, state_p)
      end if
 
      ! U
-     if (id%uvel > 0) then
+     if (id%uvel > 0 .and. update_phys) then
         call state2field(state_p, &
                       un(1+i0:ni_p+i0, 1+j0:nj_p+j0, 1:nk_p), &
                       sfields(id%uvel)%off, sfields(id%uvel)%ndims)
      end if
 
      ! V
-     if (id%vvel > 0) then
+     if (id%vvel > 0 .and. update_phys) then
         call state2field(state_p, &
                       vn(1+i0:ni_p+i0, 1+j0:nj_p+j0, 1:nk_p), &
                       sfields(id%vvel)%off, sfields(id%vvel)%ndims)
