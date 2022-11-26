@@ -63,25 +63,12 @@ module mod_statevector_pdaf
      real(pwp) :: ensscale = 1.0           ! Scale factor for initial ensemble perturbations
   end type state_field
 
-
-  !---- The next variables usually do not need editing -----
-
-  integer :: screen=1          ! Verbosity flag
 #if defined key_top
   integer :: n_trc = 0         !< number of tracer fields
   integer :: n_bgc1 = 0         !< number of prognostic tracer fields
   integer :: n_bgc2 = 0         !< number of diagnostic tracer fields
   integer, parameter :: jptra2 = 3         !< number of total diagnosed tracer fields
 #endif
-  ! Type variable holding field IDs in state vector
-  type(field_ids) :: id
-
-  ! Type variable holding the defintions of model fields
-  type(state_field), allocatable :: sfields(:)
-
-  ! Variables to handle multiple fields in the state vector
-  integer :: n_fields          !< number of fields in state vector
-  integer :: n_fields_covar=0  !< number of fields to read from covariance matrix file
 
   ! Variables to activate a field from the namelist
   logical :: sv_temp = .false. !< Whether to include temperature in state vector
@@ -93,6 +80,25 @@ module mod_statevector_pdaf
   logical, allocatable :: sv_bgc1(:) !< Whether to include ERGOM in state vector
   logical, allocatable :: sv_bgc2(:) !< Whether to include diagnosed ERGOM variables
 #endif
+
+  integer :: id_chl=0          ! Index of Chlorophyll field in state vector
+
+  !---- The next variables usually do not need editing -----
+
+  integer :: screen=1          ! Verbosity flag
+
+  ! Type variable holding field IDs in state vector
+  type(field_ids) :: id
+
+  ! Type variable holding the defintions of model fields
+  type(state_field), allocatable :: sfields(:)
+
+  ! Variables to handle multiple fields in the state vector
+  integer :: n_fields          !< number of fields in state vector
+  integer :: n_fields_covar=0  !< number of fields to read from covariance matrix file
+
+  logical :: update_phys = .true.  !< Whether to update NEMO physics after analysis step
+  logical :: update_bio = .true.  !< Whether to update ERGOM variables after analysis step
 
 contains
 
@@ -126,7 +132,7 @@ contains
 #if defined key_top
     namelist /state_vector/ screen, n_fields_covar, &
          sv_temp, sv_salt, sv_ssh, sv_uvel, sv_vvel, &
-         sv_bgc1, sv_bgc2
+         sv_bgc1, sv_bgc2, update_phys
 #else
     namelist /state_vector/ screen, n_fields_covar, &
          sv_temp, sv_salt, sv_ssh, sv_uvel, sv_vvel
@@ -413,6 +419,7 @@ contains
       end if
     end do
 
+    ! Diagnostic BGC fields - not part of restart files
     do id_bgc2 = 1, jptra2
       if (sv_bgc2(id_bgc2)) then
         id_var=id%bgc2(id_bgc2)
@@ -420,28 +427,19 @@ contains
         sfields(id_var)%dim = sdim3d
         sfields(id_var)%jptrc = id_bgc2
         sfields(id_var)%file = 'NORDIC_1d_ERGOM_T_'
-        !sfields(id_var)%rst_file = ''
         sfields(id_var)%transform = 0
         sfields(id_var)%trafo_shift = 0.0
 
         select case (id_bgc2)
         case (1)
           sfields(id_var)%variable = 'xpco2'
-          !sfields(id_var)%name_incr = ''
-          !sfields(id_var)%name_rest_n = ''
-          !sfields(id_var)%name_rest_b = ''
           sfields(id_var)%unit = 'micro atm'
         case (2)
           sfields(id_var)%variable = 'xph'
-          !sfields(id_var)%name_incr = ''
-          !sfields(id_var)%name_rest_n = ''
-          !sfields(id_var)%name_rest_b = ''
           sfields(id_var)%unit = '-'
         case (3)
+          id_chl = id_var        ! Store ID of chlorophyll to be used in observation module
           sfields(id_var)%variable = 'xchl'
-          !sfields(id_var)%name_incr = ''
-          !sfields(id_var)%name_rest_n = ''
-          !sfields(id_var)%name_rest_b = ''
           sfields(id_var)%unit = 'mg m-3'
         end select
       end if
