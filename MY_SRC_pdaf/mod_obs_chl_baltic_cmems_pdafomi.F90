@@ -150,6 +150,10 @@ contains
     real(pwp) :: rdate                       ! Current date
     integer(4) :: year, month, iday          ! Current year, month, day (iday is step read from observation file) 
     real(pwp) :: missing_value               ! Missing value above which observations are valid
+    real(pwp) :: var_obs                     ! Observation error variance
+    real(pwp),parameter :: ln10sq = log(10.d0)*log(10.d0)  ! Factor for log10 to natural log transformation
+    real(pwp),parameter :: ln10 = log(10.d0)  ! Factor for log10 to natural log transformation
+
 
 
 ! *********************************************
@@ -183,10 +187,16 @@ contains
     year = floor(rdate/10000.0_pwp)
     month = floor((rdate-real(year*10000))/100.0_pwp)
     iday = floor(rdate-real(year*10000)-real(month*100))
-iday=25
+
     ! Set missing value
     missing_value = -999.0
-if (mype_filter==0) write (*,*) 'NOTE: IDAY FIXED =25 FOR TESTING!!!!!'
+
+    ! Set exclusion limit for innovation
+!    thisobs%inno_exclude = 2.0
+!    if (thisobs%inno_exclude>0.0 .and. mype_filter==0) &
+!         write (*,'(a,4x,a,f12.3)') 'NEMO-PDAF', &
+!         '--- exclude observations with large innovation, limit', thisobs%inno_exclude
+
 
 ! **********************************
 ! *** Read PE-local observations ***
@@ -763,14 +773,36 @@ if (mype_filter==0) write (*,*) 'NOTE: IDAY FIXED =25 FOR TESTING!!!!!'
     end if
 
 
+    ! *** For log-chl transformed observations account for shift in mean
+
+    if (sfields(id_chl)%transform == 2) then
+       obs_p(:) = log(obs_p) - 0.5d0 * rms_obs_chl_baltic_cmems*rms_obs_chl_baltic_cmems*ln10sq
+    end if
+       
+
 ! ****************************************************************
 ! *** Define observation errors for process-local observations ***
 ! ****************************************************************
 
-    ! Assine relative observation error 
-    do i = 1, dim_obs_p
-       ivar_obs_p(i) = 1.0 / (obs_p(i) * obs_p(i) * rms_obs_chl_baltic_cmems*rms_obs_chl_baltic_cmems)
-    end do
+    ! Assign relative observation error 
+    if (sfields(id_chl)%transform == 2) then
+       ! Assimilating logarithmic values
+
+       var_obs =  rms_obs_chl_baltic_cmems*rms_obs_chl_baltic_cmems*ln10sq
+
+       do i = 1, dim_obs_p
+          ivar_obs_p(i) = 1.0 / var_obs
+       end do
+
+    else
+       ! Assimilating actual values - use relative error
+
+       var_obs =  rms_obs_chl_baltic_cmems*rms_obs_chl_baltic_cmems
+
+       do i = 1, dim_obs_p
+          ivar_obs_p(i) = 1.0 / (obs_p(i) * obs_p(i) * var_obs)
+       end do
+    end if
 
 
 ! ****************************************
