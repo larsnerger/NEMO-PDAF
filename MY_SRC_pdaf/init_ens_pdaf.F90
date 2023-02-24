@@ -30,6 +30,8 @@ subroutine init_ens_pdaf(filtertype, dim_p, dim_ens, state_p, Uinv, &
              read_ens_mv_loop, read_ens, gen_ens_mv
   use mod_statevector_pdaf, &
        only: n_fields, sfields
+  use mod_aux_pdaf, &
+       only: transform_field_mv
 
   implicit none
 
@@ -49,11 +51,12 @@ subroutine init_ens_pdaf(filtertype, dim_p, dim_ens, state_p, Uinv, &
   integer :: id_field               ! Id of field in state vector
   real(pwp) :: ens_mean             ! Ensemble mean value
   real(pwp) :: inv_dim_ens          ! Inverse ensemble size
+  integer :: verbose                ! Control verbosity
 
 
-! ********************************
-! *** Read ensemble from files ***
-! ********************************
+! ************************************
+! *** Generate ensemble from files ***
+! ************************************
 
   if (type_ens_init == 0) then
 
@@ -113,7 +116,7 @@ subroutine init_ens_pdaf(filtertype, dim_p, dim_ens, state_p, Uinv, &
      ! Obtain central state from model task 1 (set by model initialization)
      if (mype_filter==0) write (*,'(a,1x,a)') 'NEMO-PDAF', 'Collect central ensemble state from model'
 
-     call collect_state_pdaf(dim_p, state_p)
+     call collect_state_init_pdaf(dim_p, state_p)
 
   end if
 
@@ -147,12 +150,25 @@ subroutine init_ens_pdaf(filtertype, dim_p, dim_ens, state_p, Uinv, &
            end do
         
            do member = 1, dim_ens
-              ens_p(i, member ) = sfields(id_field)%ensscale * (ens_p(i, member) - ens_mean) + state_p(i)
+              ens_p(i, member) = sfields(id_field)%ensscale * (ens_p(i, member) - ens_mean) + state_p(i)
            end do
         end do
 !$OMP END PARALLEL DO
      end do
      
   end if
+
+  ! *** Transform fields
+
+  do member = 1 , dim_ens
+
+     if (mype_filter==0 .and. member==1) then
+        verbose = 1
+     else
+        verbose = 0
+     end if
+
+     call transform_field_mv(1, ens_p(:,member), 11, verbose)
+  end do
 
 end subroutine init_ens_pdaf
