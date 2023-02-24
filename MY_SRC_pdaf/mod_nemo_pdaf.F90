@@ -132,7 +132,7 @@ contains
           enddo
        enddo
     enddo
-if (mype_model==0 .and. task_id==1) write (*,*) 'mod_nemo: nwet, nwet3d', nwet, nwet3d
+
     ! Initialize index arrays
     ! - for mapping from nx*ny grid to vector of wet points
     ! - mask for wet points
