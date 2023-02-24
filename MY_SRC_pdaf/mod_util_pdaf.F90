@@ -160,10 +160,12 @@ contains
     use mod_assimilation_pdaf, &
          only: screen, dim_ens, ensscale, delt_obs, &
          type_forget, forget, &
-         type_ens_init, type_central_state, ens_restart
+         type_ens_init, type_central_state, ens_restart, &
+         type_hyb, hyb_gamma, hyb_kappa
     use mod_io_pdaf, &
          only: verbose_io, path_inistate, path_ens, file_ens, file_covar, &
-         sgldbl_io, coupling_nemo, save_var_time, save_state, add_slash
+         sgldbl_io, coupling_nemo, save_var_time, save_state, save_ens_sngl, &
+         add_slash
     use mod_obs_ssh_mgrid_pdafomi, &
          only: assim_ssh_mgrid, rms_ssh_mgrid, file_ssh_mgrid, &
          lradius_ssh_mgrid, sradius_ssh_mgrid, varname_ssh_mgrid
@@ -182,8 +184,8 @@ contains
     namelist /pdaf_nml/ &
          screen, filtertype, subtype, type_trans, type_sqrt, &
          type_forget, forget, locweight, delt_obs, &
-         save_var_time, save_state, verbose_io, sgldbl_io, &
-         perturb_params, stddev_params
+         save_var_time, save_state, save_ens_sngl, verbose_io, sgldbl_io, &
+         perturb_params, stddev_params, type_hyb, hyb_gamma, hyb_kappa
 
     namelist /init_nml/ &
          type_ens_init, type_central_state, ensscale, ens_restart, &
@@ -252,6 +254,11 @@ contains
        write (*, '(a,5x,a,6x,a)')'NEMO-PDAF','save_var_time', trim(save_var_time)
        write (*, '(a,5x,a,l)')   'NEMO-PDAF','save_state   ', save_state
        write (*, '(a,5x,a,6x,a)')   'NEMO-PDAF','sgldbl_io ', sgldbl_io
+       if (filtertype==11) then
+       write (*, '(a,5x,a,i10)') 'NEMO-PDAF','type_hyb       ', type_hyb
+       write (*, '(a,5x,a,f10.3)') 'NEMO-PDAF','hyb_gamma      ', hyb_gamma
+       write (*, '(a,5x,a,f10.3)') 'NEMO-PDAF','hyb_kappa      ', hyb_kappa
+       end if
        write (*, *) ''
        write (*, '(a,3x,a)') 'NEMO-PDAF','[init_nml]:'
        write (*, '(a,5x,a,l)') 'NEMO-PDAF','ens_restart ', ens_restart
@@ -313,14 +320,16 @@ contains
     !! - Calls: `PDAF_deallocate`
     !!
     use mod_parallel_pdaf, &
-         only: mype_ens, comm_ensemble, mpierr
+         only: mype_ens, comm_ensemble, mpierr, mype_model
     use mod_iau_pdaf, &
          only: ssh_iau_pdaf, t_iau_pdaf, s_iau_pdaf, u_iau_pdaf, v_iau_pdaf
+    use timer, &
+         only: time_tot
 
 
     ! Show allocated memory for PDAF
-    if (mype_ens==0) call PDAF_print_info(2)
-    if (mype_ens==0) call PDAF_print_info(11)
+    if (mype_ens==0) call PDAF_print_info(10)
+    call PDAF_print_info(11)
 
     ! Print PDAF timings onto screen
     if (mype_ens==0) call PDAF_print_info(3)
@@ -331,6 +340,13 @@ contains
     ! Deallocaite IAU arrays
     deallocate (ssh_iau_pdaf)
     deallocate (t_iau_pdaf, s_iau_pdaf, u_iau_pdaf, v_iau_pdaf)
+
+    if (mype_ens==0) then
+       WRITE (*, '(24x, a, F11.3, 1x, a)') 'NEMO-PDAF: initialize MPI:', time_tot(1), 's'
+    end if
+    if (mype_model==0) then
+       WRITE (*, '(19x, a, F11.3, 1x, a)') 'NEMO-PDAF: initialize model:', time_tot(2), 's'
+    end if
 
     call mpi_barrier(comm_ensemble, mpierr)
 
