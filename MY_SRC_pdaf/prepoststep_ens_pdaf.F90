@@ -35,10 +35,10 @@ subroutine prepoststep_ens_pdaf(step, dim_p, dim_ens, dim_ens_p, dim_obs_p, &
   use mod_parallel_pdaf, &
        only: mype=>mype_filter, comm_filter, MPIerr
   use mod_statevector_pdaf, &
-       only: n_fields, id, sfields
+       only: n_fields, id, sfields, id_chl, id_dia
   use mod_io_pdaf, &
-        only: save_state, save_var_time, file_PDAF_state, file_PDAF_variance, &
-        write_field_mv
+        only: save_state, save_var_time, save_ens_sngl, file_PDAF_state, file_PDAF_variance, &
+        write_field_mv, write_field_sngl
   use mod_nemo_pdaf, &
        only: ndastp
   
@@ -59,7 +59,7 @@ subroutine prepoststep_ens_pdaf(step, dim_p, dim_ens, dim_ens_p, dim_obs_p, &
 
 
 ! *** local variables ***
-  integer :: i, j, member              ! counters
+  integer :: i, j, member, iens        ! counters
   logical, save :: firsttime = .true.  ! Routine is called for first time?
   real :: invdim_ens                   ! Inverse ensemble size
   real :: invdim_ensm1                 ! Inverse of ensemble size minus 1
@@ -69,13 +69,14 @@ subroutine prepoststep_ens_pdaf(step, dim_p, dim_ens, dim_ens_p, dim_obs_p, &
   integer,save :: writestep_state=1    ! Time index for file output of state
   integer :: nsteps                    ! Number of steps written into file
   character(len=3) :: forana           ! String indicating forecast or analysis
+  character(len=3) :: ensstr           ! Ensemble ID as string
   character(len=8) :: ndastp_str       ! String for model date 
   character(len=200) :: titleState, titleVar   ! Strings for file titles
   integer, allocatable :: dimfield_p(:) ! Local field dimensions
   integer, allocatable :: dimfield(:)  ! Global field dimensions
   real, allocatable :: rmse_est(:)     ! Global estimated RMS errors (ensemble standard deviations)
   logical :: inirestart                ! Whether prepoststep is called first time with ensemble restart
-
+  
 
   
 ! **********************
@@ -222,10 +223,10 @@ subroutine prepoststep_ens_pdaf(step, dim_p, dim_ens, dim_ens_p, dim_obs_p, &
 
          if (forana/='ini') then
             call write_field_mv(state_tmp, trim(file_PDAF_variance)//'_'//trim(ndastp_str)//'.nc', &
-                 titleVar, 1.0, nsteps, writestep_var)
+                 titleVar, 1.0, nsteps, writestep_var, 0)
          else if (.not. (ens_restart)) then
             call write_field_mv(state_tmp, trim(file_PDAF_variance)//'_'//trim(ndastp_str)//'_ini.nc', &
-                 titleVar, 1.0, nsteps, writestep_var)
+                 titleVar, 1.0, nsteps, writestep_var, 0)
          end if
          if (forana/='ini' .and. trim(save_var_time)=='both') writestep_var = 2
 
@@ -234,7 +235,7 @@ subroutine prepoststep_ens_pdaf(step, dim_p, dim_ens, dim_ens_p, dim_obs_p, &
          if (mype == 0) write (*,'(a,5x,a)') 'NEMO-PDAF', '--- Write variance after analysis step'
 
          call write_field_mv(state_tmp, trim(file_PDAF_variance)//'_'//trim(ndastp_str)//'.nc', &
-              titleVar, 1.0, 2, writestep_var)
+              titleVar, 1.0, 2, writestep_var, 0)
 
          writestep_var = 1
       end if
@@ -261,15 +262,49 @@ subroutine prepoststep_ens_pdaf(step, dim_p, dim_ens, dim_ens_p, dim_obs_p, &
          writestep_state = 1
       end if
 
-      ! Write separate files for forecast and analysis
-!      call write_field_mv(state_tmp, trim(file_PDAF_state)//'_'//forana//'.nc', titleState, 1.0, 1, 1)
       ! Write forecast and analysis into the same file
       if (forana/='ini') then
-         call write_field_mv(state_tmp, trim(file_PDAF_state)//'_'//trim(ndastp_str)//'.nc', titleState, 1.0, 2, writestep_state)
+         call write_field_mv(state_tmp, trim(file_PDAF_state)//'_'//trim(ndastp_str)//'.nc', titleState, 1.0, 2, writestep_state, 1)
       else
-         call write_field_mv(state_tmp, trim(file_PDAF_state)//'_'//trim(ndastp_str)//'_ini.nc', titleState, 1.0, 1, writestep_state)
+         call write_field_mv(state_tmp, trim(file_PDAF_state)//'_'//trim(ndastp_str)//'_ini.nc', titleState, 1.0, 1, writestep_state, 1)
       end if
    endif
+
+
+   ! *** Write state into nc file ***
+   if (save_ens_sngl .and. (.not. (ens_restart .and. forana=='ini')) ) then
+
+      do iens = 1, dim_ens
+
+         write(ensstr,'(i3.3)') iens
+
+         ! Store state in state_tmp to avoid changing state_p
+         state_tmp = ens_p(:,iens)
+
+         titleState = 'Ensemble state vector'
+
+         ! Write state file for viewing
+         if (iens==1) then
+            if (forana=='for') then
+               if (mype == 0) write (*,'(a,5x,a)') 'NEMO-PDAF', '--- Write ensemble state before analysis step'
+               writestep_state = 1
+            elseif (forana=='ana') then
+               if (mype == 0) write (*,'(a,5x,a)') 'NEMO-PDAF', '--- Write ensemble state after analysis step'
+               writestep_state = 2
+            else
+               if (mype == 0) write (*,'(a,5x,a)') 'NEMO-PDAF', '--- Write ensemble state at initial time'
+               writestep_state = 1
+            end if
+         end if
+
+         ! Write forecast and analysis into the same file
+         if (forana/='ini') then
+            call write_field_sngl(state_tmp, trim(file_PDAF_state)//'_'//trim(sfields(id_chl)%variable)//'_'//trim(ndastp_str)//'_'//ensstr//'.nc', titleState, 1.0, 2, writestep_state, 1, id_chl)
+         else
+            call write_field_sngl(state_tmp, trim(file_PDAF_state)//'_'//trim(sfields(id_chl)%variable)//'_'//trim(ndastp_str)//'_'//ensstr//'_ini.nc', titleState, 1.0, 1, writestep_state, 1, id_chl)
+         end if
+      end do
+   end if
 
 
 ! ********************
