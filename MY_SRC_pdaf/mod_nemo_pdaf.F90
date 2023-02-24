@@ -74,7 +74,7 @@ contains
 
     use mod_kind_pdaf
     use mod_parallel_pdaf, &
-         only: mype_model
+         only: mype_model, task_id
     use PDAFomi, &
          only: PDAFomi_set_domain_limits
     use mod_assimilation_pdaf, &
@@ -119,16 +119,20 @@ contains
        end do
     end do
 
-    ! Count number of wet surface points
-    nwet = 0
-    do j = 1, nj_p
-       do i = 1, ni_p
-          if (tmask(i + i0, j + j0, 1) == 1.0_pwp) then
-             nwet = nwet + 1
-          end if
-       end do
-    end do
-
+    ! Count number of surface points
+    cnt = 0
+    do k = 1, nk_p
+       do j = 1, nj_p
+          do i = 1, ni_p 
+             cnt = cnt + 1
+             if (tmask(i + i0, j + j0, k) == 1.0_pwp) then
+                if (k==1) nwet = nwet + 1
+                nwet3d = nwet3d + 1
+             endif
+          enddo
+       enddo
+    enddo
+if (mype_model==0 .and. task_id==1) write (*,*) 'mod_nemo: nwet, nwet3d', nwet, nwet3d
     ! Initialize index arrays
     ! - for mapping from nx*ny grid to vector of wet points
     ! - mask for wet points
