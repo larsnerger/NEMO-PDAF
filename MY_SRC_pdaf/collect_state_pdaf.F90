@@ -13,6 +13,8 @@
 subroutine collect_state_pdaf(dim_p, state_p)
 
   use mod_kind_pdaf
+  use mod_parallel_pdaf, &
+       only: mype_model, task_id
 #if defined key_top
   use mod_statevector_pdaf, &
        only: sfields, id, n_trc, n_bgc1, n_bgc2, &
@@ -44,6 +46,7 @@ subroutine collect_state_pdaf(dim_p, state_p)
 ! *** Local variables ***
   real(pwp) :: missing_value = 1e20
   integer :: i       ! Counters
+  integer :: verbose ! Control verbosity
 
 
   ! *********************************
@@ -123,6 +126,13 @@ subroutine collect_state_pdaf(dim_p, state_p)
   end do
 #endif
 
-  call transform_field_mv(1, state_p)
+  ! Aply field transformations
+  if (mype_model==0 .and. task_id==1) then
+     verbose = 1
+  else
+     verbose = 0
+  end if
+
+  call transform_field_mv(1, state_p, 0, verbose)
 
 end subroutine collect_state_pdaf

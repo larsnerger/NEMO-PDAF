@@ -24,7 +24,8 @@ subroutine distribute_state_init_pdaf(dim_p, state_p)
 #if defined key_top
   use mod_statevector_pdaf, &
        only: sfields, id, n_trc, n_bgc1, n_bgc2, &
-       jptra, jptra2, sv_bgc1, sv_bgc2
+       jptra, jptra2, sv_bgc1, sv_bgc2, &
+       id_dia, id_fla, id_cya, update_phys, update_phyto, update_nophyto
   use mod_nemo_pdaf, &
        only: ni_p, nj_p, nk_p, i0, j0, jp_tem, jp_sal, trb, &
              sshb, tsb, ub, vb, lbc_lnk, lbc_lnk_multi, &
@@ -51,10 +52,10 @@ subroutine distribute_state_init_pdaf(dim_p, state_p)
 ! *** Local variables ***
   integer :: i, j, k, cnt ! Counters
 #if defined key_top
-  integer :: id_var ! Counters
+  integer :: id_var       ! Counters
 #endif
   logical :: firststep = .true.   ! Flag for first timestep
-
+  integer :: verbose      ! Control verbosity
 
 
 ! ************************************
@@ -64,7 +65,14 @@ subroutine distribute_state_init_pdaf(dim_p, state_p)
   ! Note: The loop limits account for the halo offsets i0 and j0
     ! if (mype==0) write (*,'(a,4x,a)') 'NEMO-PDAF', 'distribute state - DEACTIVATED'
 
-  call transform_field_mv(2, state_p)
+  ! Aply field transformations
+  if (mype==0) then
+     verbose = 1
+  else
+     verbose = 0
+  end if
+
+  call transform_field_mv(2, state_p, 0, verbose) !21
 
   coldstart: if (.not. ens_restart) then
 

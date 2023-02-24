@@ -27,7 +27,7 @@ subroutine distribute_state_pdaf(dim_p, state_p)
        s_iau_pdaf, bgc_iau_pdaf, div_damping_filter
   use mod_statevector_pdaf, &
        only: sfields, id, n_trc, jptra, jptra2, sv_bgc1, sv_bgc2, &
-       update_phys
+       id_dia, id_fla, id_cya, update_phys, update_phyto, update_nophyto
   use mod_nemo_pdaf, &
        only: ni_p, nj_p, nk_p, i0, j0, jp_tem, jp_sal, trb, &
              sshb, tsb, ub, vb, tmask, lbc_lnk, lbc_lnk_multi, &
@@ -58,6 +58,7 @@ subroutine distribute_state_pdaf(dim_p, state_p)
 #if defined key_top
   integer :: id_var ! Counters
 #endif
+  integer :: verbose      ! Control verbosity
 
 
   ! **********************************************
@@ -65,7 +66,14 @@ subroutine distribute_state_pdaf(dim_p, state_p)
   ! Otherwise compute increment.
   ! **********************************************
 
-  call transform_field_mv(2, state_p)
+  ! Aply field transformations
+  if (mype==0) then
+     verbose = 1
+  else
+     verbose = 0
+  end if
+
+  call transform_field_mv(2, state_p, 21, verbose)  !21
 
 !  direct: if (dist_direct) then
      ! ************************************
@@ -92,6 +100,9 @@ subroutine distribute_state_pdaf(dim_p, state_p)
      ! ************************************
      ! Distribute state vector 3d variables
      ! ************************************
+
+     if ((id%temp>0 .or. id%salt>0 .or. id%uvel>0 .or. id%vvel>0) .and. update_phys) &
+          write (*,'(a,4x,a)') 'NEMO-PDAF', 'distribute_state: update physics'
 
      ! T
      if (id%temp > 0 .and. update_phys) then
@@ -143,16 +154,40 @@ subroutine distribute_state_pdaf(dim_p, state_p)
      ! BGC
 #if defined key_top
      do i = 1, jptra
-       if (sv_bgc1(i)) then
-         id_var=id%bgc1(i)
-         call state2field(state_p, &
-                       trn(1+i0:ni_p+i0, 1+j0:nj_p+j0, 1:nk_p, sfields(id_var)%jptrc), &
-                       sfields(id_var)%off, sfields(id_var)%ndims)
-         ! Fill halo regions
-         call lbc_lnk('distribute_state_pdaf', trn(:, :, :, sfields(id_var)%jptrc), 'T', 1._pwp)
-         trb(:, :, :, sfields(id_var)%jptrc) = trn(:, :, :, sfields(id_var)%jptrc)
-       end if
-     end do
+        if (sv_bgc1(i) .and. (id%bgc1(i)==id_dia .or. id%bgc1(i)==id_fla .or. id%bgc1(i)==id_cya) .and. update_phyto) then
+           if (mype==0) write (*,'(a,1x,a,1x,a)') 'NEMO-PDAF','distribute_state, update ERGOM variable ', sfields(id%bgc1(i))%variable
+           ! Update 3 phytoplankton variables
+           id_var=id%bgc1(i)
+           call state2field(state_p, &
+                trn(1+i0:ni_p+i0, 1+j0:nj_p+j0, 1:nk_p, sfields(id_var)%jptrc), &
+                sfields(id_var)%off, sfields(id_var)%ndims)
+
+           ! Fill halo regions
+           call lbc_lnk('distribute_state_pdaf', trn(:, :, :, sfields(id_var)%jptrc), 'T', &
+                1._pwp)
+           trb(:, :, :, sfields(id_var)%jptrc) = trn(:, :, :, sfields(id_var)%jptrc)
+
+        else if (sv_bgc1(i) .and. update_nophyto) then
+
+           if (mype==0) write (*,'(a,1x,a,1x,a)') 'NEMO-PDAF','distribute_state, update ERGOM variable ', sfields(id%bgc1(i))%variable
+
+           ! Update non-phytoplankton variables (nutrients, OXY, etc)
+           id_var=id%bgc1(i)
+           call state2field(state_p, &
+                trn(1+i0:ni_p+i0, 1+j0:nj_p+j0, 1:nk_p, sfields(id_var)%jptrc), &
+                sfields(id_var)%off, sfields(id_var)%ndims)
+
+           ! Fill halo regions
+           call lbc_lnk('distribute_state_pdaf', trn(:, :, :, sfields(id_var)%jptrc), 'T', 1._pwp)
+           trb(:, :, :, sfields(id_var)%jptrc) = trn(:, :, :, sfields(id_var)%jptrc)
+
+!        else  if (sv_bgc1(i)) then
+
+!           ! Fill halo regions (we always need this for consistency in the Euler time step
+!           call lbc_lnk('distribute_state_pdaf', trn(:, :, :, sfields(id_var)%jptrc), 'T', 1._pwp)
+!           trb(:, :, :, sfields(id_var)%jptrc) = trn(:, :, :, sfields(id_var)%jptrc)
+        end if
+    end do
 
      do i = 1, jptra2
        if (sv_bgc2(i)) then
@@ -177,6 +212,7 @@ subroutine distribute_state_pdaf(dim_p, state_p)
          ! Fill halo regions
          call lbc_lnk('distribute_state_pdaf', xchl, 'T', 1._pwp)
          end select
+      else
        end if
      end do
 #endif
