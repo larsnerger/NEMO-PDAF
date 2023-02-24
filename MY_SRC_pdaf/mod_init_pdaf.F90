@@ -55,7 +55,8 @@ contains
          only: dim_state, dim_state_p, screen, filtertype, subtype, dim_ens, &
          incremental, type_forget, forget, rank_analysis_enkf, &
          type_trans, type_sqrt, delt_obs, locweight, type_ens_init, &
-         type_central_state, perturb_params, stddev_params
+         type_central_state, perturb_params, stddev_params, &
+         type_hyb, hyb_gamma, hyb_kappa
     use mod_iau_pdaf, &
          only: asm_inc_init_pdaf
     use mod_nemo_pdaf, &
@@ -73,12 +74,13 @@ contains
     use mod_obs_ssh_mgrid_pdafomi, &
          only: assim_ssh_mgrid, rms_ssh_mgrid, &
          lradius_ssh_mgrid, sradius_ssh_mgrid
+    use timer, only: timeit, time_temp
 
     implicit none
 
 ! *** Local variables
     integer :: filter_param_i(7) ! Integer parameter array for filter
-    real    :: filter_param_r(2) ! Real parameter array for filter
+    real    :: filter_param_r(3) ! Real parameter array for filter
     integer :: status_pdaf       ! PDAF status flag
     integer :: doexit, steps     ! Not used in this implementation
     real(pwp) :: timenow         ! Not used in this implementation
@@ -89,12 +91,15 @@ contains
     external :: prepoststep_ens_pdaf  ! User supplied pre/poststep routine
 
 
+    call timeit(2,'old')
+
 ! ***************************
 ! ***   Initialize PDAF   ***
 ! ***************************
 
     if (mype_ens == 0) then
        write (*, '(/a,1x,a)') 'NEMO-PDAF', 'INITIALIZE PDAF - ONLINE MODE'
+       WRITE (*, '(24x, a, F11.3, 1x, a)') 'NEMO-PDAF: initialize model:', time_temp(2), 's'
     end if
 
     ! **********************************************************
@@ -113,6 +118,7 @@ contains
       !   (5) LETKF
       !   (6) ESTKF
       !   (7) LESTKF
+      !  (11) LKNETF
     dim_ens = n_modeltasks  ! Size of ensemble for all ensemble filters
       !   We use n_modeltasks here, initialized in init_parallel_pdaf
     subtype = 0       ! subtype of filter:
@@ -138,6 +144,11 @@ contains
     type_sqrt = 0     ! Type of transform matrix square-root
       !   (0) symmetric square root, (1) Cholesky decomposition
     incremental = 0   ! (1) to perform incremental updating (only in SEIK/LSEIK!)
+    type_hyb = 0      ! Type of hybrid weight:
+    hyb_gamma =  1.0  ! Hybrid filter weight for state (1.0: LETKF, 0.0: LNETF)
+    hyb_kappa = 30.0  ! Hybrid norm for using skewness and kurtosis
+
+
 
 
     ! ********************************************************************
@@ -261,6 +272,25 @@ contains
        call PDAF_init(filtertype, subtype, 0, &
             filter_param_i, 6, &
             filter_param_r, 2, &
+            COMM_model, COMM_filter, COMM_couple, &
+            task_id, n_modeltasks, filterpe, init_ens_pdaf, &
+            screen, status_pdaf)
+    elseif (filtertype == 11) then
+     ! *** LKNETF ***
+       filter_param_i(1) = dim_state_p ! State dimension
+       filter_param_i(2) = dim_ens     ! Size of ensemble
+       filter_param_i(3) = 0           ! Size of lag in smoother
+       filter_param_i(4) = 0           ! Not used for NETF (Whether to perform incremental analysis)
+       filter_param_i(5) = type_forget ! Type of forgetting factor
+       filter_param_i(6) = type_trans  ! Type of ensemble transformation
+       filter_param_i(7) = type_hyb    ! Type of hybrid weight
+       filter_param_r(1) = forget      ! Forgetting factor
+       filter_param_r(2) = hyb_gamma   ! Hybrid filter weight for state
+       filter_param_r(3) = hyb_kappa   ! Normalization factor for hybrid weight 
+     
+       call PDAF_init(filtertype, subtype, 0, &
+            filter_param_i, 7, &
+            filter_param_r, 3, &
             COMM_model, COMM_filter, COMM_couple, &
             task_id, n_modeltasks, filterpe, init_ens_pdaf, &
             screen, status_pdaf)

@@ -167,6 +167,10 @@ module mod_assimilation_pdaf
 !    ! NETF/LNETF
   integer :: type_winf     ! Set weights inflation: (1) activate
   real(pwp)    :: limit_winf  ! Limit for weights inflation: N_eff/N>limit_winf
+!    ! hybrid LKNETF
+  INTEGER :: type_hyb      ! Type of hybrid weight: (2) adaptive from N_eff/N
+  REAL    :: hyb_gamma     ! Hybrid filter weight for state (1.0: LETKF, 0.0 LNETF)
+  REAL    :: hyb_kappa     ! Hybrid norm for using skewness and kurtosis
 !    ! Particle filter
   integer :: pf_res_type   ! Resampling type for PF
                            ! (1) probabilistic resampling
