@@ -46,6 +46,7 @@ module mod_statevector_pdaf
      integer :: dim = 0                    ! Dimension of the field
      integer :: off = 0                    ! Offset of field in state vector
      integer :: jptrc = 0                  ! index of the tracer in nemo tracer variable
+     logical :: update = .true.            ! Whether to update this variable 
      character(len=10) :: variable = ''    ! Name of field
      character(len=20) :: name_incr = ''   ! Name of field in increment file
      character(len=20) :: name_rest_n = '' ! Name of field in restart file (n-field)
@@ -82,6 +83,9 @@ module mod_statevector_pdaf
 #endif
 
   integer :: id_chl=0          ! Index of Chlorophyll field in state vector
+  integer :: id_dia=0          ! Index of Chlorophyll field in state vector
+  integer :: id_fla=0          ! Index of Chlorophyll field in state vector
+  integer :: id_cya=0          ! Index of Chlorophyll field in state vector
 
   !---- The next variables usually do not need editing -----
 
@@ -98,7 +102,8 @@ module mod_statevector_pdaf
   integer :: n_fields_covar=0  !< number of fields to read from covariance matrix file
 
   logical :: update_phys = .true.  !< Whether to update NEMO physics after analysis step
-  logical :: update_bio = .true.  !< Whether to update ERGOM variables after analysis step
+  logical :: update_phyto = .true.  !< Whether to update phytoplankton variables of ERGOM
+  logical :: update_nophyto = .true.  !< Whether to update non-phytoplankton variables of ERGOM
 
 contains
 
@@ -132,7 +137,7 @@ contains
 #if defined key_top
     namelist /state_vector/ screen, n_fields_covar, &
          sv_temp, sv_salt, sv_ssh, sv_uvel, sv_vvel, &
-         sv_bgc1, sv_bgc2, update_phys
+         sv_bgc1, sv_bgc2, update_phys, update_phyto, update_nophyto
 #else
     namelist /state_vector/ screen, n_fields_covar, &
          sv_temp, sv_salt, sv_ssh, sv_uvel, sv_vvel
@@ -315,8 +320,11 @@ contains
         sfields(id_var)%jptrc = id_bgc1
         sfields(id_var)%file = 'NORDIC_1d_ERGOM_T_'
         sfields(id_var)%rst_file = 'restart_trc_in.nc'
-        sfields(id_var)%transform = 0
+        sfields(id_var)%transform = 0   ! log-transform
+        sfields(id_var)%limit = 1
+        sfields(id_var)%min_limit = 0.00001_pwp
         sfields(id_var)%trafo_shift = 0.0
+        sfields(id_var)%ensscale = 0.5
 
         select case (id_bgc1)
         case (1)
@@ -325,6 +333,7 @@ contains
           sfields(id_var)%name_rest_n = 'TRNNH4'
           sfields(id_var)%name_rest_b = 'TRBNH4'
           sfields(id_var)%unit = 'mmol m-3'
+!        sfields(id_var)%transform = 2   ! log-transform
         case (2)
           sfields(id_var)%variable = 'NO3'
           sfields(id_var)%name_incr = 'bckinno3'
@@ -349,18 +358,22 @@ contains
           sfields(id_var)%name_rest_n = 'TRNDIA'
           sfields(id_var)%name_rest_b = 'TRBDIA'
           sfields(id_var)%unit = 'mmol m-3'
+          id_dia = id_var
+!          sfields(id_var)%limit = 1
         case (6)
           sfields(id_var)%variable = 'FLA'
           sfields(id_var)%name_incr = 'bckinfla'
           sfields(id_var)%name_rest_n = 'TRNFLA'
           sfields(id_var)%name_rest_b = 'TRBFLA'
           sfields(id_var)%unit = 'mmol m-3'
+          id_fla = id_var
         case (7)
           sfields(id_var)%variable = 'CYA'
           sfields(id_var)%name_incr = 'bckincya'
           sfields(id_var)%name_rest_n = 'TRNCYA'
           sfields(id_var)%name_rest_b = 'TRBCYA'
           sfields(id_var)%unit = 'mmol m-3'
+          id_cya = id_var
         case (8)
           sfields(id_var)%variable = 'MEZ'
           !sfields(id_var)%name_incr = ''
@@ -415,6 +428,8 @@ contains
           sfields(id_var)%name_rest_n = 'TRNOXY'
           sfields(id_var)%name_rest_b = 'TRBOXY'
           sfields(id_var)%unit = 'mmol m-3'
+          sfields(id_var)%transform = 0     ! Oxy will not be transformed
+          sfields(id_var)%limit = 0         ! No limits for Oxy
         end select
       end if
     end do
@@ -441,6 +456,10 @@ contains
           id_chl = id_var        ! Store ID of chlorophyll to be used in observation module
           sfields(id_var)%variable = 'xchl'
           sfields(id_var)%unit = 'mg m-3'
+          ! Set log-transform if prognostic ERGOM variables are transformed
+          if (sfields(id%bgc1(1))%transform==2) then
+             sfields(id_var)%transform = 2   ! log-transform
+          end if
         end select
       end if
     end do
@@ -459,6 +478,7 @@ contains
         write (*, '(a,i2,a)') 'NEMO-PDAF: cannot handle', sfields(id_var)%ndims, ' number of dimensions.'
       end if
     end do
+
   end subroutine init_sfields
 ! ===================================================================================
 
@@ -505,6 +525,8 @@ contains
     do i = 2, n_fields
        sfields(i)%off = sfields(i-1)%off + sfields(i-1)%dim
     end do
+if (mype==11 .and. task_id==2) write (*,*) 'dims', sfields(:)%dim
+if (mype==11 .and. task_id==2) write (*,*) 'offs', sfields(:)%off
 
 ! *** Set state vector dimension ***
 
