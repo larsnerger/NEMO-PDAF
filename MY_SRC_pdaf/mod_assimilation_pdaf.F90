@@ -289,7 +289,7 @@ contains
        end if
 
        if (real(floor(rdate)) - rdate == 0.0) then
-          if (mype_ens==0.and.task_id==1) write (*,*) 'assimilation_PDAF: reset netppsum'
+          if (mype_ens==0.and.task_id==1) write (*,*) 'assimilate_PDAF: reset netppsum'
           netppsum = 0.0
        end if
 
