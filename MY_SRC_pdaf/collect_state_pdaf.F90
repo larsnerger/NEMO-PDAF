@@ -24,6 +24,8 @@ subroutine collect_state_pdaf(dim_p, state_p)
        jp_tem, jp_sal, ndastp, &
        trb, sshb, tsb, ub, vb, &
        xph, xpco2, xchl
+  use mod_assimilation_pdaf, &
+       only: netppsum
 #else
   use mod_statevector_pdaf, &
        only: sfields, id
@@ -110,17 +112,22 @@ subroutine collect_state_pdaf(dim_p, state_p)
     if (sv_bgc2(i)) then
       select case (i)
       case (1)
-      call field2state(xpco2(1+i0:ni_p+i0, 1+j0:nj_p+j0, 1:nk_p), &
-             state_p, &
-             sfields(id%bgc2(i))%off, sfields(id%bgc2(i))%ndims, missing_value)
+         call field2state(xpco2(1+i0:ni_p+i0, 1+j0:nj_p+j0, 1:nk_p), &
+              state_p, &
+              sfields(id%bgc2(i))%off, sfields(id%bgc2(i))%ndims, missing_value)
       case (2)
-      call field2state(xph(1+i0:ni_p+i0, 1+j0:nj_p+j0, 1:nk_p), &
-             state_p, &
-             sfields(id%bgc2(i))%off, sfields(id%bgc2(i))%ndims, missing_value)
+         call field2state(xph(1+i0:ni_p+i0, 1+j0:nj_p+j0, 1:nk_p), &
+              state_p, &
+              sfields(id%bgc2(i))%off, sfields(id%bgc2(i))%ndims, missing_value)
       case (3)
-      call field2state(xchl(1+i0:ni_p+i0, 1+j0:nj_p+j0, 1:nk_p), &
-             state_p, &
-             sfields(id%bgc2(i))%off, sfields(id%bgc2(i))%ndims, missing_value)
+         call field2state(xchl(1+i0:ni_p+i0, 1+j0:nj_p+j0, 1:nk_p), &
+              state_p, &
+              sfields(id%bgc2(i))%off, sfields(id%bgc2(i))%ndims, missing_value)
+      case (4)
+         ! For netpp we use the daily sum computed in assimilate_pdaf
+         call field2state(netppsum(1+i0:ni_p+i0, 1+j0:nj_p+j0, 1:nk_p), &
+              state_p, &
+              sfields(id%bgc2(i))%off, sfields(id%bgc2(i))%ndims, missing_value)
       end select
     end if
   end do

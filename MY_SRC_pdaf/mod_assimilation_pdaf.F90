@@ -196,6 +196,9 @@ module mod_assimilation_pdaf
   real(8), parameter  :: pi     = 3.14159265358979323846_pwp
   real :: deg2rad = pi / 180.0_pwp      ! Conversion from degrees to radian
 
+! Array for computing daily net primary production
+  real(pwp), allocatable, save :: netppsum(:,:,:)
+
 !$OMP THREADPRIVATE(domain_coords, id_lstate_in_pstate)
 
 contains
@@ -212,15 +215,30 @@ contains
   !! 
   !!  - Calls: `PDAFomi_assimilate_local`
   !! 
-  subroutine assimilate_pdaf()
+  subroutine assimilate_pdaf(kt)
 
+    use mod_kind_pdaf
     use pdaf_interfaces_module, &
          only: PDAFomi_assimilate_local, PDAF_get_localfilter
     use mod_parallel_pdaf, &
-         only: mype_ens, abort_parallel, COMM_ensemble, MPIerr
+         only: mype_ens, abort_parallel, COMM_ensemble, MPIerr, task_id
+    use mod_statevector_pdaf, &
+         only: id_netpp
+    use mod_nemo_pdaf, &
+         only: jpi, jpj, jpk
+    use sms_ergom, &
+         only: xnetpp
+    use diaobs, &
+         only: calc_date
 
-    integer :: status_pdaf  ! PDAF status flag
-    integer :: localfilter  ! Flag for domain-localized filter (1=true)
+! *** Arguments ***
+    integer, intent(in) :: kt  ! time step
+
+! *** Local variables ***
+    integer :: status_pdaf         ! PDAF status flag
+    integer :: localfilter         ! Flag for domain-localized filter (1=true)
+    integer, save :: firsttime=1   ! Flag to control allocation
+    real(pwp) :: rdate
 
     !! External subroutines 
     !!  (subroutine names are passed over to PDAF in the calls to 
@@ -246,6 +264,39 @@ contains
          init_dim_obs_pdafomi, &       ! Get dimension of full obs. vector for PE-local domain
          obs_op_pdafomi, &             ! Obs. operator for full obs. vector for PE-local domain
          init_dim_obs_l_pdafomi        ! Get dimension of obs. vector for local analysis domain
+
+
+    ! ************************
+    ! *** Accumulate netpp ***
+    ! ************************
+
+    if (id_netpp>0) then
+
+       ! This is required since in the model only the increment of
+       ! NETPP per time step is computed, while the summation over
+       ! the day is performed by XIOS. For the state vector we
+       ! need to NETPP per day.
+
+       ! Get model date
+       call calc_date(kt-1, rdate)
+
+       ! At first call, allocate array
+       if (firsttime==1) then
+          allocate(netppsum(jpi, jpj, jpk))
+          netppsum = 0.0
+
+          firsttime = 0
+       end if
+
+       if (real(floor(rdate)) - rdate == 0.0) then
+          if (mype_ens==0.and.task_id==1) write (*,*) 'assimilation_PDAF: reset netppsum'
+          netppsum = 0.0
+       end if
+
+       ! Increment the daily netpp
+       netppsum = netppsum + xnetpp
+
+    end if
 
 
     ! *********************************

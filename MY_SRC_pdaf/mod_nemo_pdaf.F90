@@ -4,7 +4,7 @@ module mod_nemo_pdaf
 
   ! Include variables from NEMO
   use par_oce, &
-       only: jpk, jpiglo, jpjglo
+       only: jpi, jpj, jpk, jpiglo, jpjglo
   use dom_oce, &
        only: nldi, nldj, nlei, nlej, glamt, gphit, &
        nimpp, njmpp, tmask, gdept_1d, ndastp, neuler
@@ -19,7 +19,7 @@ module mod_nemo_pdaf
        only: lbc_lnk, lbc_lnk_multi
 #if defined key_top
   use sms_ergom, &
-       only: xph, xpco2, xchl
+       only: xph, xpco2, xchl, xnetpp
 #endif
 
   ! *** NEMO model variables
@@ -62,6 +62,11 @@ module mod_nemo_pdaf
   character(len=200)  :: path_dims         ! Path for NEMO file holding dimensions
   character(len=80)   :: file_dims         ! File name NEMO file holding dimensions
 
+! Constants for coordinate calculations
+  real(8), parameter  :: pi     = 3.14159265358979323846_pwp
+  real :: deg2rad = pi / 180.0_pwp      ! Conversion from degrees to radian
+
+
 contains
 
   !> Initialize grid information for the DA
@@ -77,8 +82,8 @@ contains
          only: mype_model, task_id
     use PDAFomi, &
          only: PDAFomi_set_domain_limits
-    use mod_assimilation_pdaf, &
-         only: deg2rad
+!    use mod_assimilation_pdaf, &
+!         only: deg2rad
 
     implicit none
 

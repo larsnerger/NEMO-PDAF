@@ -329,7 +329,7 @@ CONTAINS
       !
 #if defined key_USE_PDAF
       ! Check whether assimilation needs to be performed
-       CALL assimilate_pdaf()
+       CALL assimilate_pdaf( kstp )
 #endif
 #if defined key_iomput
       !>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>

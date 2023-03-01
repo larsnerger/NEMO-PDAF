@@ -65,10 +65,10 @@ module mod_statevector_pdaf
   end type state_field
 
 #if defined key_top
-  integer :: n_trc = 0         !< number of tracer fields
-  integer :: n_bgc1 = 0         !< number of prognostic tracer fields
-  integer :: n_bgc2 = 0         !< number of diagnostic tracer fields
-  integer, parameter :: jptra2 = 3         !< number of total diagnosed tracer fields
+  integer :: n_trc = 0                     !< number of tracer fields
+  integer :: n_bgc1 = 0                    !< number of prognostic tracer fields
+  integer :: n_bgc2 = 0                    !< number of diagnostic tracer fields
+  integer, parameter :: jptra2 = 4         !< number of total diagnostic tracer fields
 #endif
 
   ! Variables to activate a field from the namelist
@@ -82,10 +82,11 @@ module mod_statevector_pdaf
   logical, allocatable :: sv_bgc2(:) !< Whether to include diagnosed ERGOM variables
 #endif
 
-  integer :: id_chl=0          ! Index of Chlorophyll field in state vector
-  integer :: id_dia=0          ! Index of Chlorophyll field in state vector
-  integer :: id_fla=0          ! Index of Chlorophyll field in state vector
-  integer :: id_cya=0          ! Index of Chlorophyll field in state vector
+  integer :: id_chl=0          ! Index of chlorophyll field in state vector
+  integer :: id_dia=0          ! Index of diatom field in state vector
+  integer :: id_fla=0          ! Index of flagellate field in state vector
+  integer :: id_cya=0          ! Index of cyanobacteria field in state vector
+  integer :: id_netpp=0        ! Index of net primary production in state vector
 
   !---- The next variables usually do not need editing -----
 
@@ -460,6 +461,10 @@ contains
           if (sfields(id%bgc1(1))%transform==2) then
              sfields(id_var)%transform = 2   ! log-transform
           end if
+        case (4)
+          id_netpp = id_var      ! Store ID of NETPP to be used in observation module
+          sfields(id_var)%variable = 'xnetpp'
+          sfields(id_var)%unit = 'microgC m-3* -d'
         end select
       end if
     end do
