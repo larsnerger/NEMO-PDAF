@@ -2,9 +2,16 @@
 
 # Variable OBJECTS containing all object files
 OBJECTS = timer.o rmse_sst.o
+OBJECTS_CHL_Bal = timer.o rmse_chl_baltic.o
+OBJECTS_CHL_Bal_obsgrid = timer.o write_chl_obsgrid_baltic.o
+OBJECTS_CHL_Bal_obsgrid_ens = timer.o write_chl_obsgrid_baltic_ens.o
+
 
 # Name of the executable
-EXE     = rmse
+EXE     = rmse_sst
+EXE_CHL_Bal = rmse_chl_baltic
+EXE_CHL_Bal_obsgrid = write_chl_obsgrid_baltic
+EXE_CHL_Bal_obsgrid_ens = write_chl_obsgrid_baltic_ens
 
 # Fortran compiler and compiler flags
 FC      = ifort
@@ -36,7 +43,7 @@ LINK_LIBS = #-L/usr/lib/lapack -llapack -L/usr/lib/libblas -lblas
 #LINK_LIBS = -lessl -L/iblade/soft/lapack/3.2.1 -llapack_pwr6
 
 #--------------------------------------------------
-rmse:	 	$(OBJECTS)
+rmse_sst:	 	$(OBJECTS)
 		$(LINK) -g -o $(EXE) \
 		$(LDFLAGS) $(OBJECTS) $(MODULES) -L$(NCLIB) -lnetcdff $(LINK_LIBS)
 #.F90.o: 
@@ -44,6 +51,18 @@ rmse:	 	$(OBJECTS)
 #	$(FC) $*.f90 \
 #	-c -g $(FCFLAGS) 
 #	rm -f $*.f90
+
+rmse_chl_baltic:	 	$(OBJECTS_CHL_Bal)
+		$(LINK) -g -o $(EXE_CHL_Bal) \
+		$(LDFLAGS) $(OBJECTS_CHL_Bal) $(MODULES) -L$(NCLIB) -lnetcdff $(LINK_LIBS)
+
+write_chl_obsgrid_baltic:	 	$(OBJECTS_CHL_Bal_obsgrid)
+		$(LINK) -g -o $(EXE_CHL_Bal_obsgrid) \
+		$(LDFLAGS) $(OBJECTS_CHL_Bal_obsgrid) $(MODULES) -L$(NCLIB) -lnetcdff $(LINK_LIBS)
+
+write_chl_obsgrid_baltic_ens:	 	$(OBJECTS_CHL_Bal_obsgrid_ens)
+		$(LINK) -g -o $(EXE_CHL_Bal_obsgrid_ens) \
+		$(LDFLAGS) $(OBJECTS_CHL_Bal_obsgrid_ens) $(MODULES) -L$(NCLIB) -lnetcdff $(LINK_LIBS)
 
 .F90.o:
 		$(FC) $< \
@@ -60,4 +79,4 @@ rmse:	 	$(OBJECTS)
 new:		clean make
 
 clean:
-	rm -f *.o $(EXE) $(EXE2) *.mod
+	rm -f *.o $(EXE) $(EXE_CHL_Bal) *.mod
