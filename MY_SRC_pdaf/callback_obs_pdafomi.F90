@@ -33,6 +33,8 @@ subroutine init_dim_obs_pdafomi(step, dim_obs)
        only: assim_sst_cmems, init_dim_obs_sst_cmems
   use mod_obs_chl_baltic_cmems_pdafomi, &
        only: assim_chl_baltic_cmems, init_dim_obs_chl_baltic_cmems
+  use mod_obs_chl_nsea_cmems_pdafomi, &
+       only: assim_chl_nsea_cmems, init_dim_obs_chl_nsea_cmems
 
   implicit none
 
@@ -41,9 +43,10 @@ subroutine init_dim_obs_pdafomi(step, dim_obs)
   integer, intent(out) :: dim_obs  !< Dimension of full observation vector
 
 ! *** Local variables ***
-  integer :: dim_obs_ssh_mgrid     ! Observation dimension
-  integer :: dim_obs_sst_cmems     ! Observation dimension
-  integer :: dim_obs_chl_baltic_cmems     ! Observation dimension
+  integer :: dim_obs_ssh_mgrid         ! Observation dimension
+  integer :: dim_obs_sst_cmems         ! Observation dimension
+  integer :: dim_obs_chl_baltic_cmems  ! Observation dimension
+  integer :: dim_obs_chl_nsea_cmems    ! Observation dimension
 
 
 ! *********************************************
@@ -54,6 +57,7 @@ subroutine init_dim_obs_pdafomi(step, dim_obs)
   dim_obs_ssh_mgrid = 0
   dim_obs_sst_cmems = 0
   dim_obs_chl_baltic_cmems = 0
+  dim_obs_chl_nsea_cmems = 0
 
   ! Call observation-specific routines
   ! The routines are independent, so it is not relevant
@@ -62,8 +66,9 @@ subroutine init_dim_obs_pdafomi(step, dim_obs)
   if (assim_ssh_mgrid) call init_dim_obs_ssh_mgrid(step, dim_obs_ssh_mgrid)
   if (assim_sst_cmems) call init_dim_obs_sst_cmems(step, dim_obs_sst_cmems)
   if (assim_chl_baltic_cmems) call init_dim_obs_chl_baltic_cmems(step, dim_obs_chl_baltic_cmems)
+  if (assim_chl_nsea_cmems) call init_dim_obs_chl_nsea_cmems(step, dim_obs_chl_nsea_cmems)
 
-  dim_obs = dim_obs_ssh_mgrid + dim_obs_sst_cmems + dim_obs_chl_baltic_cmems
+  dim_obs = dim_obs_ssh_mgrid + dim_obs_sst_cmems + dim_obs_chl_baltic_cmems  + dim_obs_chl_nsea_cmems
 
 end subroutine init_dim_obs_pdafomi
 
@@ -84,6 +89,8 @@ subroutine obs_op_pdafomi(step, dim_p, dim_obs, state_p, ostate)
        only: obs_op_sst_cmems
   use mod_obs_chl_baltic_cmems_pdafomi, &
        only: obs_op_chl_baltic_cmems
+  use mod_obs_chl_nsea_cmems_pdafomi, &
+       only: obs_op_chl_nsea_cmems
 
   implicit none
 
@@ -106,6 +113,7 @@ subroutine obs_op_pdafomi(step, dim_p, dim_obs, state_p, ostate)
    call obs_op_ssh_mgrid(dim_p, dim_obs, state_p, ostate)
    call obs_op_sst_cmems(dim_p, dim_obs, state_p, ostate)
    call obs_op_chl_baltic_cmems(dim_p, dim_obs, state_p, ostate)
+   call obs_op_chl_nsea_cmems(dim_p, dim_obs, state_p, ostate)
 
 end subroutine obs_op_pdafomi
 
@@ -128,6 +136,8 @@ subroutine init_dim_obs_l_pdafomi(domain_p, step, dim_obs, dim_obs_l)
        only: assim_sst_cmems, init_dim_obs_l_sst_cmems
   use mod_obs_chl_baltic_cmems_pdafomi, &
        only: assim_chl_baltic_cmems, init_dim_obs_l_chl_baltic_cmems
+  use mod_obs_chl_nsea_cmems_pdafomi, &
+       only: assim_chl_nsea_cmems, init_dim_obs_l_chl_nsea_cmems
 
   implicit none
 
@@ -143,6 +153,7 @@ subroutine init_dim_obs_l_pdafomi(domain_p, step, dim_obs, dim_obs_l)
       if (assim_ssh_mgrid) call init_dim_obs_l_ssh_mgrid(domain_p, step, dim_obs, dim_obs_l)
       if (assim_sst_cmems) call init_dim_obs_l_sst_cmems(domain_p, step, dim_obs, dim_obs_l)
       if (assim_chl_baltic_cmems) call init_dim_obs_l_chl_baltic_cmems(domain_p, step, dim_obs, dim_obs_l)
+      if (assim_chl_nsea_cmems) call init_dim_obs_l_chl_nsea_cmems(domain_p, step, dim_obs, dim_obs_l)
    else
       dim_obs_l = 0
    end if

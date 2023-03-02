@@ -30,7 +30,7 @@ subroutine distribute_state_init_pdaf(dim_p, state_p)
        only: ni_p, nj_p, nk_p, i0, j0, jp_tem, jp_sal, trb, &
              sshb, tsb, ub, vb, lbc_lnk, lbc_lnk_multi, &
              sshn, tsn, un, vn, trn, neuler, &
-             xph, xpco2, xchl
+             xph, xpco2, xchl, xnetpp
 #else
   use mod_statevector_pdaf, &
        only: sfields, id
@@ -159,29 +159,35 @@ subroutine distribute_state_init_pdaf(dim_p, state_p)
      end do
 
      do i = 1, jptra2
-       if (sv_bgc2(i)) then
-         id_var=id%bgc2(i)
-         select case (i)
-         case (1)
-         call state2field(state_p, &
-                       xpco2(1+i0:ni_p+i0, 1+j0:nj_p+j0, 1:nk_p), &
-                       sfields(id_var)%off, sfields(id_var)%ndims)
-         ! Fill halo regions
-         call lbc_lnk('distribute_state_pdaf', xpco2, 'T', 1._pwp)
-         case (2)
-         call state2field(state_p, &
-                      xph(1+i0:ni_p+i0, 1+j0:nj_p+j0, 1:nk_p), &
-                      sfields(id_var)%off, sfields(id_var)%ndims)
-         ! Fill halo regions
-         call lbc_lnk('distribute_state_pdaf', xph, 'T', 1._pwp)
-         case (3)
-         call state2field(state_p, &
-                      xchl(1+i0:ni_p+i0, 1+j0:nj_p+j0, 1:nk_p), &
-                      sfields(id_var)%off, sfields(id_var)%ndims)
-         ! Fill halo regions
-         call lbc_lnk('distribute_state_pdaf', xchl, 'T', 1._pwp)
-         end select
-       end if
+        if (sv_bgc2(i)) then
+           id_var=id%bgc2(i)
+           select case (i)
+           case (1)
+              call state2field(state_p, &
+                   xpco2(1+i0:ni_p+i0, 1+j0:nj_p+j0, 1:nk_p), &
+                   sfields(id_var)%off, sfields(id_var)%ndims)
+              ! Fill halo regions
+              call lbc_lnk('distribute_state_pdaf', xpco2, 'T', 1._pwp)
+           case (2)
+              call state2field(state_p, &
+                   xph(1+i0:ni_p+i0, 1+j0:nj_p+j0, 1:nk_p), &
+                   sfields(id_var)%off, sfields(id_var)%ndims)
+              ! Fill halo regions
+              call lbc_lnk('distribute_state_pdaf', xph, 'T', 1._pwp)
+           case (3)
+              call state2field(state_p, &
+                   xchl(1+i0:ni_p+i0, 1+j0:nj_p+j0, 1:nk_p), &
+                   sfields(id_var)%off, sfields(id_var)%ndims)
+              ! Fill halo regions
+              call lbc_lnk('distribute_state_pdaf', xchl, 'T', 1._pwp)
+           case (4)
+              call state2field(state_p, &
+                   xnetpp(1+i0:ni_p+i0, 1+j0:nj_p+j0, 1:nk_p), &
+                   sfields(id_var)%off, sfields(id_var)%ndims)
+              ! Fill halo regions
+              call lbc_lnk('distribute_state_pdaf', xnetpp, 'T', 1._pwp)
+           end select
+        end if
      end do
 #endif
 

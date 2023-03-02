@@ -448,14 +448,14 @@ contains
 
         select case (id_bgc2)
         case (1)
-          sfields(id_var)%variable = 'xpco2'
+          sfields(id_var)%variable = 'PCO2'
           sfields(id_var)%unit = 'micro atm'
         case (2)
-          sfields(id_var)%variable = 'xph'
+          sfields(id_var)%variable = 'PH'
           sfields(id_var)%unit = '-'
         case (3)
           id_chl = id_var        ! Store ID of chlorophyll to be used in observation module
-          sfields(id_var)%variable = 'xchl'
+          sfields(id_var)%variable = 'CHL'
           sfields(id_var)%unit = 'mg m-3'
           ! Set log-transform if prognostic ERGOM variables are transformed
           if (sfields(id%bgc1(1))%transform==2) then
@@ -463,7 +463,7 @@ contains
           end if
         case (4)
           id_netpp = id_var      ! Store ID of NETPP to be used in observation module
-          sfields(id_var)%variable = 'xnetpp'
+          sfields(id_var)%variable = 'PP'
           sfields(id_var)%unit = 'microgC m-3* -d'
         end select
       end if

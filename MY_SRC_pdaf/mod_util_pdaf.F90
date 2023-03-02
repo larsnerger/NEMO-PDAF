@@ -177,6 +177,10 @@ contains
          only: assim_chl_baltic_cmems, path_chl_baltic_cmems, file_chl_baltic_cmems, rms_obs_chl_baltic_cmems, &
          lradius_chl_baltic_cmems, sradius_chl_baltic_cmems, mode_chl_baltic_cmems, dist_chl_baltic_cmems, &
          varname_chl_baltic_cmems
+    use mod_obs_chl_nsea_cmems_pdafomi, &
+         only: assim_chl_nsea_cmems, path_chl_nsea_cmems, file_chl_nsea_cmems, rms_obs_chl_nsea_cmems, &
+         lradius_chl_nsea_cmems, sradius_chl_nsea_cmems, mode_chl_nsea_cmems, dist_chl_nsea_cmems, &
+         varname_chl_nsea_cmems
 
     !< Namelist file
     character(lc) :: nmlfile
@@ -205,6 +209,11 @@ contains
          lradius_chl_baltic_cmems,  sradius_chl_baltic_cmems, mode_chl_baltic_cmems, dist_chl_baltic_cmems, &
          varname_chl_baltic_cmems
 
+    namelist /obs_chl_nsea_cmems_nml/ &
+         assim_chl_nsea_cmems, path_chl_nsea_cmems, file_chl_nsea_cmems, rms_obs_chl_nsea_cmems, &
+         lradius_chl_nsea_cmems,  sradius_chl_nsea_cmems, mode_chl_nsea_cmems, dist_chl_nsea_cmems, &
+         varname_chl_nsea_cmems
+
 
     ! ****************************************************
     ! ***   Initialize PDAF parameters from namelist   ***
@@ -223,11 +232,14 @@ contains
     rewind(20)
     read (20, NML=obs_chl_baltic_cmems_nml)
     rewind(20)
+    read (20, NML=obs_chl_nsea_cmems_nml)
+    rewind(20)
     close (20)
 
     ! *** Add trailing slash to paths ***
     call add_slash(path_sst_cmems)
     call add_slash(path_chl_baltic_cmems)
+    call add_slash(path_chl_nsea_cmems)
     call add_slash(path_inistate)
     call add_slash(path_ens)
 
@@ -299,6 +311,18 @@ contains
           write (*, '(a,5x,a,es12.4)') 'NEMO-PDAF','sradius_chl_baltic_cmems      ', sradius_chl_baltic_cmems
           write (*, '(a,5x,a,i10)') 'NEMO-PDAF','mode_chl_baltic_cmems      ', mode_chl_baltic_cmems
           write (*, '(a,5x,a,8x,a)') 'NEMO-PDAF','dist_chl_baltic_cmems      ', dist_chl_baltic_cmems
+       end if
+       write (*, *) ''
+       write (*, '(a,3x,a)') 'NEMO-PDAF','[obs_chl_nsea_cmems_nml]:'
+       write (*, '(a,5x,a,5x,l)') 'NEMO-PDAF','assim_chl_nsea_cmems      ', assim_chl_nsea_cmems
+       if (assim_chl_nsea_cmems) then
+          write (*, '(a,5x,a,f12.4)') 'NEMO-PDAF','rms_obs_chl_nsea_cmems  ', rms_obs_chl_nsea_cmems
+          write (*, '(a,5x,a,a)') 'NEMO-PDAF','file_chl_nsea_cmems        ', trim(file_chl_nsea_cmems)
+          write (*, '(a,5x,a,a)') 'NEMO-PDAF','varname_chl_nsea_cmems     ', trim(varname_chl_nsea_cmems)
+          write (*, '(a,5x,a,es12.4)') 'NEMO-PDAF','lradius_chl_nsea_cmems      ', lradius_chl_nsea_cmems
+          write (*, '(a,5x,a,es12.4)') 'NEMO-PDAF','sradius_chl_nsea_cmems      ', sradius_chl_nsea_cmems
+          write (*, '(a,5x,a,i10)') 'NEMO-PDAF','mode_chl_nsea_cmems      ', mode_chl_nsea_cmems
+          write (*, '(a,5x,a,8x,a)') 'NEMO-PDAF','dist_chl_nsea_cmems      ', dist_chl_nsea_cmems
        end if
 
        write (*, '(a,1x,a/)') 'NEMO-PDAF','-- End of PDAF configuration overview --'

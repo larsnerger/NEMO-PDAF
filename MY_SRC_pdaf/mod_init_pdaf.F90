@@ -71,6 +71,9 @@ contains
     use mod_obs_chl_baltic_cmems_pdafomi, &
          only: assim_chl_baltic_cmems, rms_obs_chl_baltic_cmems, &
          lradius_chl_baltic_cmems, sradius_chl_baltic_cmems, mode_chl_baltic_cmems, dist_chl_baltic_cmems
+    use mod_obs_chl_nsea_cmems_pdafomi, &
+         only: assim_chl_nsea_cmems, rms_obs_chl_nsea_cmems, &
+         lradius_chl_nsea_cmems, sradius_chl_nsea_cmems, mode_chl_nsea_cmems, dist_chl_nsea_cmems
     use mod_obs_ssh_mgrid_pdafomi, &
          only: assim_ssh_mgrid, rms_ssh_mgrid, &
          lradius_ssh_mgrid, sradius_ssh_mgrid
@@ -176,9 +179,10 @@ contains
     delt_obs = 496      ! Number of time steps between analysis/assimilation steps
 
     ! Which observations to assimilate
-    assim_sst_cmems = .false.   ! Whether to assimilate SST data from CMEMS
-    assim_ssh_mgrid = .false.   ! Whether to assimilate SSH data on model grid
-    assim_chl_baltic_cmems = .false.   ! Whether to assimilate CHL data for Baltic Sea from CMEMS
+    assim_sst_cmems = .false.        ! Whether to assimilate SST data from CMEMS
+    assim_ssh_mgrid = .false.        ! Whether to assimilate SSH data on model grid
+    assim_chl_baltic_cmems = .false. ! Whether to assimilate CHL data for Baltic Sea from CMEMS
+    assim_chl_nsea_cmems = .false.   ! Whether to assimilate CHL data for North Sea from CMEMS
 
     ! *** Localization settings
     locweight = 0     ! Type of localizating weighting
@@ -204,13 +208,22 @@ contains
       ! or distance for 1/e for exponential weighting
 
     ! Settings for CMEMS satellite CHL for Baltic
-    rms_obs_chl_baltic_cmems = 0.3_8     ! Relative observation error stddev
-    mode_chl_baltic_cmems = 1            ! Observation mode:
-                                  !  (0) linear interpolation to observation grid
-                                  !  (1) super-obbing: average 4 observation values
+    rms_obs_chl_baltic_cmems = 0.3_8   ! Relative observation error stddev
+    mode_chl_baltic_cmems = 1          ! Observation mode:
+                                       !  (0) linear interpolation to observation grid
+                                       !  (1) super-obbing: average 4 observation values
     lradius_chl_baltic_cmems = 10000.0_8 ! Radius in km for lon/lat (or in grid points)
     sradius_chl_baltic_cmems = lradius_chl_baltic_cmems  ! Support radius for 5th-order polynomial
-      ! or distance for 1/e for exponential weighting
+                                       ! or distance for 1/e for exponential weighting
+
+    ! Settings for CMEMS satellite CHL for North Sea
+    rms_obs_chl_nsea_cmems = 0.3_8     ! Relative observation error stddev
+    mode_chl_nsea_cmems = 1            ! Observation mode:
+                                       !  (0) linear interpolation to observation grid
+                                       !  (1) super-obbing: average 4 observation values
+    lradius_chl_nsea_cmems = 10000.0_8 ! Radius in km for lon/lat (or in grid points)
+    sradius_chl_nsea_cmems = lradius_chl_nsea_cmems  ! Support radius for 5th-order polynomial
+                                       ! or distance for 1/e for exponential weighting
 
 
 ! **********************************
