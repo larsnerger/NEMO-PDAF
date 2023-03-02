@@ -152,7 +152,9 @@ contains
     real(pwp) :: missing_value               ! Missing value above which observations are valid
     real(pwp) :: var_obs                     ! Observation error variance
     real(pwp),parameter :: ln10sq = log(10.d0)*log(10.d0)  ! Factor for log10 to natural log transformation
-    real(pwp),parameter :: ln10 = log(10.d0)  ! Factor for log10 to natural log transformation
+    real(pwp),parameter :: ln10 = log(10.d0) ! Factor for log10 to natural log transformation
+    character(len=2) :: region               ! Region for which the data is used ('no', 'ba', 'nb')
+    real :: limcoords(3)                     ! Limiting coordinates according to region
 
 
 
@@ -162,6 +164,12 @@ contains
 
     if (mype_filter==0) &
          write (*,'(a,4x,a)') 'NEMO-PDAF', 'Assimilate observations - OBS_CHL_BALTIC_CMEMS'
+
+    ! Specify region and limiting coordinates
+    region = 'ba'
+    limcoords(1) = 56.45 * deg2rad    ! north/south limit in Skagerrak
+    limcoords(2) = 9.4 * deg2rad      ! east/west limit over Denmark; use outh of limcoords(1) for 'no'
+    limcoords(3) = 15.0 * deg2rad     ! east/west limit over Sweden; use north of limcoords(1) for 'ba'
 
     ! Store whether to assimilate this observation type (used in routines below)
     if (assim_chl_baltic_cmems) thisobs%doassim = 1
@@ -293,6 +301,41 @@ contains
           end do
 
        end if cartdist
+
+
+! ****************************************
+! *** Exclude data for specific region ***
+! ****************************************
+
+       if (region=='ba') then
+          ! Baltic Sea (exclude Skagerrak/Kattegat and all west of Denmark)
+
+          if (mype_filter==0) &
+               write (*,'(8x,a)') '--- Exclude observations in North Sea'
+
+          do j = 1, dim_olat
+             do i = 1, dim_olon
+                if (lon_obs(i)<limcoords(2) .or. (lon_obs(i)<limcoords(3) &
+                     .and. lat_obs(j)>limcoords(1))) then
+                   obs_from_file(i,j) = missing_value
+                end if
+             end do
+          end do
+       elseif (region=='no') then
+          ! North Sea (exclude Baltic except Skagerrak/Kattegat north of limcoords(1))
+
+          if (mype_filter==0) &
+               write (*,'(8x,a)') '--- Exclude observations in Baltic Sea'
+
+          do j = 1, dim_olat
+             do i = 1, dim_olon
+                if ((lon_obs(i)>=limcoords(2) .and. lat_obs(j)<=limcoords(1)) &
+                     .or. lon_obs(i)>limcoords(3)) then
+                   obs_from_file(i,j) = missing_value
+                end if
+             end do
+          end do
+       end if
 
 
 ! *******************************************************************
