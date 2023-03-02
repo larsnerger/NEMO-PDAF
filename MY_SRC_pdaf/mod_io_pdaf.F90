@@ -781,6 +781,12 @@ end subroutine gen_ens_mv
        nf_prec = NF90_FLOAT
     end if
 
+    if (sgldbl_io=='dbl') then
+       fillval = 1.0e20_pwp
+    else
+       sfillval = 1.0e20
+    end if
+
     if (step==1) then
 
 ! *** Create file ***
@@ -830,11 +836,9 @@ end subroutine gen_ens_mv
                call check( NF90_def_var_deflate(ncid, id_field, 0, 1, 1) )
           call check( nf90_put_att(ncid, id_field, "coordinates", "nav_lat nav_lon") )
           if (sgldbl_io=='dbl') then
-             fillval = 1.0e20_pwp
              call check( nf90_put_att(ncid, id_field, "_FillValue", fillval) )
              call check( nf90_put_att(ncid, id_field, "missing_value", fillval) )
           else
-             sfillval = 1.0e20
              call check( nf90_put_att(ncid, id_field, "_FillValue", sfillval) )
              call check( nf90_put_att(ncid, id_field, "missing_value", sfillval) )
           end if
