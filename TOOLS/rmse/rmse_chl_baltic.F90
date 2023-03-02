@@ -68,11 +68,11 @@ program rmse
 
   ! Number of days per month
   !ndays_m = (/30, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31/)
-  ndays_m = (/10, 28, 31, 30, 24, 30, 31, 31, 30, 31, 30, 31/)
+  ndays_m = (/31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31/)
 
-  !months = (/1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 /)
-  months = (/3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 1, 2 /)
-  years = (/2015, 2015, 2015, 2015, 2015, 2015, 2015, 2015, 2015, 2015, 2016, 2016 /)
+  months = (/1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 /)
+  !months = (/3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 1, 2 /)
+  years = (/2015, 2015, 2015, 2015, 2015, 2015, 2015, 2015, 2015, 2015, 2015, 2015 /)
   ampm = '00'
 
   ! How many months to compute
@@ -85,7 +85,6 @@ program rmse
   path_o = '/scratch/usr/hzfblner/SEAMLESS/observations/CHL_2015'
 
   ! Path to data assimilation output files
-  path_m ='/scratch/usr/hzfblner/SEAMLESS/run/ens_NORDIC_ndays/output_N20_DA_Smago/DA'
   path_m ='/scratch/usr/hzfblner/SEAMLESS/run/ens_ERGOM_DA/001/output/DA'
 
   ! Path and file name of NEMO T-grid output file to read mask
