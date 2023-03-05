@@ -25,7 +25,7 @@ subroutine distribute_state_init_pdaf(dim_p, state_p)
   use mod_statevector_pdaf, &
        only: sfields, id, n_trc, n_bgc1, n_bgc2, &
        jptra, jptra2, sv_bgc1, sv_bgc2, &
-       id_dia, id_fla, id_cya, update_phys, update_phyto, update_nophyto
+       id_dia, id_fla, id_cya
   use mod_nemo_pdaf, &
        only: ni_p, nj_p, nk_p, i0, j0, jp_tem, jp_sal, trb, &
              sshb, tsb, ub, vb, lbc_lnk, lbc_lnk_multi, &

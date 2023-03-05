@@ -46,7 +46,7 @@ module mod_statevector_pdaf
      integer :: dim = 0                    ! Dimension of the field
      integer :: off = 0                    ! Offset of field in state vector
      integer :: jptrc = 0                  ! index of the tracer in nemo tracer variable
-     logical :: update = .true.            ! Whether to update this variable 
+     logical :: update = .false.           ! Whether to update this variable in the analysis step
      character(len=10) :: variable = ''    ! Name of field
      character(len=20) :: name_incr = ''   ! Name of field in increment file
      character(len=20) :: name_rest_n = '' ! Name of field in restart file (n-field)
@@ -102,9 +102,13 @@ module mod_statevector_pdaf
   integer :: n_fields          !< number of fields in state vector
   integer :: n_fields_covar=0  !< number of fields to read from covariance matrix file
 
-  logical :: update_phys = .true.  !< Whether to update NEMO physics after analysis step
-  logical :: update_phyto = .true.  !< Whether to update phytoplankton variables of ERGOM
-  logical :: update_nophyto = .true.  !< Whether to update non-phytoplankton variables of ERGOM
+  logical :: update_phys = .true.      !< Whether to update NEMO physics after analysis step
+  logical :: update_phyto = .true.     !< Whether to update phytoplankton variables of ERGOM (DIA, FLA, CYA)
+  logical :: update_zoo = .true.       !< Whether to update zooplankton variables of ERGOM (MIZ, MEZ)
+  logical :: update_det = .true.       !< Whether to update detritus variables of ERGOM (DET, DETs)
+  logical :: update_nut = .true.       !< Whether to update nutrient variables of ERGOM (NH4, NO3, PO4, FE)
+  logical :: update_oxy = .true.       !< Whether to update oxygen variable of ERGOM
+  logical :: update_other = .true.     !< Whether to update non-phytoplankton variables of ERGOM
 
 contains
 
@@ -138,7 +142,7 @@ contains
 #if defined key_top
     namelist /state_vector/ screen, n_fields_covar, &
          sv_temp, sv_salt, sv_ssh, sv_uvel, sv_vvel, &
-         sv_bgc1, sv_bgc2, update_phys, update_phyto, update_nophyto
+         sv_bgc1, sv_bgc2
 #else
     namelist /state_vector/ screen, n_fields_covar, &
          sv_temp, sv_salt, sv_ssh, sv_uvel, sv_vvel
@@ -245,6 +249,7 @@ contains
        sfields(id_var)%transform = 0
        sfields(id_var)%trafo_shift = 0.0
        sfields(id_var)%limit = 0
+       if (update_phys) sfields(id_var)%update = .true.
     endif
 
     ! Temperature
@@ -261,6 +266,7 @@ contains
        sfields(id_var)%unit = 'degC'
        sfields(id_var)%transform = 0
        sfields(id_var)%trafo_shift = 0.0
+       if (update_phys) sfields(id_var)%update = .true.
     endif
 
     ! Salinity
@@ -277,6 +283,7 @@ contains
        sfields(id_var)%unit = 'psu'
        sfields(id_var)%transform = 0
        sfields(id_var)%trafo_shift = 0.0
+       if (update_phys) sfields(id_var)%update = .true.
     endif
 
     ! U-velocity
@@ -293,6 +300,7 @@ contains
        sfields(id_var)%unit = 'm/s'
        sfields(id_var)%transform = 0
        sfields(id_var)%trafo_shift = 0.0
+       if (update_phys) sfields(id_var)%update = .true.
     endif
 
     ! V-velocity
@@ -309,6 +317,7 @@ contains
        sfields(id_var)%unit = 'm/s'
        sfields(id_var)%transform = 0
        sfields(id_var)%trafo_shift = 0.0
+       if (update_phys) sfields(id_var)%update = .true.
     endif
 
 #if defined key_top
@@ -330,29 +339,33 @@ contains
         select case (id_bgc1)
         case (1)
           sfields(id_var)%variable = 'NH4'
-          sfields(id_var)%name_incr = 'bckinnh4'
+          sfields(id_var)%name_incr = ''
           sfields(id_var)%name_rest_n = 'TRNNH4'
           sfields(id_var)%name_rest_b = 'TRBNH4'
           sfields(id_var)%unit = 'mmol m-3'
 !        sfields(id_var)%transform = 2   ! log-transform
+          if (update_nut) sfields(id_var)%update = .true.
         case (2)
           sfields(id_var)%variable = 'NO3'
-          sfields(id_var)%name_incr = 'bckinno3'
+          sfields(id_var)%name_incr = ''
           sfields(id_var)%name_rest_n = 'TRNNO3'
           sfields(id_var)%name_rest_b = 'TRBNO3'
           sfields(id_var)%unit = 'mmol m-3'
+          if (update_nut) sfields(id_var)%update = .true.
         case (3)
           sfields(id_var)%variable = 'PO4'
-          !sfields(id_var)%name_incr = 'bckinpo3'
+          sfields(id_var)%name_incr = ''
           sfields(id_var)%name_rest_n = 'TRNPO4'
           sfields(id_var)%name_rest_b = 'TRBPO4'
           sfields(id_var)%unit = 'mmol m-3'
+          if (update_nut) sfields(id_var)%update = .true.
         case (4)
           sfields(id_var)%variable = 'SIL'
-          !sfields(id_var)%name_incr = ''
+          sfields(id_var)%name_incr = ''
           sfields(id_var)%name_rest_n = 'TRNSIL'
           sfields(id_var)%name_rest_b = 'TRBSIL'
           sfields(id_var)%unit = 'mmol m-3'
+          if (update_nut) sfields(id_var)%update = .true.
         case (5)
           sfields(id_var)%variable = 'DIA'
           sfields(id_var)%name_incr = 'bckindia'
@@ -361,6 +374,7 @@ contains
           sfields(id_var)%unit = 'mmol m-3'
           id_dia = id_var
 !          sfields(id_var)%limit = 1
+          if (update_phyto) sfields(id_var)%update = .true.
         case (6)
           sfields(id_var)%variable = 'FLA'
           sfields(id_var)%name_incr = 'bckinfla'
@@ -368,6 +382,7 @@ contains
           sfields(id_var)%name_rest_b = 'TRBFLA'
           sfields(id_var)%unit = 'mmol m-3'
           id_fla = id_var
+          if (update_phyto) sfields(id_var)%update = .true.
         case (7)
           sfields(id_var)%variable = 'CYA'
           sfields(id_var)%name_incr = 'bckincya'
@@ -375,54 +390,63 @@ contains
           sfields(id_var)%name_rest_b = 'TRBCYA'
           sfields(id_var)%unit = 'mmol m-3'
           id_cya = id_var
+          if (update_phyto) sfields(id_var)%update = .true.
         case (8)
           sfields(id_var)%variable = 'MEZ'
           !sfields(id_var)%name_incr = ''
           sfields(id_var)%name_rest_n = 'TRNMEZ'
           sfields(id_var)%name_rest_b = 'TRBMEZ'
           sfields(id_var)%unit = 'mmol m-3'
+          if (update_zoo) sfields(id_var)%update = .true.
         case (9)
           sfields(id_var)%variable = 'MIZ'
           !sfields(id_var)%name_incr = ''
           sfields(id_var)%name_rest_n = 'TRNMIZ'
           sfields(id_var)%name_rest_b = 'TRBMIZ'
           sfields(id_var)%unit = 'mmol m-3'
+          if (update_zoo) sfields(id_var)%update = .true.
         case (10)
           sfields(id_var)%variable = 'DET'
           !sfields(id_var)%name_incr = ''
           sfields(id_var)%name_rest_n = 'TRNDET'
           sfields(id_var)%name_rest_b = 'TRBDET'
           sfields(id_var)%unit = 'mmol m-3'
+          if (update_det) sfields(id_var)%update = .true.
         case (11)
           sfields(id_var)%variable = 'DETs'
           !sfields(id_var)%name_incr = ''
           sfields(id_var)%name_rest_n = 'TRNDETs'
           sfields(id_var)%name_rest_b = 'TRBDETs'
           sfields(id_var)%unit = 'mmol m-3'
+          if (update_det) sfields(id_var)%update = .true.
         case (12)
           sfields(id_var)%variable = 'FE'
           !sfields(id_var)%name_incr = ''
           sfields(id_var)%name_rest_n = 'TRNFE'
           sfields(id_var)%name_rest_b = 'TRBFE'
           sfields(id_var)%unit = 'mmol m-3'
+          if (update_nut) sfields(id_var)%update = .true.
         case (13)
           sfields(id_var)%variable = 'LDON'
           !sfields(id_var)%name_incr = ''
           sfields(id_var)%name_rest_n = 'TRNLDON'
           sfields(id_var)%name_rest_b = 'TRBLDON'
           sfields(id_var)%unit = 'mmol m-3'
+          if (update_other) sfields(id_var)%update = .true.
         case (14)
           sfields(id_var)%variable = 'DIC'
           !sfields(id_var)%name_incr = ''
           sfields(id_var)%name_rest_n = 'TRNDIC'
           sfields(id_var)%name_rest_b = 'TRBDIC'
           sfields(id_var)%unit = 'mmol m-3'
+          if (update_other) sfields(id_var)%update = .true.
         case (15)
           sfields(id_var)%variable = 'ALK'
           !sfields(id_var)%name_incr = ''
           sfields(id_var)%name_rest_n = 'TRNALK'
           sfields(id_var)%name_rest_b = 'TRBALK'
           sfields(id_var)%unit = 'mmol m-3'
+          if (update_other) sfields(id_var)%update = .true.
         case (16)
           sfields(id_var)%variable = 'OXY'
           sfields(id_var)%name_incr = 'bckinoxy'
@@ -431,6 +455,7 @@ contains
           sfields(id_var)%unit = 'mmol m-3'
           sfields(id_var)%transform = 0     ! Oxy will not be transformed
           sfields(id_var)%limit = 0         ! No limits for Oxy
+          if (update_oxy) sfields(id_var)%update = .true.
         end select
       end if
     end do
@@ -445,6 +470,7 @@ contains
         sfields(id_var)%file = 'NORDIC_1d_ERGOM_T_'
         sfields(id_var)%transform = 0
         sfields(id_var)%trafo_shift = 0.0
+        sfields(id_var)%update = .true.
 
         select case (id_bgc2)
         case (1)
@@ -542,24 +568,14 @@ if (mype==11 .and. task_id==2) write (*,*) 'offs', sfields(:)%off
     if (mype==0) then
        write (*,'(/a,2x,a)') 'NEMO-PDAF', '*** Setup of state vector ***'
        write (*,'(a,5x,a,i5)') 'NEMO-PDAF', '--- Number of fields in state vector:', n_fields
-       if (npes==1) then
-          write (*,'(a,5x,a2,3x,a8,6x,a5,7x,a3,7x,a6)') 'NEMO-PDAF','ID', 'variable', 'ndims', 'dim', 'offset'
-          write (*,'(a,5x,49a)') 'NEMO-PDAF', ('-',i=1,49)
-          do i = 1, n_fields
-             write (*,'(a, 2x,i5,3x,a10,2x,i5,3x,i10,3x,i10)') &
-                  'NEMO-PDAF',i, sfields(i)%variable, sfields(i)%ndims, sfields(i)%dim, sfields(i)%off
-          end do
-       else
-          if (task_id==1) then
-             write (*,'(a,a4,7x,a2,3x,a8,6x,a5,7x,a3,7x,a6)') 'NEMO-PDAF','pe','ID', 'variable', 'ndims', 'dim', 'offset'
-          end if
-       end if
+       write (*,'(a,a4,3x,a2,3x,a8,6x,a5,7x,a3,7x,a6,4x,a6)') &
+            'NEMO-PDAF','pe','ID', 'variable', 'ndims', 'dim', 'offset', 'update'
     end if
 
-    if (npes>1 .and. (mype==0 .or. (task_id==1 .and. screen>2))) then
+    if (mype==0 .or. (task_id==1 .and. screen>2)) then
        do i = 1, n_fields
-          write (*,'(a,i3,5x,i5,3x,a10,2x,i5,3x,i10,3x,i10)') &
-               'NEMO-PDAF',mype, i, sfields(i)%variable, sfields(i)%ndims, sfields(i)%dim, sfields(i)%off
+          write (*,'(a, i4, i5,3x,a10,2x,i5,3x,i10,3x,i10,4x,l)') 'NEMO-PDAF', &
+               mype, i, sfields(i)%variable, sfields(i)%ndims, sfields(i)%dim, sfields(i)%off, sfields(i)%update
        end do
     end if
 

@@ -166,6 +166,9 @@ contains
          only: verbose_io, path_inistate, path_ens, file_ens, file_covar, &
          sgldbl_io, coupling_nemo, save_var_time, save_state, save_ens_sngl, &
          add_slash
+    use mod_statevector_pdaf, &
+         only: update_phys, update_phyto, update_zoo, update_det, update_nut, &
+         update_oxy, update_other
     use mod_obs_ssh_mgrid_pdafomi, &
          only: assim_ssh_mgrid, rms_ssh_mgrid, file_ssh_mgrid, &
          lradius_ssh_mgrid, sradius_ssh_mgrid, varname_ssh_mgrid
@@ -194,6 +197,10 @@ contains
     namelist /init_nml/ &
          type_ens_init, type_central_state, ensscale, ens_restart, &
          path_inistate, path_ens, file_ens, file_covar, coupling_nemo
+
+    namelist /update_nml/ &
+         update_phys, update_phyto, update_zoo, update_det, update_nut, &
+         update_oxy, update_other
 
     namelist /obs_ssh_mgrid_nml/ &
          assim_ssh_mgrid, rms_ssh_mgrid, file_ssh_mgrid, &
@@ -225,6 +232,8 @@ contains
     read (20, NML=pdaf_nml)
     rewind(20)
     read (20, NML=init_nml)
+    rewind(20)
+    read (20, NML=update_nml)
     rewind(20)
     read (20, NML=obs_ssh_mgrid_nml)
     rewind(20)
@@ -278,6 +287,15 @@ contains
        write (*, '(a,5x,a,i10)') 'NEMO-PDAF','type_central_state ', type_central_state
        write (*, '(a,5x,a,5x,a)') 'NEMO-PDAF','coupling_nemo        ', coupling_nemo
        write (*, '(a,5x,a,5x,f10.2)') 'NEMO-PDAF','ensscale     ', ensscale
+       write (*, *) ''
+       write (*, '(a,3x,a)') 'NEMO-PDAF','[update_nml]:'
+       write (*, '(a,5x,a,l)') 'NEMO-PDAF','update_phys     ', update_phys
+       write (*, '(a,5x,a,l)') 'NEMO-PDAF','update_phyto    ', update_phyto
+       write (*, '(a,5x,a,l)') 'NEMO-PDAF','update_zoo      ', update_zoo
+       write (*, '(a,5x,a,l)') 'NEMO-PDAF','update_det      ', update_det
+       write (*, '(a,5x,a,l)') 'NEMO-PDAF','update_nut      ', update_nut
+       write (*, '(a,5x,a,l)') 'NEMO-PDAF','update_oxy      ', update_oxy
+       write (*, '(a,5x,a,l)') 'NEMO-PDAF','update_other    ', update_other
        write (*, *) ''
        write (*, '(a,3x,a)') 'NEMO-PDAF','[obs_ssh_mgrid_nml]:'
        write (*, '(a,5x,a,5x,l)') 'NEMO-PDAF','assim_ssh_mgrid      ', assim_ssh_mgrid
