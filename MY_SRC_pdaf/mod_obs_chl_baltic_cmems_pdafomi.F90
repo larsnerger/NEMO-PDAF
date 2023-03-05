@@ -35,6 +35,7 @@ module mod_obs_chl_baltic_cmems_pdafomi
   real(pwp) :: rms_obs_chl_baltic_cmems = 0.3  !< Observation error standard deviation (for constant errors)
   real(pwp) :: lradius_chl_baltic_cmems = 1.0  !< Localization cut-off radius
   real(pwp) :: sradius_chl_baltic_cmems = 1.0  !< Support radius for weight function
+  real(pwp) :: omit_chl_baltic_cmems = 0.0     !< Omit obs. if innovation > obs. rms * this factor
   integer :: mode_chl_baltic_cmems = 0         !< Observation mode: 
                                         !< (0) linear interpolation
                                         !< (1) super-obbing: average 4 observation values
@@ -46,7 +47,12 @@ module mod_obs_chl_baltic_cmems_pdafomi
                                         !<  Note: The implementation assumes a regular lat/lon grid
   character(lc) :: path_chl_baltic_cmems = '.' !< Path to observation file
   character(lc) :: file_chl_baltic_cmems = ''  !< Filename for observations
-  character(lc) :: varname_chl_baltic_cmems = 'CHL'  !< Name of observation variable in file
+  character(lc) :: varname_chl_baltic_cmems = 'CHL' !< Name of observation variable in file
+
+! *** Variables used inside the module
+  integer, private :: observation_mode              !< Observation mode (alias for mode_chl_baltic_cmems)
+  character(len=3) :: dist_obs                      !< Type of distance computation (alias for dist_chl_baltic_cmems)
+  character(lc) :: obsname = 'OBS_CHL_BALTIC_CMEMS' !< Observation name string
 
 ! Declare instances of observation data types used here
 ! We use generic names here, but one could renamed the variables
@@ -115,7 +121,7 @@ contains
 
 ! *** Local variables ***
     logical :: debug = .false.               ! Activate debugging output for index calculations
-    logical :: obsgrid_p = .true.            ! Flag whether the observation grid include PE-local sub-domain
+    logical :: obsgrid_p = .true.            ! Flag whether the observation grid includes PE-local sub-domain
     integer :: i, j, cnt                     ! Counters
     integer :: ido_start, ido_end            ! Counters
     integer :: idm_start, idm_end            ! Counters
@@ -127,9 +133,9 @@ contains
     integer(4) :: status                     ! Status flag for availability of observations
     character(len=100) :: file_full          ! filename including path
     character(len=2) :: strday               ! day as string
-    integer(4) :: ncid, dimid, lonid, latid, varid  ! nc file IDs
-    integer(4) :: startv(3), cntv(3)                ! Index arrays for reading from nc file
-    integer(4) :: dim_olat, dim_olon                ! Grid dimensions read from file
+    integer(4) :: ncid, dimid, lonid, latid, varid       ! nc file IDs
+    integer(4) :: startv(3), cntv(3)                     ! Index arrays for reading from nc file
+    integer(4) :: dim_olat, dim_olon                     ! Grid dimensions read from file
     real(4), allocatable :: obs_from_file(:,:)           ! observation field read from file 
     real(pwp), allocatable :: lon_obs(:), lat_obs(:)     ! Obs. coordinates read from file
     real(pwp), allocatable :: lon_model(:), lat_model(:) ! Longitude/latitude of model in radians
@@ -149,13 +155,17 @@ contains
     integer :: sgn_mlat                      ! Orientation of latitude Model: -1 for north-south/+1 for south-north
     real(pwp) :: rdate                       ! Current date
     integer(4) :: year, month, iday          ! Current year, month, day (iday is step read from observation file) 
+    integer :: id_obs                        ! Index of observation field in state vector
+    character(lc) :: varname_lon             ! Name of longitude coordinate variable in file
+    character(lc) :: varname_lat             ! Name of latitude coordinate variable in file
+    character(lc) :: varname_obs             ! Name of observation variable in file
+    real(pwp) :: rms_obs                     ! Obs. error standard deviation
     real(pwp) :: missing_value               ! Missing value above which observations are valid
+    character(len=2) :: region               ! Region for which the data is used ('no', 'ba', 'nb')
+    real(pwp) :: limcoords(3)                ! Limiting coordinates according to region
     real(pwp) :: var_obs                     ! Observation error variance
     real(pwp),parameter :: ln10sq = log(10.d0)*log(10.d0)  ! Factor for log10 to natural log transformation
     real(pwp),parameter :: ln10 = log(10.d0) ! Factor for log10 to natural log transformation
-    character(len=2) :: region               ! Region for which the data is used ('no', 'ba', 'nb')
-    real :: limcoords(3)                     ! Limiting coordinates according to region
-
 
 
 ! *********************************************
@@ -163,19 +173,30 @@ contains
 ! *********************************************
 
     if (mype_filter==0) &
-         write (*,'(a,4x,a)') 'NEMO-PDAF', 'Assimilate observations - OBS_CHL_BALTIC_CMEMS'
+         write (*,'(a,4x,a,a)') 'NEMO-PDAF', 'Assimilate observations - ', trim(obsname)
 
     ! Specify region and limiting coordinates
     region = 'ba'
-    limcoords(1) = 56.45 * deg2rad    ! north/south limit in Skagerrak
+    limcoords(1) = 57.0 * deg2rad    ! north/south limit in Skagerrak
     limcoords(2) = 9.4 * deg2rad      ! east/west limit over Denmark; use outh of limcoords(1) for 'no'
     limcoords(3) = 15.0 * deg2rad     ! east/west limit over Sweden; use north of limcoords(1) for 'ba'
+
+    ! Initialize generic variables (used to keep codes generic)
+    id_obs = id_chl                          ! Index of observation field in state vector
+    dist_obs = dist_chl_baltic_cmems         ! Type of distance computation
+    observation_mode = mode_chl_baltic_cmems ! Whether to use interpolation or super-obbing
+    varname_lon = 'lon'                      ! Name of longitude variable in file
+    varname_lat = 'lat'                      ! Name of latitude variable in file
+    varname_obs = varname_chl_baltic_cmems   ! Name of observation variable in file
+    rms_obs = rms_obs_chl_baltic_cmems       ! Obs. error standard deviation
+    missing_value = -999.0                   ! Missing value in observation file
+    file_full = trim(path_chl_baltic_cmems)//trim(file_chl_baltic_cmems)   ! File name including path
 
     ! Store whether to assimilate this observation type (used in routines below)
     if (assim_chl_baltic_cmems) thisobs%doassim = 1
 
     ! Specify type of distance computation
-    if (trim(dist_chl_baltic_cmems) == 'gp') then
+    if (trim(dist_obs) == 'gp') then
        if (mype_filter==0) write (*,'(a,4x,a)') 'NEMO-PDAF', '--- use Cartesian grid point distances'
        thisobs%disttype = 0   ! 0=Cartesian
     else
@@ -187,28 +208,22 @@ contains
     ! The distance compution starts from the first row
     thisobs%ncoord = 2
 
+    ! Set limit factor for omitted observation due to high innovation
+    thisobs%inno_omit = omit_chl_baltic_cmems
+
     ! In case of MPI parallelization restrict observations to sub-domains
     if (npes_filter>1) thisobs%use_global_obs = 0
+
+
+! **********************************
+! *** Read PE-local observations ***
+! **********************************
 
     ! Determine current day
     call calc_date(step-1, rdate)
     year = floor(rdate/10000.0_pwp)
     month = floor((rdate-real(year*10000))/100.0_pwp)
     iday = floor(rdate-real(year*10000)-real(month*100))
-
-    ! Set missing value
-    missing_value = -999.0
-
-    ! Set exclusion limit for innovation
-!    thisobs%inno_exclude = 2.0
-!    if (thisobs%inno_exclude>0.0 .and. mype_filter==0) &
-!         write (*,'(a,4x,a,f12.3)') 'NEMO-PDAF', &
-!         '--- exclude observations with large innovation, limit', thisobs%inno_exclude
-
-
-! **********************************
-! *** Read PE-local observations ***
-! **********************************
 
     doassim: if (doassim_now) then
 
@@ -224,22 +239,21 @@ contains
        !    --out-name chl_ba_MY_201501.nc --user <USERNAME> --pwd <PASSWD>
 
        ! read observation values and their coordinates
-       file_full = trim(path_chl_baltic_cmems)//trim(file_chl_baltic_cmems)
 
        if (mype_filter==0) then 
           write (*,'(a, 4x,a,i3,a)') 'NEMO-PDAF', 'Read observations for day ', &
                iday,' from file:'
           write (*,'(a, 4x,a)') 'NEMO-PDAF', trim(file_full)
-          write (*, '(a,4x,a,a)') 'NEMO-PDAF', '--- name of CHL file variable: ', trim(varname_chl_baltic_cmems)
+          write (*, '(a,4x,a,a)') 'NEMO-PDAF', '--- name of observation file variable: ', trim(varname_obs)
        end if
 
        ! Open the file. NF90_NOWRITE tells netCDF to have read-only access to file.
        call check( nf90_open(file_full, NF90_NOWRITE, ncid) )
 
        ! Read dimensions of observation grid
-       call check( nf90_inq_dimid(ncid, "lat", dimid) )
+       call check( nf90_inq_dimid(ncid, trim(varname_lat), dimid) )
        call check( nf90_Inquire_dimension(ncid, dimid, len=dim_olat) )
-       call check( nf90_inq_dimid(ncid, "lon", dimid) )
+       call check( nf90_inq_dimid(ncid, trim(varname_lon), dimid) )
        call check( nf90_Inquire_dimension(ncid, dimid, len=dim_olon) )
 
        ! Allocate arrays
@@ -247,14 +261,14 @@ contains
        allocate(lon_obs(dim_olon), lat_obs(dim_olat))
 
        ! Get variable IDs and read data
-       call check( nf90_inq_varid(ncid, trim(varname_chl_baltic_cmems), varid) )
-       call check( nf90_inq_varid(ncid, "lon", lonid) )
-       call check( nf90_inq_varid(ncid, "lat", latid) )
+       call check( nf90_inq_varid(ncid, trim(varname_obs), varid) )
+       call check( nf90_inq_varid(ncid, trim(varname_lon), lonid) )
+       call check( nf90_inq_varid(ncid, trim(varname_lat), latid) )
 
        call check( nf90_get_var(ncid, lonid, lon_obs) )
        call check( nf90_get_var(ncid, latid, lat_obs) )
 
-       ! Read CHL values
+       ! Read observation values
        startv(1) = 1 ! lon
        startv(2) = 1 ! lat
        startv(3) = iday ! time
@@ -279,7 +293,7 @@ contains
        lon_model = lon1_p * deg2rad
        lat_model = lat1_p * deg2rad
 
-       cartdist: if (trim(dist_chl_baltic_cmems) == 'gp') then
+       cartdist: if (trim(dist_obs) == 'gp') then
 
           ! Set grid point coordinates for Cartesian distance computation
 
@@ -384,38 +398,38 @@ contains
        ido_w = ceiling(abs(wlonM - lon_obs(1)) / dlonO)+1
 
        if (ido_w<2) then
-          write (*,*) 'reset ido_w'
+          if (debug) write (*,*) 'NEMO-PDAF ', 'reset ido_w'
           ido_w = 2
           idm_w = ceiling((lon_obs(ido_w) - wlonM) / dlonM) + 1
        elseif (ido_w>dim_olon) then
           iderr = 1
        endif
-       if (mode_chl_baltic_cmems==0) then
+       if (observation_mode==0) then
           idm_w = ceiling((lon_obs(ido_w) - wlonM) / dlonM) + 1
        end if
 
        ido_e = ceiling((elonM - lon_obs(1)) / dlonO)
        if (ido_e>=dim_olon) then
-          write (*,*) 'NEMO-PDAF ', 'reset ido_e'
+          if (debug) write (*,*) 'NEMO-PDAF ', 'reset ido_e'
           ido_e = dim_olon-1
           idm_e = floor((lon_obs(dim_olon) - wlonM) / dlonM) + 1
        elseif (ido_e<1) then
           iderr = 2
        endif
-       if (mode_chl_baltic_cmems==0) then
+       if (observation_mode==0) then
           idm_e = floor((lon_obs(ido_e) - wlonM) / dlonM) + 1
        end if
 
        if (sgn_olat > 0) then
           ido_n = ceiling((nlatM - lat_obs(1)) / dlatO)
           if (ido_n>dim_olat) then
-             write (*,*) 'NEMO-PDAF ', 'reset ido_n'
+             if (debug) write (*,*) 'NEMO-PDAF ', 'reset ido_n'
              ido_n = dim_olat-1
              idm_n = ceiling((lat_obs(ido_n) - nlatM) / dlatM) + 1
           elseif (ido_n<1) then
              iderr = 3
           end if
-          if (mode_chl_baltic_cmems==0) then
+          if (observation_mode==0) then
              if (sgn_mlat > 0) then
                 idm_n = floor(abs(lat_obs(ido_n) - slatM) / dlatM) + 1
              else
@@ -425,7 +439,7 @@ contains
 
           ido_s = ceiling(abs(slatM - lat_obs(1)) / dlatO) + 1
           if (ido_s<2) then
-             write (*,*) 'NEMO-PDAF ', 'reset ido_s'
+             if (debug) write (*,*) 'NEMO-PDAF ', 'reset ido_s'
              ido_s = 2
              if (sgn_mlat > 0) then
                 idm_s = floor(abs(lat_obs(ido_s) - slatM) / dlatM) + 1
@@ -435,7 +449,7 @@ contains
           elseif (ido_s>dim_olat) then
              iderr = 4
           end if
-          if (mode_chl_baltic_cmems==0) then
+          if (observation_mode==0) then
              if (sgn_mlat > 0) then
                 idm_s = ceiling(abs(lat_obs(ido_s) - slatM) / dlatM) + 1
              else
@@ -445,13 +459,13 @@ contains
        else
           ido_n = ceiling((nlatM - lat_obs(1)) / dlatO)+1
           if (ido_n<2) then 
-             write (*,*) 'NEMO-PDAF ', 'reset ido_n'
+             if (debug) write (*,*) 'NEMO-PDAF ', 'reset ido_n'
              ido_n = 2
              idm_n = floor((lat_obs(ido_n) - nlatM) / dlatM) + 1
           elseif (ido_n>dim_olat) then
              iderr = 5
           endif
-          if (mode_chl_baltic_cmems==0) then
+          if (observation_mode==0) then
              if (sgn_mlat > 0) then
                 idm_n = floor((lat_obs(ido_n) - slatM) / dlatM) + 1
              else
@@ -459,19 +473,19 @@ contains
              end if
           end if
 
-          ido_s = ceiling((slatM - lat_obs(1)) / dlatO)
+          ido_s = floor((slatM - lat_obs(1)) / dlatO)
           if (ido_s>dim_olat) then
-             write (*,*) 'NEMO-PDAF ', 'reset ido_s'
+             if (debug) write (*,*) 'NEMO-PDAF ', 'reset ido_s'
              ido_s = dim_olat-1
              idm_s = ceiling((lat_obs(dim_olat) - nlatM) / dlatM)+1
           elseif (ido_s<1) then
              iderr = 6
           endif
-          if (mode_chl_baltic_cmems==0) then
+          if (observation_mode==0) then
              if (sgn_mlat > 0) then
-                idm_s = floor(abs(lat_obs(ido_s) - slatM) / dlatM)
+                idm_s = ceiling(abs(lat_obs(ido_s) - slatM) / dlatM)
              else
-                idm_s = floor((lat_obs(ido_s) - nlatM) / dlatM)+1
+                idm_s = floor(abs(lat_obs(ido_s) - nlatM) / dlatM)+1
              end if
           end if
        end if
@@ -485,15 +499,19 @@ contains
        end if
 
        if (debug) then
-          if (.not. obsgrid_p) write (*,*) 'Observations not overlapping with model grid, case', iderr
+          if (.not. obsgrid_p) then
+             write (*,*) 'Observations not overlapping with model grid, case', iderr
+          else
+             write (*,*) 'Observations do overlap with model grid'
+          end if
           write (*,'(a,2x,4i10)')   'ido in WENS', ido_w, ido_e, ido_n, ido_s
           write (*,'(a,4f12.5)') 'ocoords WENS in ', &
                lon_obs(ido_w), lon_obs(ido_e), lat_obs(ido_n), lat_obs(ido_s)
           write (*,'(a,4f12.5)') 'ocoords WENS out', &
                lon_obs(ido_w-1), lon_obs(ido_e+1), lat_obs(ido_n+sgn_olat), lat_obs(ido_s-sgn_olat)
-          
+
           write (*,'(a,2x,4i10)') 'idm new limits', idm_w, idm_e, idm_n, idm_s
-          if (mode_chl_baltic_cmems==0) &
+          if (observation_mode==0) &
                write (*,'(a,4f12.5)') 'mcoords out     ', lon_model(idm_w-1), &
                lon_model(idm_e+1), lat_model(idm_n+sgn_mlat), lat_model(idm_s-sgn_mlat)
           write (*,'(a,4f12.5)') 'mcoords in      ', lon_model(idm_w), &
@@ -512,7 +530,7 @@ contains
 ! *** and initialize index and coordinate arrays.         ***
 ! ***********************************************************
 
-       obsmodeA: if (mode_chl_baltic_cmems==0 .and. obsgrid_p) then
+       obsmodeA: if (observation_mode==0 .and. obsgrid_p) then
 
           ! *** Linear interpolation ***
 
@@ -631,11 +649,11 @@ contains
        dim_obs = cnt 
 
        if (npes_filter==1) then
-          write (6,'(a, 4x, a, i7)') 'NEMO-PDAF', '--- number of observations from CHL_BALTIC_CMEMS: ', dim_obs
+          write (6,'(a, 4x, a, a, i7)') 'NEMO-PDAF', '--- number of observations from ', trim(obsname), ': ', dim_obs
        else
           if (screen>2) then
-             write (6,'(a, 4x, a, i4, 2x, a, i7)') 'NEMO-PDAF', 'PE', mype_filter, &
-                  '--- number of observations from CHL_BALTIC_CMEMS: ', dim_obs
+             write (6,'(a, 4x, a, i4, 2x, a, a, i7)') 'NEMO-PDAF', 'PE', mype_filter, &
+                  '--- number of observations from ', trim(obsname), ': ', dim_obs
           end if
        end if
 
@@ -657,7 +675,7 @@ contains
        allocate(ivar_obs_p(dim_obs_p))
        allocate(ocoord_p(thisobs%ncoord, dim_obs_p))
 
-       obsmodeB: if (mode_chl_baltic_cmems==0) then
+       obsmodeB: if (observation_mode==0) then
 
           ! *** Linear interpolation ***
 
@@ -695,15 +713,15 @@ contains
 
                       ! Set indices of 4 grid points neightbors of the observation
                       if (use_wet_state==1 .or. use_wet_state==2) then
-                         thisobs%id_obs_p(1, cnt) = idx_nwet(idm_w,idm_s) + sfields(id_chl)%off
-                         thisobs%id_obs_p(2, cnt) = idx_nwet(idm_e,idm_s) + sfields(id_chl)%off
-                         thisobs%id_obs_p(3, cnt) = idx_nwet(idm_w,idm_n) + sfields(id_chl)%off
-                         thisobs%id_obs_p(4, cnt) = idx_nwet(idm_e,idm_n) + sfields(id_chl)%off
+                         thisobs%id_obs_p(1, cnt) = idx_nwet(idm_w,idm_s) + sfields(id_obs)%off
+                         thisobs%id_obs_p(2, cnt) = idx_nwet(idm_e,idm_s) + sfields(id_obs)%off
+                         thisobs%id_obs_p(3, cnt) = idx_nwet(idm_w,idm_n) + sfields(id_obs)%off
+                         thisobs%id_obs_p(4, cnt) = idx_nwet(idm_e,idm_n) + sfields(id_obs)%off
                       else
-                         thisobs%id_obs_p(1, cnt) = idm_w + nlons*(idm_s-1) + sfields(id_chl)%off
-                         thisobs%id_obs_p(2, cnt) = idm_e + nlons*(idm_s-1) + sfields(id_chl)%off
-                         thisobs%id_obs_p(3, cnt) = idm_w + nlons*(idm_n-1) + sfields(id_chl)%off
-                         thisobs%id_obs_p(4, cnt) = idm_e + nlons*(idm_n-1) + sfields(id_chl)%off
+                         thisobs%id_obs_p(1, cnt) = idm_w + nlons*(idm_s-1) + sfields(id_obs)%off
+                         thisobs%id_obs_p(2, cnt) = idm_e + nlons*(idm_s-1) + sfields(id_obs)%off
+                         thisobs%id_obs_p(3, cnt) = idm_w + nlons*(idm_n-1) + sfields(id_obs)%off
+                         thisobs%id_obs_p(4, cnt) = idm_e + nlons*(idm_n-1) + sfields(id_obs)%off
                       end if
 
                       ! Store observation value and coordinates
@@ -771,9 +789,9 @@ contains
 
                       ! Set index of grid point 
                       if (use_wet_state==1 .or. use_wet_state==2) then
-                         thisobs%id_obs_p(1, cnt) = idx_nwet(i, j) + sfields(id_chl)%off
+                         thisobs%id_obs_p(1, cnt) = idx_nwet(i, j) + sfields(id_obs)%off
                       else
-                         thisobs%id_obs_p(1, cnt) = i + nlons*(j-1) + sfields(id_chl)%off
+                         thisobs%id_obs_p(1, cnt) = i + nlons*(j-1) + sfields(id_obs)%off
                       end if
 
                       ! Store observation coordinates
@@ -790,7 +808,7 @@ contains
                            obs_sum = obs_sum + obs_from_file(ido_w,ido_n)
                       if (obs_from_file(ido_e,ido_n) > missing_value) &
                            obs_sum = obs_sum + obs_from_file(ido_e,ido_n)
-                      obs_p(cnt) = real(obs_sum) * real(obsflag)
+                      obs_p(cnt) = real(obs_sum) / real(obsflag)
 
                    end if obsflg
 
@@ -811,15 +829,15 @@ contains
        allocate(ocoord_p(thisobs%ncoord, 1))
        allocate(thisobs%id_obs_p(1, dim_obs_p))
 
-       if (mode_chl_baltic_cmems==0) allocate(thisobs%icoeff_p(4, 1))
+       if (observation_mode==0) allocate(thisobs%icoeff_p(4, 1))
 
     end if
 
 
     ! *** For log-chl transformed observations account for shift in mean
 
-    if (sfields(id_chl)%transform == 2) then
-       obs_p(:) = log(obs_p) - 0.5d0 * rms_obs_chl_baltic_cmems*rms_obs_chl_baltic_cmems*ln10sq
+    if (sfields(id_obs)%transform == 2) then
+       obs_p(:) = log(obs_p) - 0.5d0 * rms_obs*rms_obs*ln10sq
     end if
        
 
@@ -828,10 +846,10 @@ contains
 ! ****************************************************************
 
     ! Assign relative observation error 
-    if (sfields(id_chl)%transform == 2) then
+    if (sfields(id_obs)%transform == 2) then
        ! Assimilating logarithmic values
 
-       var_obs =  rms_obs_chl_baltic_cmems*rms_obs_chl_baltic_cmems*ln10sq
+       var_obs =  rms_obs*rms_obs*ln10sq
 
        do i = 1, dim_obs_p
           ivar_obs_p(i) = 1.0 / var_obs
@@ -840,7 +858,7 @@ contains
     else
        ! Assimilating actual values - use relative error
 
-       var_obs =  rms_obs_chl_baltic_cmems*rms_obs_chl_baltic_cmems
+       var_obs =  rms_obs*rms_obs
 
        do i = 1, dim_obs_p
           ivar_obs_p(i) = 1.0 / (obs_p(i) * obs_p(i) * var_obs)
@@ -915,7 +933,7 @@ contains
 
     if (thisobs%doassim==1) then
     
-       if (mode_chl_baltic_cmems==0) then
+       if (observation_mode==0) then
 
           ! Observation operator for averaging over grid points
           call PDAFomi_obs_op_interp_lin(thisobs, 4, state_p, ostate)
@@ -979,7 +997,7 @@ contains
     ! coords_l should be set in the call-back routine init_dim_l.
     ! coords_l is domain_coords in HBM
 
-    if (trim(dist_chl_baltic_cmems) == 'gp') then
+    if (trim(dist_obs) == 'gp') then
        coords(1) = wet_pts(6, domain_p)
        coords(2) = wet_pts(7, domain_p)
     else

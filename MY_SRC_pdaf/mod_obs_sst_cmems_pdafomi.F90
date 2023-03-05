@@ -31,10 +31,11 @@ module mod_obs_sst_cmems_pdafomi
   save
 
   ! Variables which are inputs to the module (usually set in init_pdaf)
-  logical :: assim_sst_cmems = .false.  !< Whether to assimilate this data sst_cmems
+  logical :: assim_sst_cmems = .false.  !< Whether to assimilate this data type
   real(pwp) :: rms_obs_sst_cmems = 0.8  !< Observation error standard deviation (for constant errors)
   real(pwp) :: lradius_sst_cmems = 1.0  !< Localization cut-off radius
   real(pwp) :: sradius_sst_cmems = 1.0  !< Support radius for weight function
+  real(pwp) :: omit_sst_cmems = 0.0     !< Omit obs. if innovation > obs. rms * this factor
   integer :: mode_sst_cmems = 0         !< Observation mode: 
                                         !< (0) linear interpolation
                                         !< (1) super-obbing: average 4 observation values
@@ -44,9 +45,14 @@ module mod_obs_sst_cmems_pdafomi
                                         !< (gp) for Cartesian distance in unit of grid points
                                         !< (geo) for geographic distance in km
                                         !<  Note: The implementation assumes a regular lat/lon grid
-  character(lc) :: path_sst_cmems = '.' !< Path to CMEMS SST data
-  character(lc) :: file_sst_cmems = ''  !< Filename of CMEMS SST data
-  character(lc) :: varname_sst_cmems = 'adjusted_sea_surface_temperature'  !< Name of SST variable in file
+  character(lc) :: path_sst_cmems = '.' !< Path to observation file
+  character(lc) :: file_sst_cmems = ''  !< Filename for observations
+  character(lc) :: varname_sst_cmems = 'adjusted_sea_surface_temperature'  !< Name of observation variable in file
+
+! *** Variables used inside the module
+  integer, private :: observation_mode        !< Observation mode (alias for mode_sst_cmems)
+  character(len=3) :: dist_obs                !< Type of distance computation (alias for dist_sst_cmems)
+  character(lc) :: obsname = 'OBS_SST_CMEMS'  !< Observation name string
 
 ! Declare instances of observation data types used here
 ! We use generic names here, but one could renamed the variables
@@ -114,41 +120,50 @@ contains
     integer, intent(inout) :: dim_obs    !< Dimension of full observation vector
 
 ! *** Local variables ***
-    logical :: debug = .false.           ! Activate debugging output for index calculations
-    integer :: i, j, cnt                 ! Counters
-    integer :: ido_start, ido_end        ! Counters
-    integer :: idm_start, idm_end        ! Counters
-    integer :: dim_obs_p                 ! Number of process-local observations
-    real(pwp), allocatable :: obs_p(:)        ! PE-local observation vector
-    real(pwp), allocatable :: ivar_obs_p(:)   ! PE-local inverse observation error variance
-    real(pwp), allocatable :: ocoord_p(:,:)   ! PE-local observation coordinates 
-    logical :: doassim_now=.true.        ! Whether we assimilate the observation at the current time
-    integer(4) :: status                 ! Status flag for availability of observations
-    character(len=100) :: file_full      ! filename including path
-    character(len=2) :: strday           ! day as string
-    integer(4) :: ncid, dimid, lonid, latid, varid  ! nc file IDs
-    integer(4) :: startv(3), cntv(3)                ! Index arrays for reading from nc file
-    integer(4) :: dim_olat, dim_olon                ! Grid dimensions read from file
-    integer(4), allocatable :: sst_aux(:,:)         ! SST field read from file 
+    logical :: debug = .false.               ! Activate debugging output for index calculations
+    logical :: obsgrid_p = .true.            ! Flag whether the observation grid includes PE-local sub-domain
+    integer :: i, j, cnt                     ! Counters
+    integer :: ido_start, ido_end            ! Counters
+    integer :: idm_start, idm_end            ! Counters
+    integer :: dim_obs_p                     ! Number of process-local observations
+    real(pwp), allocatable :: obs_p(:)       ! PE-local observation vector
+    real(pwp), allocatable :: ivar_obs_p(:)  ! PE-local inverse observation error variance
+    real(pwp), allocatable :: ocoord_p(:,:)  ! PE-local observation coordinates 
+    logical :: doassim_now=.true.            ! Whether we assimilate the observation at the current time
+    integer(4) :: status                     ! Status flag for availability of observations
+    character(len=100) :: file_full          ! filename including path
+    character(len=2) :: strday               ! day as string
+    integer(4) :: ncid, dimid, lonid, latid, varid       ! nc file IDs
+    integer(4) :: startv(3), cntv(3)                     ! Index arrays for reading from nc file
+    integer(4) :: dim_olat, dim_olon                     ! Grid dimensions read from file
+    integer(4), allocatable :: obs_from_file(:,:)        ! observation field read from file 
     real(pwp), allocatable :: lon_obs(:), lat_obs(:)     ! Obs. coordinates read from file
     real(pwp), allocatable :: lon_model(:), lat_model(:) ! Longitude/latitude of model in radians
-    integer :: iderr                                ! Error flag for determining indices
-    real(pwp), parameter :: sst_scale = 0.01             ! Scaling factor to convert file value to degC
-    integer(4) :: ido_n, ido_e, ido_s, ido_w        ! Obs. ID limits N/E/S/W for model grid
-    integer :: idm_n, idm_e, idm_s, idm_w           ! Model ID limits NESW 
-    real(pwp) :: wlonM, elonM, nlatM, slatM              ! Coordinate limits of model grid
-    real(pwp) :: dlonM, dlatM                            ! Model grid spacing
-    real(pwp) :: dlonO, dlatO                            ! Observation grid spacing
-    real(pwp) :: latM_limit                              ! Comparison limit in latitude for model coordinate
-    real(pwp) :: lonM, latM                              ! Longitude/latitude of a model grid point
-    real(pwp) :: gcoords(4,2)                  ! Grid point coordinates for computing interpolation coeffs
-    integer(4) :: obsflag                 ! Count observation in direct vicinity
-    integer(4) :: cntobs(4)               ! Count grid points with 0 to 4 obs. neighbours
-    integer(4) :: obs_sum                 ! Sum of observation integer values
-    integer :: sgn_olat                   ! Orientation of latitude Obs.: -1 for north-south/+1 for south-north
-    integer :: sgn_mlat                   ! Orientation of latitude Model: -1 for north-south/+1 for south-north
-    real(pwp) :: rdate                    ! Current date
-    integer(4) :: year, month, iday       ! Current year, month, day (iday is step read from observation file) 
+    integer :: iderr                         ! Error flag for determining indices
+    integer(4) :: ido_n, ido_e, ido_s, ido_w ! Obs. ID limits N/E/S/W for model grid
+    integer :: idm_n, idm_e, idm_s, idm_w    ! Model ID limits NESW 
+    real(pwp) :: wlonM, elonM, nlatM, slatM  ! Coordinate limits of model grid
+    real(pwp) :: dlonM, dlatM                ! Model grid spacing
+    real(pwp) :: dlonO, dlatO                ! Observation grid spacing
+    real(pwp) :: latM_limit                  ! Comparison limit in latitude for model coordinate
+    real(pwp) :: lonM, latM                  ! Longitude/latitude of a model grid point
+    real(pwp) :: gcoords(4,2)                ! Grid point coordinates for computing interpolation coeffs
+    integer(4) :: obsflag                    ! Count observation in direct vicinity
+    integer(4) :: cntobs(4)                  ! Count grid points with 0 to 4 obs. neighbours
+    integer(4) :: obs_sum                    ! Sum of observation integer values
+    integer :: sgn_olat                      ! Orientation of latitude Obs.: -1 for north-south/+1 for south-north
+    integer :: sgn_mlat                      ! Orientation of latitude Model: -1 for north-south/+1 for south-north
+    real(pwp) :: rdate                       ! Current date
+    integer(4) :: year, month, iday          ! Current year, month, day (iday is step read from observation file) 
+    integer :: id_obs                        ! Index of observation field in state vector
+    character(lc) :: varname_lon             ! Name of longitude coordinate variable in file
+    character(lc) :: varname_lat             ! Name of latitude coordinate variable in file
+    character(lc) :: varname_obs             ! Name of observation variable in file
+    real(pwp) :: rms_obs                     ! Obs. error standard deviation
+    integer :: missing_value                 ! Missing value above which observations are valid
+    character(len=2) :: region               ! Region for which the data is used ('no', 'ba', 'nb')
+    real(pwp) :: limcoords(3)                ! Limiting coordinates according to region
+    real(pwp), parameter :: sst_scale = 0.01 ! Scaling factor to convert file value to degC
 
 
 ! *********************************************
@@ -156,13 +171,30 @@ contains
 ! *********************************************
 
     if (mype_filter==0) &
-         write (*,'(a,4x,a)') 'NEMO-PDAF', 'Assimilate observations - OBS_SST_CMEMS'
+         write (*,'(a,4x,a,a)') 'NEMO-PDAF', 'Assimilate observations - ', trim(obsname)
+
+    ! Specify region and limiting coordinates
+    region = 'nb'                     ! 'nb'= North and Baltic Seas - no exclusion
+    limcoords(1) = 57.0 * deg2rad    ! north/south limit in Skagerrak
+    limcoords(2) = 9.4 * deg2rad      ! east/west limit over Denmark; use outh of limcoords(1) for 'no'
+    limcoords(3) = 15.0 * deg2rad     ! east/west limit over Sweden; use north of limcoords(1) for 'ba'
+
+    ! Initialize generic variables (used to keep codes generic)
+    id_obs = id%temp                         ! Index of observation field in state vector
+    dist_obs = dist_sst_cmems                ! Type of distance computation
+    observation_mode = mode_sst_cmems        ! Whether to use interpolation or super-obbing
+    varname_lon = 'lon'                      ! Name of longitude variable in file
+    varname_lat = 'lat'                      ! Name of latitude variable in file
+    varname_obs = varname_sst_cmems          ! Name of observation variable in file
+    rms_obs = rms_obs_sst_cmems              ! Obs. error standard deviation
+    missing_value = -10000                   ! Missing value in observation file
+    file_full = trim(path_sst_cmems)//trim(file_sst_cmems)   ! File name including path
 
     ! Store whether to assimilate this observation type (used in routines below)
     if (assim_sst_cmems) thisobs%doassim = 1
 
     ! Specify type of distance computation
-    if (trim(dist_sst_cmems) == 'gp') then
+    if (trim(dist_obs) == 'gp') then
        if (mype_filter==0) write (*,'(a,4x,a)') 'NEMO-PDAF', '--- use Cartesian grid point distances'
        thisobs%disttype = 0   ! 0=Cartesian
     else
@@ -174,19 +206,22 @@ contains
     ! The distance compution starts from the first row
     thisobs%ncoord = 2
 
+    ! Set limit factor for omitted observation due to high innovation
+    thisobs%inno_omit = omit_sst_cmems
+
     ! In case of MPI parallelization restrict observations to sub-domains
     if (npes_filter>1) thisobs%use_global_obs = 0
+
+
+! **********************************
+! *** Read PE-local observations ***
+! **********************************
 
     ! Determine current day
     call calc_date(step-1, rdate)
     year = floor(rdate/10000.0_pwp)
     month = floor((rdate-real(year*10000))/100.0_pwp)
     iday = floor(rdate-real(year*10000)-real(month*100))
-
-
-! **********************************
-! *** Read PE-local observations ***
-! **********************************
 
     doassim: if (doassim_now) then
 
@@ -201,39 +236,37 @@ contains
        !    --variable adjusted_sea_surface_temperature 
        !    --out-name sst_multi_201810.nc --user <USERNAME> --pwd <PASSWD>
 
-
        ! read observation values and their coordinates
-       file_full = trim(path_sst_cmems)//trim(file_sst_cmems)
 
        if (mype_filter==0) then 
           write (*,'(a, 4x,a,i3,a)') 'NEMO-PDAF', 'Read observations for day ', &
                iday,' from file:'
           write (*,'(a, 4x,a)') 'NEMO-PDAF', trim(file_full)
-          write (*, '(a,4x,a,a)') 'NEMO-PDAF', '--- name of SST file variable: ', trim(varname_sst_cmems)
+          write (*, '(a,4x,a,a)') 'NEMO-PDAF', '--- name of observation file variable: ', trim(varname_obs)
        end if
 
        ! Open the file. NF90_NOWRITE tells netCDF to have read-only access to file.
        call check( nf90_open(file_full, NF90_NOWRITE, ncid) )
 
        ! Read dimensions of observation grid
-       call check( nf90_inq_dimid(ncid, "lat", dimid) )
+       call check( nf90_inq_dimid(ncid, trim(varname_lat), dimid) )
        call check( nf90_Inquire_dimension(ncid, dimid, len=dim_olat) )
-       call check( nf90_inq_dimid(ncid, "lon", dimid) )
+       call check( nf90_inq_dimid(ncid, trim(varname_lon), dimid) )
        call check( nf90_Inquire_dimension(ncid, dimid, len=dim_olon) )
 
        ! Allocate arrays
-       allocate(sst_aux(dim_olon, dim_olat))
+       allocate(obs_from_file(dim_olon, dim_olat))
        allocate(lon_obs(dim_olon), lat_obs(dim_olat))
 
        ! Get variable IDs and read data
-       call check( nf90_inq_varid(ncid, trim(varname_sst_cmems), varid) )
-       call check( nf90_inq_varid(ncid, "lon", lonid) )
-       call check( nf90_inq_varid(ncid, "lat", latid) )
+       call check( nf90_inq_varid(ncid, trim(varname_obs), varid) )
+       call check( nf90_inq_varid(ncid, trim(varname_lon), lonid) )
+       call check( nf90_inq_varid(ncid, trim(varname_lat), latid) )
 
        call check( nf90_get_var(ncid, lonid, lon_obs) )
        call check( nf90_get_var(ncid, latid, lat_obs) )
 
-       ! Read SST values
+       ! Read observation values
        ! They are in deg C but have to be scaled by sst_scale (1/100).
        startv(1) = 1 ! lon
        startv(2) = 1 ! lat
@@ -241,7 +274,7 @@ contains
        cntv(1) = dim_olon
        cntv(2) = dim_olat
        cntv(3) = 1
-       call check( nf90_get_var(ncid, varid, sst_aux, start=startv, count=cntv) )
+       call check( nf90_get_var(ncid, varid, obs_from_file, start=startv, count=cntv) )
 
        ! Close the file
        call check( nf90_close(ncid) )
@@ -259,7 +292,7 @@ contains
        lon_model = lon1_p * deg2rad
        lat_model = lat1_p * deg2rad
 
-       cartdist: if (trim(dist_sst_cmems) == 'gp') then
+       cartdist: if (trim(dist_obs) == 'gp') then
 
           ! Set grid point coordinates for Cartesian distance computation
 
@@ -281,6 +314,41 @@ contains
           end do
 
        end if cartdist
+
+
+! ****************************************
+! *** Exclude data for specific region ***
+! ****************************************
+
+       if (region=='ba') then
+          ! Baltic Sea (exclude Skagerrak/Kattegat and all west of Denmark)
+
+          if (mype_filter==0) &
+               write (*,'(8x,a)') '--- Exclude observations in North Sea'
+
+          do j = 1, dim_olat
+             do i = 1, dim_olon
+                if (lon_obs(i)<limcoords(2) .or. (lon_obs(i)<limcoords(3) &
+                     .and. lat_obs(j)>limcoords(1))) then
+                   obs_from_file(i,j) = missing_value
+                end if
+             end do
+          end do
+       elseif (region=='no') then
+          ! North Sea (exclude Baltic except Skagerrak/Kattegat north of limcoords(1))
+
+          if (mype_filter==0) &
+               write (*,'(8x,a)') '--- Exclude observations in Baltic Sea'
+
+          do j = 1, dim_olat
+             do i = 1, dim_olon
+                if ((lon_obs(i)>=limcoords(2) .and. lat_obs(j)<=limcoords(1)) &
+                     .or. lon_obs(i)>limcoords(3)) then
+                   obs_from_file(i,j) = missing_value
+                end if
+             end do
+          end do
+       end if
 
 
 ! *******************************************************************
@@ -329,38 +397,38 @@ contains
        ido_w = ceiling(abs(wlonM - lon_obs(1)) / dlonO)+1
 
        if (ido_w<2) then
-          write (*,*) 'reset ido_w'
+          if (debug) write (*,*) 'NEMO-PDAF ', 'reset ido_w'
           ido_w = 2
           idm_w = ceiling((lon_obs(ido_w) - wlonM) / dlonM) + 1
        elseif (ido_w>dim_olon) then
           iderr = 1
        endif
-       if (mode_sst_cmems==0) then
+       if (observation_mode==0) then
           idm_w = ceiling((lon_obs(ido_w) - wlonM) / dlonM) + 1
        end if
 
        ido_e = ceiling((elonM - lon_obs(1)) / dlonO)
        if (ido_e>=dim_olon) then
-          write (*,*) 'NEMO-PDAF ', 'reset ido_e'
+          if (debug) write (*,*) 'NEMO-PDAF ', 'reset ido_e'
           ido_e = dim_olon-1
           idm_e = floor((lon_obs(dim_olon) - wlonM) / dlonM) + 1
        elseif (ido_e<1) then
           iderr = 2
        endif
-       if (mode_sst_cmems==0) then
+       if (observation_mode==0) then
           idm_e = floor((lon_obs(ido_e) - wlonM) / dlonM) + 1
        end if
 
        if (sgn_olat > 0) then
           ido_n = ceiling((nlatM - lat_obs(1)) / dlatO)
           if (ido_n>dim_olat) then
-             write (*,*) 'NEMO-PDAF ', 'reset ido_n'
+             if (debug) write (*,*) 'NEMO-PDAF ', 'reset ido_n'
              ido_n = dim_olat-1
              idm_n = ceiling((lat_obs(ido_n) - nlatM) / dlatM) + 1
           elseif (ido_n<1) then
              iderr = 3
           end if
-          if (mode_sst_cmems==0) then
+          if (observation_mode==0) then
              if (sgn_mlat > 0) then
                 idm_n = floor(abs(lat_obs(ido_n) - slatM) / dlatM) + 1
              else
@@ -370,7 +438,7 @@ contains
 
           ido_s = ceiling(abs(slatM - lat_obs(1)) / dlatO) + 1
           if (ido_s<2) then
-             write (*,*) 'NEMO-PDAF ', 'reset ido_s'
+             if (debug) write (*,*) 'NEMO-PDAF ', 'reset ido_s'
              ido_s = 2
              if (sgn_mlat > 0) then
                 idm_s = floor(abs(lat_obs(ido_s) - slatM) / dlatM) + 1
@@ -380,7 +448,7 @@ contains
           elseif (ido_s>dim_olat) then
              iderr = 4
           end if
-          if (mode_sst_cmems==0) then
+          if (observation_mode==0) then
              if (sgn_mlat > 0) then
                 idm_s = ceiling(abs(lat_obs(ido_s) - slatM) / dlatM) + 1
              else
@@ -390,13 +458,13 @@ contains
        else
           ido_n = ceiling((nlatM - lat_obs(1)) / dlatO)+1
           if (ido_n<2) then 
-             write (*,*) 'NEMO-PDAF ', 'reset ido_n'
+             if (debug) write (*,*) 'NEMO-PDAF ', 'reset ido_n'
              ido_n = 2
              idm_n = floor((lat_obs(ido_n) - nlatM) / dlatM) + 1
           elseif (ido_n>dim_olat) then
              iderr = 5
           endif
-          if (mode_sst_cmems==0) then
+          if (observation_mode==0) then
              if (sgn_mlat > 0) then
                 idm_n = floor((lat_obs(ido_n) - slatM) / dlatM) + 1
              else
@@ -404,33 +472,45 @@ contains
              end if
           end if
 
-          ido_s = ceiling((slatM - lat_obs(1)) / dlatO)
+          ido_s = floor((slatM - lat_obs(1)) / dlatO)
           if (ido_s>dim_olat) then
-             write (*,*) 'NEMO-PDAF ', 'reset ido_s'
+             if (debug) write (*,*) 'NEMO-PDAF ', 'reset ido_s'
              ido_s = dim_olat-1
              idm_s = ceiling((lat_obs(dim_olat) - nlatM) / dlatM)+1
           elseif (ido_s<1) then
              iderr = 6
           endif
-          if (mode_sst_cmems==0) then
+          if (observation_mode==0) then
              if (sgn_mlat > 0) then
-                idm_s = floor(abs(lat_obs(ido_s) - slatM) / dlatM)
+                idm_s = ceiling(abs(lat_obs(ido_s) - slatM) / dlatM)
              else
-                idm_s = floor((lat_obs(ido_s) - nlatM) / dlatM)+1
+                idm_s = floor(abs(lat_obs(ido_s) - nlatM) / dlatM)+1
              end if
           end if
        end if
-       if (iderr/=0) write (*,*) 'ERROR: ',iderr,'Observations not overlapping with model grid'
+
+       if (iderr/=0) then
+          ! Observation grid and PE-local sub-domain do not overlap
+          obsgrid_p = .false.
+       else
+          ! Overlapping observation and PE-local grids
+          obsgrid_p = .true.
+       end if
 
        if (debug) then
+          if (.not. obsgrid_p) then
+             write (*,*) 'Observations not overlapping with model grid, case', iderr
+          else
+             write (*,*) 'Observations do overlap with model grid'
+          end if
           write (*,'(a,2x,4i10)')   'ido in WENS', ido_w, ido_e, ido_n, ido_s
           write (*,'(a,4f12.5)') 'ocoords WENS in ', &
                lon_obs(ido_w), lon_obs(ido_e), lat_obs(ido_n), lat_obs(ido_s)
           write (*,'(a,4f12.5)') 'ocoords WENS out', &
                lon_obs(ido_w-1), lon_obs(ido_e+1), lat_obs(ido_n+sgn_olat), lat_obs(ido_s-sgn_olat)
-          
+
           write (*,'(a,2x,4i10)') 'idm new limits', idm_w, idm_e, idm_n, idm_s
-          if (mode_sst_cmems==0) &
+          if (observation_mode==0) &
                write (*,'(a,4f12.5)') 'mcoords out     ', lon_model(idm_w-1), &
                lon_model(idm_e+1), lat_model(idm_n+sgn_mlat), lat_model(idm_s-sgn_mlat)
           write (*,'(a,4f12.5)') 'mcoords in      ', lon_model(idm_w), &
@@ -449,7 +529,7 @@ contains
 ! *** and initialize index and coordinate arrays.         ***
 ! ***********************************************************
 
-       obsmodeA: if (mode_sst_cmems==0) then
+       obsmodeA: if (observation_mode==0 .and. obsgrid_p) then
 
           ! *** Linear interpolation ***
 
@@ -478,7 +558,7 @@ contains
           ! Loop through observation grid
           do j = ido_start, ido_end
              do i = ido_w, ido_e
-                if (sst_aux(i,j) > -10000) then
+                if (obs_from_file(i,j) > missing_value) then
 
                    ! find model grid point indices corresponding to observation point
                    idm_w = floor((lon_obs(i) - wlonM) / dlonM) + 1
@@ -496,7 +576,7 @@ contains
              end do
           end do
 
-       else obsmodeA
+       elseif (obsgrid_p) then obsmodeA
 
           ! *** Super-Obbing ***
 
@@ -539,10 +619,10 @@ contains
                         write (*,*) 'ido out of range', ido_w, ido_e, ido_n, ido_s
 
                    obsflag = 0
-                   if (sst_aux(ido_w,ido_s)>-10000) obsflag = obsflag + 1
-                   if (sst_aux(ido_e,ido_s)>-10000) obsflag = obsflag + 1
-                   if (sst_aux(ido_w,ido_n)>-10000) obsflag = obsflag + 1
-                   if (sst_aux(ido_e,ido_n)>-10000) obsflag = obsflag + 1
+                   if (obs_from_file(ido_w,ido_s) > missing_value) obsflag = obsflag + 1
+                   if (obs_from_file(ido_e,ido_s) > missing_value) obsflag = obsflag + 1
+                   if (obs_from_file(ido_w,ido_n) > missing_value) obsflag = obsflag + 1
+                   if (obs_from_file(ido_e,ido_n) > missing_value) obsflag = obsflag + 1
 
                    ! Count how many of the neighboring observations are valid
                    if (obsflag==4) cntobs(4) = cntobs(4) + 1
@@ -558,6 +638,9 @@ contains
           end do
           write (6, '(a,8x, a,4i8)') 'NEMO-PDAF', 'grid points with 1/2/3/4 neighbour obs.', cntobs(1:4)
 
+       else obsmodeA
+          ! Observation and model grids do not overlap
+          cnt = 0
        end if obsmodeA
 
        ! Set observation dimension
@@ -565,11 +648,11 @@ contains
        dim_obs = cnt 
 
        if (npes_filter==1) then
-          write (6,'(a, 4x, a, i7)') 'NEMO-PDAF', '--- number of observations from SST_CMEMS: ', dim_obs
+          write (6,'(a, 4x, a, a, i7)') 'NEMO-PDAF', '--- number of observations from ', trim(obsname), ': ', dim_obs
        else
           if (screen>2) then
-             write (6,'(a, 4x, a, i4, 2x, a, i7)') 'NEMO-PDAF', 'PE', mype_filter, &
-                  '--- number of observations from SST_CMEMS: ', dim_obs
+             write (6,'(a, 4x, a, i4, 2x, a, a, i7)') 'NEMO-PDAF', 'PE', mype_filter, &
+                  '--- number of observations from ', trim(obsname), ': ', dim_obs
           end if
        end if
 
@@ -591,7 +674,7 @@ contains
        allocate(ivar_obs_p(dim_obs_p))
        allocate(ocoord_p(thisobs%ncoord, dim_obs_p))
 
-       obsmodeB: if (mode_sst_cmems==0) then
+       obsmodeB: if (observation_mode==0) then
 
           ! *** Linear interpolation ***
 
@@ -613,7 +696,7 @@ contains
                 idm_n = ceiling(abs(lat_obs(j) - latM_limit) / dlatM) + 1
                 idm_s = idm_n - sgn_mlat
 
-                haveobs: if (sst_aux(i,j) > -10000) then
+                haveobs: if (obs_from_file(i,j) > missing_value) then
 
                    ! find grid point indices corresponding to observation point
                    idm_w = floor((lon_obs(i) - wlonM) / dlonM) + 1
@@ -629,19 +712,19 @@ contains
 
                       ! Set indices of 4 grid points neightbors of the observation
                       if (use_wet_state==1 .or. use_wet_state==2) then
-                         thisobs%id_obs_p(1, cnt) = idx_nwet(idm_w,idm_s) + sfields(id%temp)%off
-                         thisobs%id_obs_p(2, cnt) = idx_nwet(idm_e,idm_s) + sfields(id%temp)%off
-                         thisobs%id_obs_p(3, cnt) = idx_nwet(idm_w,idm_n) + sfields(id%temp)%off
-                         thisobs%id_obs_p(4, cnt) = idx_nwet(idm_e,idm_n) + sfields(id%temp)%off
+                         thisobs%id_obs_p(1, cnt) = idx_nwet(idm_w,idm_s) + sfields(id_obs)%off
+                         thisobs%id_obs_p(2, cnt) = idx_nwet(idm_e,idm_s) + sfields(id_obs)%off
+                         thisobs%id_obs_p(3, cnt) = idx_nwet(idm_w,idm_n) + sfields(id_obs)%off
+                         thisobs%id_obs_p(4, cnt) = idx_nwet(idm_e,idm_n) + sfields(id_obs)%off
                       else
-                         thisobs%id_obs_p(1, cnt) = idm_w + nlons*(idm_s-1) + sfields(id%temp)%off
-                         thisobs%id_obs_p(2, cnt) = idm_e + nlons*(idm_s-1) + sfields(id%temp)%off
-                         thisobs%id_obs_p(3, cnt) = idm_w + nlons*(idm_n-1) + sfields(id%temp)%off
-                         thisobs%id_obs_p(4, cnt) = idm_e + nlons*(idm_n-1) + sfields(id%temp)%off
+                         thisobs%id_obs_p(1, cnt) = idm_w + nlons*(idm_s-1) + sfields(id_obs)%off
+                         thisobs%id_obs_p(2, cnt) = idm_e + nlons*(idm_s-1) + sfields(id_obs)%off
+                         thisobs%id_obs_p(3, cnt) = idm_w + nlons*(idm_n-1) + sfields(id_obs)%off
+                         thisobs%id_obs_p(4, cnt) = idm_e + nlons*(idm_n-1) + sfields(id_obs)%off
                       end if
 
                       ! Store observation value and coordinates
-                      obs_p(cnt) = real(sst_aux(i, j)) * sst_scale
+                      obs_p(cnt) = real(obs_from_file(i, j)) * sst_scale
                       ocoord_p(1, cnt) = lon_obs(i)
                       ocoord_p(2, cnt) = lat_obs(j)
 
@@ -693,10 +776,10 @@ contains
                 wetpointB: if (idx_nwet(i, j)>0) then
 
                    obsflag = 0
-                   if (sst_aux(ido_w,ido_s)>-10000) obsflag = obsflag + 1
-                   if (sst_aux(ido_e,ido_s)>-10000) obsflag = obsflag + 1
-                   if (sst_aux(ido_w,ido_n)>-10000) obsflag = obsflag + 1
-                   if (sst_aux(ido_e,ido_n)>-10000) obsflag = obsflag + 1
+                   if (obs_from_file(ido_w,ido_s) > missing_value) obsflag = obsflag + 1
+                   if (obs_from_file(ido_e,ido_s) > missing_value) obsflag = obsflag + 1
+                   if (obs_from_file(ido_w,ido_n) > missing_value) obsflag = obsflag + 1
+                   if (obs_from_file(ido_e,ido_n) > missing_value) obsflag = obsflag + 1
 
                    ! Use obs. if at least one observation exist in direct vicinity
                    obsflg: if (obsflag>0) then
@@ -705,9 +788,9 @@ contains
 
                       ! Set index of grid point 
                       if (use_wet_state==1 .or. use_wet_state==2) then
-                         thisobs%id_obs_p(1, cnt) = idx_nwet(i, j) + sfields(id%temp)%off
+                         thisobs%id_obs_p(1, cnt) = idx_nwet(i, j) + sfields(id_obs)%off
                       else
-                         thisobs%id_obs_p(1, cnt) = i + nlons*(j-1) + sfields(id%temp)%off
+                         thisobs%id_obs_p(1, cnt) = i + nlons*(j-1) + sfields(id_obs)%off
                       end if
 
                       ! Store observation coordinates
@@ -716,15 +799,15 @@ contains
 
                       ! Compute observation value by averaging
                       obs_sum = 0
-                      if (sst_aux(ido_w,ido_s)>-10000) &
-                           obs_sum = obs_sum + sst_aux(ido_w,ido_s)
-                      if (sst_aux(ido_e,ido_s)>-10000) &
-                           obs_sum = obs_sum + sst_aux(ido_e,ido_s)
-                      if (sst_aux(ido_w,ido_n)>-10000) &
-                           obs_sum = obs_sum + sst_aux(ido_w,ido_n)
-                      if (sst_aux(ido_e,ido_n)>-10000) &
-                           obs_sum = obs_sum + sst_aux(ido_e,ido_n)
-                      obs_p(cnt) = real(obs_sum) * sst_scale / real(obsflag)
+                      if (obs_from_file(ido_w,ido_s) > missing_value) &
+                           obs_sum = obs_sum + obs_from_file(ido_w,ido_s)
+                      if (obs_from_file(ido_e,ido_s) > missing_value) &
+                           obs_sum = obs_sum + obs_from_file(ido_e,ido_s)
+                      if (obs_from_file(ido_w,ido_n) > missing_value) &
+                           obs_sum = obs_sum + obs_from_file(ido_w,ido_n)
+                      if (obs_from_file(ido_e,ido_n) > missing_value) &
+                           obs_sum = obs_sum + obs_from_file(ido_e,ido_n)
+                      obs_p(cnt) = real(obs_sum) / real(obsflag) * sst_scale 
 
                    end if obsflg
 
@@ -745,7 +828,7 @@ contains
        allocate(ocoord_p(thisobs%ncoord, 1))
        allocate(thisobs%id_obs_p(1, dim_obs_p))
 
-       if (mode_sst_cmems==0) allocate(thisobs%icoeff_p(4, 1))
+       if (observation_mode==0) allocate(thisobs%icoeff_p(4, 1))
 
     end if
 
@@ -754,7 +837,7 @@ contains
 ! *** Define observation errors for process-local observations ***
 ! ****************************************************************
 
-    ivar_obs_p(:) = 1.0 / (rms_obs_sst_cmems*rms_obs_sst_cmems)
+    ivar_obs_p(:) = 1.0 / (rms_obs*rms_obs)
 
 
 ! ****************************************
@@ -784,7 +867,7 @@ contains
     if (doassim_now) then
        ! Deallocate all local arrays
        deallocate(obs_p, ocoord_p, ivar_obs_p)
-       deallocate(sst_aux, lon_obs, lat_obs)
+       deallocate(obs_from_file, lon_obs, lat_obs)
     end if
 
   end subroutine init_dim_obs_sst_cmems
@@ -824,7 +907,7 @@ contains
 
     if (thisobs%doassim==1) then
     
-       if (mode_sst_cmems==0) then
+       if (observation_mode==0) then
 
           ! Observation operator for averaging over grid points
           call PDAFomi_obs_op_interp_lin(thisobs, 4, state_p, ostate)
@@ -888,7 +971,7 @@ contains
     ! coords_l should be set in the call-back routine init_dim_l.
     ! coords_l is domain_coords in HBM
 
-    if (trim(dist_sst_cmems) == 'gp') then
+    if (trim(dist_obs) == 'gp') then
        coords(1) = wet_pts(6, domain_p)
        coords(2) = wet_pts(7, domain_p)
     else

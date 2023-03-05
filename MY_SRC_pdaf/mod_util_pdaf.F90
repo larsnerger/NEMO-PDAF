@@ -172,15 +172,15 @@ contains
     use mod_obs_sst_cmems_pdafomi, &
          only: assim_sst_cmems, path_sst_cmems, file_sst_cmems, rms_obs_sst_cmems, &
          lradius_sst_cmems, sradius_sst_cmems, mode_sst_cmems, dist_sst_cmems, &
-         varname_sst_cmems
+         varname_sst_cmems, omit_sst_cmems
     use mod_obs_chl_baltic_cmems_pdafomi, &
          only: assim_chl_baltic_cmems, path_chl_baltic_cmems, file_chl_baltic_cmems, rms_obs_chl_baltic_cmems, &
          lradius_chl_baltic_cmems, sradius_chl_baltic_cmems, mode_chl_baltic_cmems, dist_chl_baltic_cmems, &
-         varname_chl_baltic_cmems
+         varname_chl_baltic_cmems, omit_chl_baltic_cmems
     use mod_obs_chl_nsea_cmems_pdafomi, &
          only: assim_chl_nsea_cmems, path_chl_nsea_cmems, file_chl_nsea_cmems, rms_obs_chl_nsea_cmems, &
          lradius_chl_nsea_cmems, sradius_chl_nsea_cmems, mode_chl_nsea_cmems, dist_chl_nsea_cmems, &
-         varname_chl_nsea_cmems
+         varname_chl_nsea_cmems, omit_chl_nsea_cmems
 
     !< Namelist file
     character(lc) :: nmlfile
@@ -202,17 +202,17 @@ contains
     namelist /obs_sst_cmems_nml/ &
          assim_sst_cmems, path_sst_cmems, file_sst_cmems, rms_obs_sst_cmems, &
          lradius_sst_cmems,  sradius_sst_cmems, mode_sst_cmems, dist_sst_cmems, &
-         varname_sst_cmems
+         varname_sst_cmems, omit_sst_cmems
 
     namelist /obs_chl_baltic_cmems_nml/ &
          assim_chl_baltic_cmems, path_chl_baltic_cmems, file_chl_baltic_cmems, rms_obs_chl_baltic_cmems, &
          lradius_chl_baltic_cmems,  sradius_chl_baltic_cmems, mode_chl_baltic_cmems, dist_chl_baltic_cmems, &
-         varname_chl_baltic_cmems
+         varname_chl_baltic_cmems, omit_chl_baltic_cmems
 
     namelist /obs_chl_nsea_cmems_nml/ &
          assim_chl_nsea_cmems, path_chl_nsea_cmems, file_chl_nsea_cmems, rms_obs_chl_nsea_cmems, &
          lradius_chl_nsea_cmems,  sradius_chl_nsea_cmems, mode_chl_nsea_cmems, dist_chl_nsea_cmems, &
-         varname_chl_nsea_cmems
+         varname_chl_nsea_cmems, omit_chl_nsea_cmems
 
 
     ! ****************************************************
