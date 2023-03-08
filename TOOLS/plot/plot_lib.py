@@ -18,20 +18,22 @@ def stations(station):
     print 'Read coordinates for station:', station
 
     # Open Excel file
-    wb = xlrd.open_workbook("/home/ollie/lnerger/INFOWAS/InfoWas_insitu_Stationen.xlsx")
+    wb = xlrd.open_workbook("/home/hzfblner/SEAMLESS/plot/InfoWas_insitu_Stationen.xlsx")
     sheet = wb.sheet_by_index(0)
 
-    for i in range(5, 31):
+    for i in range(5, 35):
         if sheet.cell_value(i, 1)==station:
             lon = sheet.cell_value(i, 3)
             lat = sheet.cell_value(i, 2)
+            noba = 'ba'
 
-    for i in range(33, 72):
+    for i in range(38, 76):
         if sheet.cell_value(i, 1)==station:
             lon = sheet.cell_value(i, 3)
             lat = sheet.cell_value(i, 2)
+            noba = 'no'
             
-    return lon, lat
+    return lon, lat, noba
 
 def station_info(istation, mod_or_obs):
 
@@ -42,50 +44,29 @@ def station_info(istation, mod_or_obs):
         station = 'Arkona'
         station_coords.append(54.88)
         station_coords.append(13.87)
+        noba = 'ba'
     elif istation == 2:
         station = 'Baltic_Proper'
         station_coords.append(56.0)
         station_coords.append(18.5)
-    else:
+        noba = 'ba'
+    elif istation == 3:
         station= 'Bothnian_Sea'
         station_coords.append(61.7)
         station_coords.append(19.5)
-
-    if istation == 1:
-        # Arkona
-        if mod_or_obs=='mod':
-            station_idx.append(383)
-            station_idx.append(649)
-        elif mod_or_obs=='obs_chl_ba':
-            station_idx.append(148)
-            station_idx.append(260)
-        elif mod_or_obs=='obs_sst':
-            station_idx.append(319)
-            station_idx.append(919)
-    elif istation == 2:
-        # Baltic Proper
-        if mod_or_obs=='mod':
-            station_idx.append(450)
-            station_idx.append(816)
-        elif mod_or_obs=='obs_chl_ba':
-            station_idx.append(247)
-            station_idx.append(520)
-        elif mod_or_obs=='obs_sst':
-            station_idx.append(375)
-            station_idx.append(1150)
+        noba = 'ba'
+    elif istation == 4:
+        station= 'FINO1WR'
+        station_coords.append(54.00)
+        station_coords.append(6.58)
+        noba = 'no'
     else:
-        # Bothnian Sea
-        if mod_or_obs=='mod':
-            station_idx.append(792)
-            station_idx.append(852)
-        elif mod_or_obs=='obs_chl_ba':
-            station_idx.append(770)
-            station_idx.append(580)
-        elif mod_or_obs=='obs_sst':
-            station_idx.append(660)
-            station_idx.append(1200)
+        station= 'Sleipner-A'
+        station_coords.append(58.37)
+        station_coords.append(1.91)
+        noba = 'no'
                     
-    return station, station_idx, station_coords
+    return station, station_coords, noba
 
 def month_names(mon):
     # Define Month strings and number of days of month
@@ -229,7 +210,7 @@ def var_names(X):
         C = 'pH'
         unit = ''
     elif X == 24:
-        A = 'xchl'
+        A = 'CHL'
         B = 'chl'
         C = 'Chlorophyll'
         unit = 'mg Chl/m$^3$'
@@ -577,19 +558,34 @@ def get_cmems_chl(year, month, day, time, datatype, log):
     if day==1:
         print 'Read CMEMS satellite CHL, day ', day
 
-    if time == "am":
-        time_aux = "00"
-    elif time == "pm":
-        time_aux = "12"
-
+#    if time == "am":
+#        time_aux = "00"
+#    elif time == "pm":
+#        time_aux = "12"
+        
     if day < 10:
-        day = '0'+str(day) 
-    print '/scratch/usr/hzfblner/SEAMLESS/observations/CHL_2015/chl_'+datatype+'_'+str(year)+str(month)+'.nc'
-    ncid   = NetCDFFile('/scratch/usr/hzfblner/SEAMLESS/observations/CHL_2015/chl_'+datatype+'_'+str(year)+str(month)+'.nc')
+        day = '0'+str(day)
 
-    chl = ncid.variables['CHL'][int(day)-1,:,:]
-    lat = ncid.variables['lat'][:]
-    lon = ncid.variables['lon'][:]
+    if datatype=='ba_MY':
+        # Baltic Sea
+        
+        print '/scratch/usr/hzfblner/SEAMLESS/observations/CHL_BA_2015/chl_'+datatype+'_'+str(year)+str(month)+'.nc'
+        ncid   = NetCDFFile('/scratch/usr/hzfblner/SEAMLESS/observations/CHL_BA_2015/chl_'+datatype+'_'+str(year)+str(month)+'.nc')
+
+        chl = ncid.variables['CHL'][int(day)-1,:,:]
+        lat = ncid.variables['lat'][:]
+        lon = ncid.variables['lon'][:]
+
+    else:
+
+        # North Sea
+        
+        print '/scratch/usr/hzfblner/SEAMLESS/observations/CHL_NO_2015/chl_'+datatype+'_'+str(year)+str(month)+'.nc'
+        ncid   = NetCDFFile('/scratch/usr/hzfblner/SEAMLESS/observations/CHL_NO_2015/chl_'+datatype+'_'+str(year)+str(month)+'.nc')
+
+        chl = ncid.variables['CHL'][int(day)-1,:,:]
+        lat = ncid.variables['latitude'][:]
+        lon = ncid.variables['longitude'][:]
 
     if log==1:
         chl = np.log(chl)
@@ -816,7 +812,98 @@ def remove_errors(data_coarse, data_fine, arg1):
 
     return data_coarse, data_fine
 
-def read_station_series(varnum, grid_area, year, time_stamp, depth, DA_switch, coupled, z_mean, z_integral, z1, z2, months, istation, dist):
+
+
+def read_station_idx(varnum, grid_area, year, time_stamp, depth, DA_switch, coupled, z_mean, z_integral, z1, z2, months, istation, station, dist):
+
+    # Get indices in the model grid of a station according to its coordinates
+
+    # Get variable names
+    varstr, mat_var, variable, var_unit = var_names(varnum)
+    print 'istation', istation
+    # Station station name and indices
+    if istation==0:
+        lon_stat, lat_stat, _ = stations(station)
+        station_coords = []
+        station_coords.append(lat_stat)
+        station_coords.append(lon_stat)
+    else:
+        station, station_coords, _ = station_info(istation, 'mod')
+
+    month = '01'
+    day = 1
+    _, mod_keys = read_model(varstr, grid_area, year, month, day, time_stamp, depth, DA_switch, coupled, z_mean, z_integral, z1, z2)
+
+    lat = mod_keys['lat'][:]
+    lon = mod_keys['lon'][:]
+
+    lat1 = lat[:,0]
+    lon1 = lon[0,:]
+    for i in range(len(lat[:,0])):
+       lat1[i] = np.max(lat[i,:])
+    for j in range(len(lat[0,:])):
+       lon1[j] = np.max(lon[:,j])
+    lon1[-1] = lon1[-2] + lon1[1]-lon1[0]
+
+    latdiff = lat1 - station_coords[0]
+    londiff = lon1 - station_coords[1]
+    station_idx = []
+    station_idx.append(np.argmin(abs(latdiff)))
+    station_idx.append(np.argmin(abs(londiff)))
+
+    print 'Station:', station
+    print '   model grid: coords lat/lon', station_coords[0], station_coords[1]
+    print '   model grid: index lat/lon ', station_idx[0], station_idx[1]
+
+    return station, station_idx, station_coords
+
+
+
+def read_station_idx_obs(varnum, year, months, istation, station, dist):
+
+    # Get indices in the observation grid of a station according to its coordinates
+
+    # Station station name and indices
+    if istation==0:
+        lon_stat, lat_stat, noba = stations(station)
+        station_coords = []
+        station_coords.append(lat_stat)
+        station_coords.append(lon_stat)
+    else:
+        station, station_coords, noba = station_info(istation, 'mod')
+
+    if months[0]<10:
+        month = '0'+str(months[0])
+    else:
+        month = str(months[0])
+
+    day = 1
+    if varnum==24:
+        # Chlorophyll
+        log = 0
+        datatype_obs= noba+'_MY'
+        _, lat_o, lon_o = get_cmems_chl(year, month, day, 'am', datatype_obs, log)
+    else:
+        # SST
+        datatype_obs= 'REP_L4'
+        _, lat_o, lon_o = get_cmems_sst(year, month, day, 'am', datatype_obs)
+
+
+    latdiff = lat_o - station_coords[0]
+    londiff = lon_o - station_coords[1]
+    station_idx = []
+    station_idx.append(np.argmin(abs(latdiff)))
+    station_idx.append(np.argmin(abs(londiff)))
+
+    print 'Station:', station
+    print '   obs grid: coords lat/lon', station_coords[0], station_coords[1]
+    print '   obs grid: index lat/lon ', station_idx[0], station_idx[1]
+
+    return station, station_idx, station_coords, noba
+
+
+
+def read_station_series(varnum, grid_area, year, time_stamp, depth, DA_switch, coupled, z_mean, z_integral, z1, z2, months, istation, strstation, dist):
 
     # Get day of year
     DoY = day_of_year(months[0], 1)
@@ -824,10 +911,10 @@ def read_station_series(varnum, grid_area, year, time_stamp, depth, DA_switch, c
 
     # Get variable names
     varstr, mat_var, variable, var_unit = var_names(varnum)
-
+    print 'istation1', istation
     # Station station name and indices
-    station, station_idx, _ = station_info(istation, 'mod')
-    print 'station_idx', station_idx[0], station_idx[1]
+    station, station_idx, station_coords =  read_station_idx(varnum, grid_area, year, time_stamp, depth, DA_switch, coupled, z_mean, z_integral, z1, z2, months, istation, strstation, dist)
+
     lon_min = station_idx[1]-dist
     lon_max = station_idx[1]+dist+1
     lat_min = station_idx[0]-dist
@@ -893,18 +980,14 @@ def read_station_series(varnum, grid_area, year, time_stamp, depth, DA_switch, c
     return modmean, modday
 
 
-def read_station_series_obs(varnum, year, months, istation, dist):
+def read_station_series_obs(varnum, year, months, istation, strstation, dist):
 
     DoY = day_of_year(months[0], 1)
     print 'DoY ', DoY
  
     # Station station name and indices
-    if varnum==24:
-        # Chlorophyll
-        station, station_idx, _ = station_info(istation, 'obs_chl_ba')
-    else:
-        station, station_idx, _ = station_info(istation, 'obs_sst')
-    print 'station_idx', station_idx[0], station_idx[1]
+    station, station_idx, station_coords, noba =  read_station_idx_obs(varnum, year, months, istation, strstation, dist)
+
     lon_min = station_idx[1]-dist
     lon_max = station_idx[1]+dist+1
     lat_min = station_idx[0]-dist
@@ -935,7 +1018,7 @@ def read_station_series_obs(varnum, year, months, istation, dist):
         if varnum==24:
             # Chlorophyll
             log = 0
-            datatype_obs= 'ba_MY'
+            datatype_obs= noba+'_MY'
             data_o, lat_o, lon_o = get_cmems_chl(year, month, day, 'am', datatype_obs, log)
         else:
             # SST

@@ -22,7 +22,7 @@ import cmocean
 
 if __name__ == "__main__":
     coupled = ''
-    depth  = '5'	# Depth
+    depth  = '0'	# Depth
     year   = 2015       # Year
     month  = '03'       # Month has to be string and two digits i.e '05' and '10'
     day    = '03'	# Day has to be double digits
@@ -30,27 +30,26 @@ if __name__ == "__main__":
     firstday = 1        # Initial day 
     ndays  = 31          # Number of days to process
     dist = 10           # Grid point distance to check around central location 
-    istation = 1        # (1) Arkona, (2) Baltic Proper, (3) Bothnian Sea
+    station = 'FINO1WR' # Set station name according to the XLSX file
+    istation = 0        # (0) use 'station', (1) Arkona, (2) Baltic Proper, (3) Bothnian Sea
     exp = 'LESTKF'
     #exp = 'Hybrid'
     plotlog = 0
     plotcb = 1          # Whether to show the colorbar
 
-    months_free = [1, 2, 3, 4, 5]
-    months_obs = [1, 2, 3, 4, 5]
-    months_da = [3, 4, 5]
-#    months_free = [3]
-#    months_obs = [3]
-#    months_da = [3]
+    months_free = [1, 2, 3] #, 2, 3, 4, 5]
+    #months_obs = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+    months_obs = [1, 2, 3] #, 3] #, 4, 5]
+    months_da = [1, 2, 3] #3, 4, 5]
     
     z_mean=0     #0(no vertical mean)
     z_integral=0 #(0 for no vertical integral; 1 for vertical integral)
     z1=0         # upper Z boundary (for z_mean and z_integral)
     z2=5         # lower Z boundary (for z_mean and z_integral)
-    save = 1
+    save = 0
 
 
-    varnum = 10	 	# Variable number from the var_names routine.
+    varnum = 24	 	# Variable number from the var_names routine.
                         # Quick ref: 1=z, 2=TEM, 3=SAL, 4=uvel, 5=vvel, 6=NH4, 7=NO3, 8=PO4, 
                         #            9=SIL, 10=DIA, 11=FLA, 12=CYA, 13=MEZ, 14=MIZ, 15=DET,
                         #            16=DETs, 17=FE, 18=LDON, 19=DIC, 20=ALK, 21=OXY, 22=pCO2, 
@@ -73,17 +72,17 @@ if __name__ == "__main__":
         dotcoupled='.'+coupled
 
     DAtype=0
-    freemean, freeday = read_station_series(varnum, 'coarse', year, ampm, depth, DAtype, dotcoupled, z_mean, z_integral, z1, z2, months_free, istation, dist)
+    freemean, freeday = read_station_series(varnum, 'coarse', year, ampm, depth, DAtype, dotcoupled, z_mean, z_integral, z1, z2, months_free, istation, station, dist)
 
     DAtype=1
-    fcstmean, fcstday = read_station_series(varnum, 'coarse', year, ampm, depth, DAtype, dotcoupled, z_mean, z_integral, z1, z2, months_da, istation, dist)
+    fcstmean, fcstday = read_station_series(varnum, 'coarse', year, ampm, depth, DAtype, dotcoupled, z_mean, z_integral, z1, z2, months_da, istation, station, dist)
 
     if plotana==1:
         DAtype=2
-        anamean, anaday = read_station_series(varnum, 'coarse', year, ampm, depth, DAtype, dotcoupled, z_mean, z_integral, z1, z2, months_da, istation, dist)
+        anamean, anaday = read_station_series(varnum, 'coarse', year, ampm, depth, DAtype, dotcoupled, z_mean, z_integral, z1, z2, months_da, istation, station, dist)
 
     if varnum==2 or varnum==24:
-        obsmean, obsday = read_station_series_obs(varnum, year, months_obs, istation, dist)
+        obsmean, obsday = read_station_series_obs(varnum, year, months_obs, istation, station, dist)
 
     #print freemean[0:10]
     #print fcstmean[0:10]
@@ -104,8 +103,6 @@ if __name__ == "__main__":
         tickloc_min.append(tickloc[i]+days_in_mon/2)
         months_str.append(mstr)
 
-    # Get station name
-    station, _, _ = station_info(istation, 'mod')
 
     fname= str(MAT_VAR)+'_series_'+exp+'_'+station+'_'+str(year)+'_'+str(months_free[0])+'-'+str(months_free[-1])+'.png'
     print ('File '+fname)
