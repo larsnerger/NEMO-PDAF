@@ -37,7 +37,7 @@ subroutine prepoststep_ens_pdaf(step, dim_p, dim_ens, dim_ens_p, dim_obs_p, &
   use mod_statevector_pdaf, &
        only: n_fields, id, sfields, id_chl, id_dia
   use mod_io_pdaf, &
-        only: save_state, save_var_time, save_ens_sngl, file_PDAF_state, file_PDAF_variance, &
+        only: save_state, save_var, save_ens_sngl, file_PDAF_state, file_PDAF_variance, &
         write_field_mv, write_field_sngl
   use mod_nemo_pdaf, &
        only: ndastp
@@ -204,8 +204,7 @@ subroutine prepoststep_ens_pdaf(step, dim_p, dim_ens, dim_ens_p, dim_obs_p, &
 
   ! *** Write variance into nc file ***
 
-  writevar: if (trim(save_var_time)=='ana' .or. trim(save_var_time)=='fcst' &
-       .or. trim(save_var_time)=='both') then
+  writevar: if (trim(save_var)=='ana' .or. trim(save_var)=='fcst' .or. trim(save_var)=='both') then
 
      if (writestep_var==1) then
 
@@ -219,7 +218,7 @@ subroutine prepoststep_ens_pdaf(step, dim_p, dim_ens, dim_ens_p, dim_obs_p, &
            end if
         end if
 
-        if (save_var_time=='both' .and. forana/='ini') then
+        if (save_var=='both' .and. forana/='ini') then
            nsteps = 2
         else
            nsteps = 1
@@ -234,9 +233,9 @@ subroutine prepoststep_ens_pdaf(step, dim_p, dim_ens, dim_ens_p, dim_obs_p, &
            call write_field_mv(state_tmp, trim(file_PDAF_variance)//'_'//trim(ndastp_str)//'_ini.nc', &
                 titleVar, 1.0, nsteps, writestep_var, 0)
         end if
-        if (forana/='ini' .and. trim(save_var_time)=='both') writestep_var = 2
+        if (forana/='ini' .and. trim(save_var)=='both') writestep_var = 2
 
-     elseif (writestep_var>1 .and. (trim(save_var_time)=='ana' .or. trim(save_var_time)=='both')) then
+     elseif (writestep_var>1 .and. (trim(save_var)=='ana' .or. trim(save_var)=='both')) then
         
         if (mype == 0) write (*,'(a,5x,a)') 'NEMO-PDAF', '--- Write variance after analysis step'
 
@@ -249,32 +248,48 @@ subroutine prepoststep_ens_pdaf(step, dim_p, dim_ens, dim_ens_p, dim_obs_p, &
 
 
   ! *** Write state into nc file ***
-  writestate: if (save_State .and. (.not. (ens_restart .and. forana=='ini')) ) then
+  writestate: if (trim(save_state)/='none' .and. (.not. (ens_restart .and. forana=='ini')) ) then
 
      ! Store state in state_tmp to avoid changing state_p
      state_tmp = state_p
 
      titleState = 'Ensemble mean state'
 
+     if (trim(save_state)=='both' .and. forana/='ini') then
+        nsteps = 2
+     else
+        nsteps = 1
+     end if
+
      ! Write state file for viewing
-     if (forana=='for') then
+     if (forana=='for' .and. (trim(save_state)=='fcst' .or. trim(save_state)=='both')) then
         if (mype == 0) write (*,'(a,5x,a)') 'NEMO-PDAF', '--- Write ensemble mean before analysis step'
         writestep_state = 1
-     elseif (forana=='ana') then
+     elseif (forana=='ana' .and. (trim(save_state)=='ana' .or. trim(save_state)=='both')) then
         if (mype == 0) write (*,'(a,5x,a)') 'NEMO-PDAF', '--- Write ensemble mean after analysis step'
-        writestep_state = 2
-     else
+
+        if (trim(save_state)=='both') then
+           writestep_state = 2
+        else
+           writestep_state = 1
+        end if
+     elseif (forana=='ini') then
         if (mype == 0) write (*,'(a,5x,a)') 'NEMO-PDAF', '--- Write ensemble mean at initial time'
         writestep_state = 1
+     else
+        ! No file writing
+        writestep_state = 0
      end if
 
      ! Write forecast and analysis into the same file
      if (forana/='ini') then
-        call write_field_mv(state_tmp, trim(file_PDAF_state)//'_'//trim(ndastp_str)//'.nc', &
-             titleState, 1.0, 2, writestep_state, 1)
+        if (writestep_state>0) then
+           call write_field_mv(state_tmp, trim(file_PDAF_state)//'_'//trim(ndastp_str)//'.nc', &
+                titleState, 1.0, nsteps, writestep_state, 1)
+        end IF
      else
         call write_field_mv(state_tmp, trim(file_PDAF_state)//'_'//trim(ndastp_str)//'_ini.nc', &
-             titleState, 1.0, 1, writestep_state, 1)
+             titleState, 1.0, nsteps, writestep_state, 1)
      end if
   endif writestate
 

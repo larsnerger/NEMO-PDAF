@@ -164,7 +164,7 @@ contains
          type_hyb, hyb_gamma, hyb_kappa
     use mod_io_pdaf, &
          only: verbose_io, path_inistate, path_ens, file_ens, file_covar, &
-         sgldbl_io, coupling_nemo, save_var_time, save_state, save_ens_sngl, &
+         sgldbl_io, coupling_nemo, save_var, save_state, save_ens_sngl, &
          add_slash
     use mod_statevector_pdaf, &
          only: update_phys, update_phyto, update_zoo, update_det, update_nut, &
@@ -191,7 +191,7 @@ contains
     namelist /pdaf_nml/ &
          screen, filtertype, subtype, type_trans, type_sqrt, &
          type_forget, forget, locweight, delt_obs, &
-         save_var_time, save_state, save_ens_sngl, verbose_io, sgldbl_io, &
+         save_var, save_state, save_ens_sngl, verbose_io, sgldbl_io, &
          perturb_params, stddev_params, type_hyb, hyb_gamma, hyb_kappa
 
     namelist /init_nml/ &
@@ -272,9 +272,9 @@ contains
        write (*, '(a,5x,a,f10.3)') 'NEMO-PDAF','forget       ', forget
        write (*, '(a,5x,a,i10)') 'NEMO-PDAF','locweight    ', locweight
        write (*, '(a,5x,a,i10)') 'NEMO-PDAF','delt_obs     ', delt_obs
-       write (*, '(a,5x,a,6x,a)')'NEMO-PDAF','save_var_time', trim(save_var_time)
-       write (*, '(a,5x,a,l)')   'NEMO-PDAF','save_state   ', save_state
-       write (*, '(a,5x,a,6x,a)')   'NEMO-PDAF','sgldbl_io ', sgldbl_io
+       write (*, '(a,5x,a,6x,a)')'NEMO-PDAF','save_var     ', trim(save_var)
+       write (*, '(a,5x,a,6x,a)')'NEMO-PDAF','save_state   ', trim(save_state)
+       write (*, '(a,5x,a,6x,a)')'NEMO-PDAF','sgldbl_io    ', sgldbl_io
        if (filtertype==11) then
        write (*, '(a,5x,a,i10)') 'NEMO-PDAF','type_hyb       ', type_hyb
        write (*, '(a,5x,a,f10.3)') 'NEMO-PDAF','hyb_gamma      ', hyb_gamma
