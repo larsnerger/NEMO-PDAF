@@ -76,18 +76,23 @@ subroutine distribute_state_pdaf(dim_p, state_p)
   call transform_field_mv(2, state_p, 21, verbose)  !21
 
 !  direct: if (dist_direct) then
-     ! ************************************
-     ! Distribute state vector 2d variables
-     ! ************************************
 
      if (mype==0) write (*,'(a,4x,a)') 'NEMO-PDAF', 'distribute state to model fields'
 
-     ! SSH
+     ! ******************************************
+     ! Distribute state vector physical variables
+     ! ******************************************
 
+     if ((id%temp>0 .or. id%salt>0 .or. id%uvel>0 .or. id%vvel>0)  &
+          .and. update_phys .and. mype==0) &
+          write (*,'(a,4x,a)') 'NEMO-PDAF', 'distribute_state: update physics'
+
+     ! SSH
      if (id%ssh > 0) then
-        if (update_phys) &
-             call state2field(state_p, sshn(1+i0:ni_p+i0, 1+j0:nj_p+j0), &
-             sfields(id%ssh)%off, sfields(id%ssh)%ndims)
+        if (update_phys) then
+           call state2field(state_p, sshn(1+i0:ni_p+i0, 1+j0:nj_p+j0), &
+                sfields(id%ssh)%off, sfields(id%ssh)%ndims)
+        end if
 
         ! Fill halo regions
         call lbc_lnk('distribute_state_pdaf', sshn, 'T', 1.)
@@ -95,14 +100,6 @@ subroutine distribute_state_pdaf(dim_p, state_p)
         ! Update before field
         sshb = sshn
      endif
-
-
-     ! ************************************
-     ! Distribute state vector 3d variables
-     ! ************************************
-
-     if ((id%temp>0 .or. id%salt>0 .or. id%uvel>0 .or. id%vvel>0) .and. update_phys) &
-          write (*,'(a,4x,a)') 'NEMO-PDAF', 'distribute_state: update physics'
 
      ! T
      if (id%temp > 0 .and. update_phys) then
@@ -154,22 +151,26 @@ subroutine distribute_state_pdaf(dim_p, state_p)
      ! BGC
 #if defined key_top
      do i = 1, jptra
-        updatebgc1: if (sv_bgc1(i) .and. sfields(id%bgc1(i))%update) then
+        updatebgc1: if (sv_bgc1(i)) then
 
-           if (mype==0) write (*,'(a,1x,a,1x,a)') 'NEMO-PDAF', &
-                'distribute_state, update ERGOM variable ', sfields(id%bgc1(i))%variable
-
-           ! Update 3 phytoplankton variables
            id_var=id%bgc1(i)
-           call state2field(state_p, &
-                trn(1+i0:ni_p+i0, 1+j0:nj_p+j0, 1:nk_p, sfields(id_var)%jptrc), &
-                sfields(id_var)%off, sfields(id_var)%ndims)
+
+           if (sfields(id%bgc1(i))%update) then
+
+              if (mype==0) write (*,'(a,1x,a,1x,a)') 'NEMO-PDAF', &
+                   'distribute_state, update ERGOM variable ', sfields(id_var)%variable
+
+              ! Update 3 phytoplankton variables
+              call state2field(state_p, &
+                   trn(1+i0:ni_p+i0, 1+j0:nj_p+j0, 1:nk_p, sfields(id_var)%jptrc), &
+                   sfields(id_var)%off, sfields(id_var)%ndims)
+           end if
 
            ! Fill halo regions
            call lbc_lnk('distribute_state_pdaf', trn(:, :, :, sfields(id_var)%jptrc), 'T', &
                 1._pwp)
-           trb(:, :, :, sfields(id_var)%jptrc) = trn(:, :, :, sfields(id_var)%jptrc)
 
+           trb(:, :, :, sfields(id_var)%jptrc) = trn(:, :, :, sfields(id_var)%jptrc)
         end if updatebgc1
      end do
 
