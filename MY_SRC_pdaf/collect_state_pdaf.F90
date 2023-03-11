@@ -22,7 +22,7 @@ subroutine collect_state_pdaf(dim_p, state_p)
   use mod_nemo_pdaf, &
        only: ni_p, nj_p, nk_p, i0, j0, &
        jp_tem, jp_sal, ndastp, &
-       trb, sshb, tsb, ub, vb, &
+       trn, sshn, tsn, un, vn, &
        xph, xpco2, xchl
   use mod_assimilation_pdaf, &
        only: netppsum
@@ -60,7 +60,7 @@ subroutine collect_state_pdaf(dim_p, state_p)
 
   ! SSH
   if (id%ssh > 0) then
-     call field2state(sshb(1+i0:ni_p+i0, 1+j0:nj_p+j0), &
+     call field2state(sshn(1+i0:ni_p+i0, 1+j0:nj_p+j0), &
                       state_p, &
                       sfields(id%ssh)%off, sfields(id%ssh)%ndims, missing_value)
   end if
@@ -72,28 +72,28 @@ subroutine collect_state_pdaf(dim_p, state_p)
 
   ! T
   if (id%temp > 0) then
-     call field2state(tsb(1+i0:ni_p+i0, 1+j0:nj_p+j0, 1:nk_p, jp_tem), &
+     call field2state(tsn(1+i0:ni_p+i0, 1+j0:nj_p+j0, 1:nk_p, jp_tem), &
                       state_p, &
                       sfields(id%temp)%off, sfields(id%temp)%ndims, missing_value)
   end if
 
   ! S
   if (id%salt > 0) then
-     call field2state(tsb(1+i0:ni_p+i0, 1+j0:nj_p+j0, 1:nk_p, jp_sal), &
+     call field2state(tsn(1+i0:ni_p+i0, 1+j0:nj_p+j0, 1:nk_p, jp_sal), &
                       state_p, &
                       sfields(id%salt)%off, sfields(id%salt)%ndims, missing_value)
   end if
 
   ! U
   if (id%uvel > 0) then
-       call field2state(ub(1+i0:ni_p+i0, 1+j0:nj_p+j0, 1:nk_p), &
+       call field2state(un(1+i0:ni_p+i0, 1+j0:nj_p+j0, 1:nk_p), &
                       state_p, &
                       sfields(id%uvel)%off, sfields(id%uvel)%ndims, missing_value)
   end if
 
   ! V
   if (id%vvel > 0) then
-      call field2state(vb(1+i0:ni_p+i0, 1+j0:nj_p+j0, 1:nk_p), &
+      call field2state(vn(1+i0:ni_p+i0, 1+j0:nj_p+j0, 1:nk_p), &
                    state_p, &
                    sfields(id%vvel)%off, sfields(id%vvel)%ndims, missing_value)
   end if
@@ -102,7 +102,7 @@ subroutine collect_state_pdaf(dim_p, state_p)
   ! BGC
   do i = 1, jptra
     if (sv_bgc1(i)) then
-      call field2state(trb(1+i0:ni_p+i0, 1+j0:nj_p+j0, 1:nk_p, sfields(id%bgc1(i))%jptrc), &
+      call field2state(trn(1+i0:ni_p+i0, 1+j0:nj_p+j0, 1:nk_p, sfields(id%bgc1(i))%jptrc), &
              state_p, &
              sfields(id%bgc1(i))%off, sfields(id%bgc1(i))%ndims, missing_value)
     end if
