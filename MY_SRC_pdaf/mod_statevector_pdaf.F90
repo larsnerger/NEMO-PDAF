@@ -188,19 +188,19 @@ contains
 
 #if defined key_top
     do id_bgc1 = 1, jptra
-      if (sv_bgc1(id_bgc1)) then
-        cnt = cnt + 1
-        id%bgc1(id_bgc1) = cnt
-        n_bgc1=n_bgc1+1
-      end if
+       if (sv_bgc1(id_bgc1)) then
+          cnt = cnt + 1
+          id%bgc1(id_bgc1) = cnt
+          n_bgc1=n_bgc1+1
+       end if
     end do
 
     do id_bgc2 = 1, jptra2
-      if (sv_bgc2(id_bgc2)) then
-        cnt = cnt + 1
-        id%bgc2(id_bgc2) = cnt
-        n_bgc2=n_bgc2+1
-      end if
+       if (sv_bgc2(id_bgc2)) then
+          cnt = cnt + 1
+          id%bgc2(id_bgc2) = cnt
+          n_bgc2=n_bgc2+1
+       end if
     end do
 #endif
 
@@ -332,7 +332,7 @@ contains
         sfields(id_var)%rst_file = 'restart_trc_in.nc'
         sfields(id_var)%transform = 0   ! log-transform
         sfields(id_var)%limit = 1
-        sfields(id_var)%min_limit = 0.00001_pwp
+        sfields(id_var)%min_limit = 0.00000001_pwp
         sfields(id_var)%trafo_shift = 0.0
         sfields(id_var)%ensscale = 0.5
 
