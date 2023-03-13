@@ -21,13 +21,21 @@ def stations(station):
     wb = xlrd.open_workbook("/home/hzfblner/SEAMLESS/plot/InfoWas_insitu_Stationen.xlsx")
     sheet = wb.sheet_by_index(0)
 
-    for i in range(5, 35):
+    # Read index ranges for Baltic and North Sea from Excel file
+    bs_start = int(sheet.cell_value(1, 3))
+    bs_end = int(sheet.cell_value(1, 4))
+    ns_start = int(sheet.cell_value(2, 3))
+    ns_end = int(sheet.cell_value(2, 4))
+    print 'Ranges', bs_start, bs_end, ns_start, ns_end
+
+    # Read coordinates
+    for i in range(bs_start-1, bs_end):
         if sheet.cell_value(i, 1)==station:
             lon = sheet.cell_value(i, 3)
             lat = sheet.cell_value(i, 2)
             noba = 'ba'
 
-    for i in range(38, 76):
+    for i in range(ns_start-1, ns_end):
         if sheet.cell_value(i, 1)==station:
             lon = sheet.cell_value(i, 3)
             lat = sheet.cell_value(i, 2)
@@ -2290,6 +2298,18 @@ def plot_map(data_coarse, lat_c, lon_c, varnum, domain, \
         res = 2.0
         bmres = 'i'
 
+    # Parameters/Variables for plots
+    vmin = np.min(data_coarse) #; fine_min = np.min(data_fine)
+    vmax = np.max(data_coarse) #; fine_max = np.max(data_fine)
+    freeclim=1
+
+    print 'Min/Max data values: ', vmin, ', ', vmax
+    if minmax[0]!=minmax[1]:
+        vmin = minmax[0]
+        vmax = minmax[1]
+        freeclim=0
+        print 'Limit color range to: ', minmax[0], 'to', minmax[1]
+
     fig = plt.figure(figsize=(8,8))
     m = Basemap(projection='merc',
 		llcrnrlon=llon,
@@ -2313,18 +2333,6 @@ def plot_map(data_coarse, lat_c, lon_c, varnum, domain, \
     # draw meridians
     meridians = np.arange(0.,360.,res)
     m.drawmeridians(meridians,labels=[0,0,0,1],fontsize=14)
-
-    # Parameters/Variables for plots
-    vmin = np.min(data_coarse) #; fine_min = np.min(data_fine)
-    vmax = np.max(data_coarse) #; fine_max = np.max(data_fine)
-    freeclim=1
-
-    print 'Min/Max data values: ', vmin, ', ', vmax
-    if minmax[0]!=minmax[1]:
-        vmin = minmax[0]
-        vmax = minmax[1]
-        freeclim=0
-        print 'Limit color range to: ', minmax[0], 'to', minmax[1]
 
     cmap = plt.cm.get_cmap(strcmap)
 #    cmap1 = plt.cm.get_cmap('terrain_r')
