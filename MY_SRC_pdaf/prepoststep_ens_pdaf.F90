@@ -63,7 +63,6 @@ subroutine prepoststep_ens_pdaf(step, dim_p, dim_ens, dim_ens_p, dim_obs_p, &
   logical, save :: firsttime = .true.  ! Routine is called for first time?
   real :: invdim_ens                   ! Inverse ensemble size
   real :: invdim_ensm1                 ! Inverse of ensemble size minus 1
-  real, allocatable :: rmse_est_p(:)   ! PE-local estimated RMS errors (ensemble standard deviations)
   real, allocatable :: state_tmp(:)    ! temporary state vector; holds state variances or increment
   integer,save :: writestep_var=1      ! Time index for file output of variance
   integer,save :: writestep_state=1    ! Time index for file output of state
@@ -74,6 +73,7 @@ subroutine prepoststep_ens_pdaf(step, dim_p, dim_ens, dim_ens_p, dim_obs_p, &
   character(len=200) :: titleState, titleVar   ! Strings for file titles
   integer, allocatable :: dimfield_p(:) ! Local field dimensions
   integer, allocatable :: dimfield(:)  ! Global field dimensions
+  real, allocatable :: rmse_est_p(:)   ! PE-local estimated RMS errors (ensemble standard deviations)
   real, allocatable :: rmse_est(:)     ! Global estimated RMS errors (ensemble standard deviations)
   logical :: inirestart                ! Whether prepoststep is called first time with ensemble restart
   real :: dimfield_inv
@@ -152,11 +152,11 @@ subroutine prepoststep_ens_pdaf(step, dim_p, dim_ens, dim_ens_p, dim_obs_p, &
 
      allocate(rmse_est_p(n_fields))
      allocate(dimfield_p(n_fields))
-     if (mype==0) allocate(rmse_est(n_fields))
-     if (mype==0) allocate(dimfield(n_fields))
+     allocate(rmse_est(n_fields))
+     allocate(dimfield(n_fields))
 
      ! Total sum of variance per field per process
-     rmse_est_p  = 0.0_8
+     rmse_est_p  = 0.0
      do j = 1, n_fields
         do i = 1+sfields(j)%off, sfields(j)%dim+sfields(j)%off
            rmse_est_p(j) = rmse_est_p(j) + state_tmp(i)
@@ -184,7 +184,7 @@ subroutine prepoststep_ens_pdaf(step, dim_p, dim_ens, dim_ens_p, dim_obs_p, &
      end if
 
      ! Output ensemble standard deviations
-     if (mype == 0 .and. .not. inirestart) then
+     if (mype == 0) then
         write (*, '(a,6x,a)') 'NEMO-PDAF', 'Ensemble standard deviation (estimated RMS error)'
         do i = 1, n_fields
            write (*,'(a,4x,a8,4x,a10,2x,es12.4)') &
