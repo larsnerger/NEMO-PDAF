@@ -22,7 +22,7 @@ module mod_io_pdaf
 
   ! Include auxiliary routines
   use mod_aux_pdaf, &
-       only: field2state, state2field, transform_field_mv
+       only: field2state, field2state_missval, state2field, transform_field_mv
 
   ! Include coupling flag
   use mod_assimilation_pdaf, &
@@ -128,7 +128,7 @@ contains
        call check( nf90_close(ncid) )
 
        ! Convert field to state vector
-       call field2state(tmp_4d, state, sfields(i)%off, sfields(i)%ndims, missing_value)
+       call field2state_missval(tmp_4d, state, sfields(i)%off, sfields(i)%ndims, missing_value)
 
     end do
 
@@ -211,7 +211,7 @@ contains
           end if
 
           ! Convert field to state vector
-          call field2state(tmp_4d, ens(:,member), sfields(i)%off, sfields(i)%ndims, missing_value)
+          call field2state_missval(tmp_4d, ens(:,member), sfields(i)%off, sfields(i)%ndims, missing_value)
 
        enddo
 
@@ -480,7 +480,7 @@ end subroutine gen_ens_mv
 
 
        ! Convert field to state vector
-       call field2state(tmp_4d, state, sfields(i)%off, sfields(i)%ndims, missing_value)
+       call field2state_missval(tmp_4d, state, sfields(i)%off, sfields(i)%ndims, missing_value)
 
     end do
 
@@ -605,10 +605,10 @@ end subroutine gen_ens_mv
 
           if (i_var == 1) then
             ! convert field into state vector without dry points
-            call field2state(tmp_4d, eofV(:, i_rank), sfields(i_field)%off, &
+            call field2state_missval(tmp_4d, eofV(:, i_rank), sfields(i_field)%off, &
                              sfields(i_field)%ndims, missing_value)
           else if (i_var == 2) then
-            call field2state(tmp_4d, state_p, sfields(i_field)%off, &
+            call field2state_missval(tmp_4d, state_p, sfields(i_field)%off, &
                              sfields(i_field)%ndims, missing_value)
           endif
         enddo
@@ -1421,7 +1421,7 @@ end subroutine gen_ens_mv
           call check( nf90_get_var(ncid, id_var_b, tmp_4d, startt(1:3), countt(1:3)))
        end if
 
-       call field2state(tmp_4d, state, sfields(i)%off, sfields(i)%ndims, missing_value)
+       call field2state(tmp_4d, state, sfields(i)%off, sfields(i)%ndims)
 
        lid = sfields(i)%off+1
        uid = sfields(i)%off+sfields(i)%dim

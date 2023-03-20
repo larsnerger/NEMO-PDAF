@@ -85,6 +85,7 @@ subroutine init_ens_pdaf(filtertype, dim_p, dim_ens, state_p, Uinv, &
 
      if (mype_filter==0) write (*,'(a,1x,a)') 'NEMO-PDAF', 'Initialize ensemble by sampling from covariance matrix'
 
+     state_p = 0.0
      call gen_ens_from_cov(trim(file_covar), dim_p, dim_ens, state_p, ens_p)
 
   elseif (type_ens_init == 4) then
