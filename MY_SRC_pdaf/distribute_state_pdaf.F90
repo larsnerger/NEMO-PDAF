@@ -12,40 +12,32 @@
 !!
 !! **Calling Sequence**
 !!
-!!  - Called from: `PDAF_get_state` (as U_dist_state)
-!!
 !!  - Called from: `PDAFomi_assimilate_local` (as U_dist_state)
 !!
 subroutine distribute_state_pdaf(dim_p, state_p)
 
   use mod_kind_pdaf
   use mod_parallel_pdaf, &
-       only: mype=>mype_ens
-#if defined key_top
-  use mod_iau_pdaf, &
-       only: ssh_iau_pdaf, u_iau_pdaf, v_iau_pdaf, t_iau_pdaf, &
-       s_iau_pdaf, bgc_iau_pdaf, div_damping_filter
-  use mod_statevector_pdaf, &
-       only: sfields, id, n_trc, jptra, jptra2, sv_bgc1, sv_bgc2, &
-       id_dia, id_fla, id_cya, update_phys
-  use mod_nemo_pdaf, &
-       only: ni_p, nj_p, nk_p, i0, j0, jp_tem, jp_sal, trb, &
-       sshb, tsb, ub, vb, tmask, lbc_lnk, lbc_lnk_multi, &
-       trn, sshn, tsn, un, vn, &
-       xph, xpco2, xchl, xnetpp
-#else
-  use mod_iau_pdaf, &
-       only: ssh_iau_pdaf, u_iau_pdaf, v_iau_pdaf, t_iau_pdaf, &
-       s_iau_pdaf, div_damping_filter
+       only: mype_ens
   use mod_statevector_pdaf, &
        only: sfields, id
   use mod_nemo_pdaf, &
-       only: ni_p, nj_p, nk_p, i0, j0, jp_tem, jp_sal, trb, &
-             sshb, tsb, ub, vb, tmask, lbc_lnk, lbc_lnk_multi, &
-             sshn, tsn, un, vn
+       only: ni_p, nj_p, nk_p, i0, j0, &
+       jp_tem, jp_sal, lbc_lnk, lbc_lnk_multi, &
+       sshb, tsb, ub, vb, &
+       sshn, tsn, un, vn
+#if defined key_top
+  use mod_statevector_pdaf, &
+       only: jptra, jptra2, sv_bgc1, sv_bgc2
+  use mod_nemo_pdaf, &
+       only: trb, trn, xph, xpco2, xchl, xnetpp
 #endif
   use mod_aux_pdaf, &
        only: state2field, transform_field_mv
+  use mod_iau_pdaf, &
+       only: ssh_iau_pdaf, u_iau_pdaf, v_iau_pdaf, t_iau_pdaf, &
+       s_iau_pdaf, div_damping_filter
+
   implicit none
 
 ! *** Arguments ***
@@ -54,11 +46,9 @@ subroutine distribute_state_pdaf(dim_p, state_p)
 
 ! *** Local variables ***
   logical :: dist_direct = .true. ! Flag for direct update of model fields
-  integer :: i, j, k, cnt ! Counters
-#if defined key_top
-  integer :: id_var ! Counters
-#endif
-  integer :: verbose      ! Control verbosity
+  integer :: i, j, k, cnt         ! Counters
+  integer :: id_var               ! Index
+  integer :: verbose              ! Control verbosity
 
 
   ! **********************************************
@@ -66,8 +56,8 @@ subroutine distribute_state_pdaf(dim_p, state_p)
   ! Otherwise compute increment.
   ! **********************************************
 
-  ! Aply field transformations
-  if (mype==0) then
+  ! Apply field transformations
+  if (mype_ens==0) then
      verbose = 1
   else
      verbose = 0
@@ -77,22 +67,19 @@ subroutine distribute_state_pdaf(dim_p, state_p)
 
 !  direct: if (dist_direct) then
 
-     if (mype==0) write (*,'(a,4x,a)') 'NEMO-PDAF', 'distribute state to model fields'
+     if (verbose==1) write (*,'(a,4x,a)') 'NEMO-PDAF', 'distribute state to model fields'
 
      ! ******************************************
      ! Distribute state vector physical variables
      ! ******************************************
 
-     if ((id%temp>0 .or. id%salt>0 .or. id%uvel>0 .or. id%vvel>0)  &
-          .and. update_phys .and. mype==0) &
+     if ((id%temp>0 .or. id%salt>0 .or. id%uvel>0 .or. id%vvel>0) .and. verbose==1) &
           write (*,'(a,4x,a)') 'NEMO-PDAF', 'distribute_state: update physics'
 
      ! SSH
      if (id%ssh > 0) then
-        if (update_phys) then
-           call state2field(state_p, sshn(1+i0:ni_p+i0, 1+j0:nj_p+j0), &
-                sfields(id%ssh)%off, sfields(id%ssh)%ndims)
-        end if
+        call state2field(state_p, sshn(1+i0:ni_p+i0, 1+j0:nj_p+j0), &
+             sfields(id%ssh)%off, sfields(id%ssh)%ndims)
 
         ! Fill halo regions
         call lbc_lnk('distribute_state_pdaf', sshn, 'T', 1.)
@@ -102,17 +89,17 @@ subroutine distribute_state_pdaf(dim_p, state_p)
      endif
 
      ! T
-     if (id%temp > 0 .and. update_phys) then
+     if (id%temp > 0) then
         call state2field(state_p, &
-                      tsn(1+i0:ni_p+i0, 1+j0:nj_p+j0, 1:nk_p, jp_tem), &
-                      sfields(id%temp)%off, sfields(id%temp)%ndims)
+             tsn(1+i0:ni_p+i0, 1+j0:nj_p+j0, 1:nk_p, jp_tem), &
+             sfields(id%temp)%off, sfields(id%temp)%ndims)
      end if
 
      ! S
-     if (id%salt > 0 .and. update_phys) then
+     if (id%salt > 0) then
         call state2field(state_p, &
-                tsn(1+i0:ni_p+i0, 1+j0:nj_p+j0, 1:nk_p, jp_sal), &
-                sfields(id%salt)%off, sfields(id%salt)%ndims)
+             tsn(1+i0:ni_p+i0, 1+j0:nj_p+j0, 1:nk_p, jp_sal), &
+             sfields(id%salt)%off, sfields(id%salt)%ndims)
      end if
 
      if (id%temp>0 .or. id%salt>0) then
@@ -126,17 +113,17 @@ subroutine distribute_state_pdaf(dim_p, state_p)
      end if
 
      ! U
-     if (id%uvel > 0 .and. update_phys) then
+     if (id%uvel > 0) then
         call state2field(state_p, &
-                      un(1+i0:ni_p+i0, 1+j0:nj_p+j0, 1:nk_p), &
-                      sfields(id%uvel)%off, sfields(id%uvel)%ndims)
+             un(1+i0:ni_p+i0, 1+j0:nj_p+j0, 1:nk_p), &
+             sfields(id%uvel)%off, sfields(id%uvel)%ndims)
      end if
 
      ! V
-     if (id%vvel > 0 .and. update_phys) then
+     if (id%vvel > 0) then
         call state2field(state_p, &
-                      vn(1+i0:ni_p+i0, 1+j0:nj_p+j0, 1:nk_p), &
-                      sfields(id%vvel)%off, sfields(id%vvel)%ndims)
+             vn(1+i0:ni_p+i0, 1+j0:nj_p+j0, 1:nk_p), &
+             sfields(id%vvel)%off, sfields(id%vvel)%ndims)
      end if
 
      if (id%uvel>0 .or. id%vvel>0) then
@@ -151,60 +138,54 @@ subroutine distribute_state_pdaf(dim_p, state_p)
      ! BGC
 #if defined key_top
      do i = 1, jptra
-        updatebgc1: if (sv_bgc1(i)) then
+        if (sv_bgc1(i)) then
 
            id_var=id%bgc1(i)
 
-           if (sfields(id%bgc1(i))%update) then
-
-              if (mype==0) write (*,'(a,1x,a,1x,a)') 'NEMO-PDAF', &
-                   'distribute_state, update ERGOM variable ', sfields(id_var)%variable
-
-              ! Update 3 phytoplankton variables
-              call state2field(state_p, &
-                   trn(1+i0:ni_p+i0, 1+j0:nj_p+j0, 1:nk_p, sfields(id_var)%jptrc), &
-                   sfields(id_var)%off, sfields(id_var)%ndims)
-           end if
+           ! Update prognostic BGC variables
+           call state2field(state_p, &
+                trn(1+i0:ni_p+i0, 1+j0:nj_p+j0, 1:nk_p, sfields(id_var)%jptrc), &
+                sfields(id_var)%off, sfields(id_var)%ndims)
 
            ! Fill halo regions
            call lbc_lnk('distribute_state_pdaf', trn(:, :, :, sfields(id_var)%jptrc), 'T', &
                 1._pwp)
 
            trb(:, :, :, sfields(id_var)%jptrc) = trn(:, :, :, sfields(id_var)%jptrc)
-        end if updatebgc1
+        end if
      end do
 
-    do i = 1, jptra2
-       if (sv_bgc2(i)) then
-          id_var=id%bgc2(i)
-          select case (i)
-          case (1)
-             call state2field(state_p, &
-                  xpco2(1+i0:ni_p+i0, 1+j0:nj_p+j0, 1:nk_p), &
-                  sfields(id_var)%off, sfields(id_var)%ndims)
-             ! Fill halo regions
-             call lbc_lnk('distribute_state_pdaf', xpco2, 'T', 1._pwp)
-          case (2)
-             call state2field(state_p, &
-                  xph(1+i0:ni_p+i0, 1+j0:nj_p+j0, 1:nk_p), &
-                  sfields(id_var)%off, sfields(id_var)%ndims)
-             ! Fill halo regions
-             call lbc_lnk('distribute_state_pdaf', xph, 'T', 1._pwp)
-          case (3)
-             call state2field(state_p, &
-                  xchl(1+i0:ni_p+i0, 1+j0:nj_p+j0, 1:nk_p), &
-                  sfields(id_var)%off, sfields(id_var)%ndims)
-             ! Fill halo regions
-             call lbc_lnk('distribute_state_pdaf', xchl, 'T', 1._pwp)
-          case (4)
-             call state2field(state_p, &
-                  xnetpp(1+i0:ni_p+i0, 1+j0:nj_p+j0, 1:nk_p), &
-                  sfields(id_var)%off, sfields(id_var)%ndims)
-             ! Fill halo regions
-             call lbc_lnk('distribute_state_pdaf', xnetpp, 'T', 1._pwp)
-          end select
-       end if
-    end do
+     do i = 1, jptra2
+        if (sv_bgc2(i)) then
+           id_var=id%bgc2(i)
+           select case (i)
+           case (1)
+              call state2field(state_p, &
+                   xpco2(1+i0:ni_p+i0, 1+j0:nj_p+j0, 1:nk_p), &
+                   sfields(id_var)%off, sfields(id_var)%ndims)
+              ! Fill halo regions
+              call lbc_lnk('distribute_state_pdaf', xpco2, 'T', 1._pwp)
+           case (2)
+              call state2field(state_p, &
+                   xph(1+i0:ni_p+i0, 1+j0:nj_p+j0, 1:nk_p), &
+                   sfields(id_var)%off, sfields(id_var)%ndims)
+              ! Fill halo regions
+              call lbc_lnk('distribute_state_pdaf', xph, 'T', 1._pwp)
+           case (3)
+              call state2field(state_p, &
+                   xchl(1+i0:ni_p+i0, 1+j0:nj_p+j0, 1:nk_p), &
+                   sfields(id_var)%off, sfields(id_var)%ndims)
+              ! Fill halo regions
+              call lbc_lnk('distribute_state_pdaf', xchl, 'T', 1._pwp)
+           case (4)
+              call state2field(state_p, &
+                   xnetpp(1+i0:ni_p+i0, 1+j0:nj_p+j0, 1:nk_p), &
+                   sfields(id_var)%off, sfields(id_var)%ndims)
+              ! Fill halo regions
+              call lbc_lnk('distribute_state_pdaf', xnetpp, 'T', 1._pwp)
+           end select
+        end if
+     end do
 #endif
 
 !  else direct
@@ -212,7 +193,7 @@ subroutine distribute_state_pdaf(dim_p, state_p)
 !     ! Compute increment for state vector 2d variables
 !     ! ***********************************************
 !
-!     if (mype==0) write (*,'(a,4x,a)') 'NEMO-PDAF', 'distribute state increment'
+!     if (verbose==1) write (*,'(a,4x,a)') 'NEMO-PDAF', 'distribute state increment'
 !
 !     ! SSH
 !     if (id%ssh > 0) then
