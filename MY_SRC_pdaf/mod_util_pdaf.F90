@@ -168,7 +168,7 @@ contains
          add_slash
     use mod_statevector_pdaf, &
          only: update_phys, update_phyto, update_zoo, update_det, update_nut, &
-         update_oxy, update_other
+         update_oxy, update_other, update_diag
     use mod_obs_ssh_mgrid_pdafomi, &
          only: assim_ssh_mgrid, rms_ssh_mgrid, file_ssh_mgrid, &
          lradius_ssh_mgrid, sradius_ssh_mgrid, varname_ssh_mgrid
@@ -200,7 +200,7 @@ contains
 
     namelist /update_nml/ &
          update_phys, update_phyto, update_zoo, update_det, update_nut, &
-         update_oxy, update_other
+         update_oxy, update_other, update_diag
 
     namelist /obs_ssh_mgrid_nml/ &
          assim_ssh_mgrid, rms_ssh_mgrid, file_ssh_mgrid, &
@@ -296,6 +296,7 @@ contains
        write (*, '(a,5x,a,l)') 'NEMO-PDAF','update_nut      ', update_nut
        write (*, '(a,5x,a,l)') 'NEMO-PDAF','update_oxy      ', update_oxy
        write (*, '(a,5x,a,l)') 'NEMO-PDAF','update_other    ', update_other
+       write (*, '(a,5x,a,l)') 'NEMO-PDAF','update_diag     ', update_diag
        write (*, *) ''
        write (*, '(a,3x,a)') 'NEMO-PDAF','[obs_ssh_mgrid_nml]:'
        write (*, '(a,5x,a,5x,l)') 'NEMO-PDAF','assim_ssh_mgrid      ', assim_ssh_mgrid
