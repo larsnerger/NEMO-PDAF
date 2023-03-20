@@ -1,10 +1,14 @@
 !> Set dimension of local model state
 !!
-!! The routine is called during analysis step
-!! in `PDAF_X_update` in the loop over all local
-!! analysis domains. It has to set the dimension
-!! of the local model state on the current analysis
-!! domain.
+!! The routine is called by PDAF during
+!! the analysis step in the loop over all local
+!! analysis domains. It has to set
+!! The routine set the dimension of the local
+!! model state on the current analysis
+!! domain, the corrdinates of this domain, and
+!! initializes the index arrays for the local
+!! state vector and the mapping between global
+!! to local state vectors.
 !!
 !! This code is for NEMO-PDAF
 !! 
@@ -14,13 +18,12 @@ subroutine init_dim_l_pdaf(step, domain_p, dim_l)
 
   use mod_kind_pdaf
   use mod_assimilation_pdaf, &
-       only: domain_coords, id_lstate_in_pstate, deg2rad
+       only: domain_coords, dim_state_p, id_lstate_in_pstate, deg2rad
   use mod_statevector_pdaf, &
-       only: n_fields, sfields
+       only: n_fields, sfields, sfields_l
   use mod_nemo_pdaf, &
-       only: tmask, glamt, gphit, ni_p, nj_p, nk_p, &
-       i0, j0, wet_pts
-
+       only: lons, lats, use_wet_state, nwet, wet_pts, sdim2d
+use mod_parallel_pdaf, only: mype_filter
   implicit none
 
 ! *** Arguments ***
@@ -38,22 +41,26 @@ subroutine init_dim_l_pdaf(step, domain_p, dim_l)
   ! *** Initialize local state dimension ***
   ! ****************************************
 
-  ! *************************************************************
-  ! dimension = (number of 2D state variables) 
-  !     + (number of 3D variables * number of ocean vertical points).
-  !
-  ! The number of ocean vertical points is stored in wet_pts(3,:)
-  ! (we do not include land points in our local state vector).
-  ! *************************************************************
+  ! dimension = (number of 2D variables) 
+  !     + (number of 3D variables * number of wet layers)
 
-  ! Determine local state dimension - distinguish 2D and 3D fields
+  if (allocated(sfields_l)) deallocate(sfields_l)
+  allocate(sfields_l(n_fields))
+
+  ! Determine local state dimension - distinguishing 2D and 3D fields
+  ! and initialize arrays of local field dimensions and offsets
   dim_l = 0
   do i = 1, n_fields
+
+     sfields_l(i)%off = dim_l
+
      if (sfields(i)%ndims==2) then
-        dim_l = dim_l + 1
+        sfields_l(i)%dim = 1
      else
-        dim_l = dim_l + wet_pts(3, domain_p)
+        sfields_l(i)%dim = wet_pts(3, domain_p)
      end if
+
+     dim_l = dim_l + sfields_l(i)%dim
   end do
 
 
@@ -67,8 +74,8 @@ subroutine init_dim_l_pdaf(step, domain_p, dim_l)
 
   ! Use T-values to get local coordinates
   ! the coordinates are stored in radians (as required by PDAFOMI)
-  domain_coords(1) = glamt(id_i + i0, id_j + j0) * deg2rad
-  domain_coords(2) = gphit(id_i + i0, id_j + j0) * deg2rad
+  domain_coords(1) = lons(id_i, id_j) * deg2rad
+  domain_coords(2) = lats(id_i, id_j) * deg2rad
 
 
 ! ******************************************************
@@ -76,43 +83,64 @@ subroutine init_dim_l_pdaf(step, domain_p, dim_l)
 ! ***  vector elements in the global state vector.   ***
 ! ******************************************************
 
-  ! **********************************************************
-  ! A local domain consists of all ocean points in a vertical
-  ! column. Such a domain will have indices (x,y,:).
-  ! Each 2d state variable in the global statevector will be
-  ! located at ( (y-1)*dim_longitude ) + x + offset(field).
-  ! Each 3d state variables in the global statevector will be
-  ! located at ( (z-1)*dim_longitude*dim_latitude ) +
-  ! ( (y-1)*dim_longitude ) + x + offset(field), where z can vary
-  ! over all *ocean* points in the vertical column.
-  ! offset(field) is the variable-specific offset.
-  ! **********************************************************
-
   ! Allocate array
   if (allocated(id_lstate_in_pstate)) deallocate(id_lstate_in_pstate)
   allocate(id_lstate_in_pstate(dim_l))
 
-  cnt = 1
+  cnt = 0
 
   do ifield = 1, n_fields
 
-     id_surf = (id_j - 1)*ni_p + id_i + sfields(ifield)%off
+     ! Set indices
+     if (use_wet_state==1) then
+        ! state vector contains full columns of surface wet points
 
-     if (sfields(ifield)%ndims==2) then
+        id_surf = domain_p + sfields(ifield)%off
 
-        id_lstate_in_pstate(cnt) = id_surf
-        cnt = cnt + 1
+        if (sfields(ifield)%ndims==3) then
+           do i = 1, wet_pts(3,domain_p)
+              cnt = cnt + 1
+              id_lstate_in_pstate(cnt) = id_surf + (i-1)*nwet
+           enddo
+        else
+           cnt = cnt + 1
+           id_lstate_in_pstate(cnt) = id_surf
+        end if
+
+     elseif (use_wet_state==2) then
+        ! state vector only contains wet points - stored in leading vertical order
+
+        if (sfields(ifield)%ndims==2) then
+           cnt = cnt  + 1
+           id_lstate_in_pstate(cnt) = domain_p + sfields(ifield)%off
+        else
+           id_surf = wet_pts(5, domain_p) + sfields(ifield)%off
+
+           do i = 1, wet_pts(3,domain_p)
+              cnt = cnt  + 1
+              id_lstate_in_pstate(cnt) = id_surf + i - 1
+           enddo
+        end if
 
      else
+        ! State vector contains full 3d box
 
-        id_lstate_in_pstate(cnt) = id_surf
-        cnt = cnt + 1
-        do i = 2, wet_pts(3,domain_p)
-           id_lstate_in_pstate(cnt) = id_surf + (i-1)*ni_p*nj_p
+        id_surf = wet_pts(4, domain_p) + sfields(ifield)%off
+
+        if (sfields(ifield)%ndims==2) then
            cnt = cnt + 1
-        enddo
-
+           id_lstate_in_pstate(cnt) = id_surf
+        else
+           do i = 1, wet_pts(3,domain_p)
+              cnt = cnt + 1
+              id_lstate_in_pstate(cnt) = id_surf + (i-1)*sdim2d
+           enddo
+        end if
      end if
-  end do
+  enddo
+
+  if (id_lstate_in_pstate(wet_pts(3,domain_p)) > dim_state_p) then
+     write(*,*) 'Error: please check the global indices for local state vector'
+  endif
 
 end subroutine init_dim_l_pdaf

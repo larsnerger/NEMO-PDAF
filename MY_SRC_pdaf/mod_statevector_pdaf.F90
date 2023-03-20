@@ -64,7 +64,15 @@ module mod_statevector_pdaf
      real(pwp) :: ensscale = 1.0           ! Scale factor for initial ensemble perturbations
   end type state_field
 
+  ! Declare Fortran type holding the definitions for local model fields
+  ! This is separate from state_field to support OpenMP
+  type state_field_l
+     integer :: dim = 0                    ! Dimension of the field
+     integer :: off = 0                    ! Offset of field in state vector
+  end type state_field_l
+
 #if defined key_top
+  ! Variables for biogeochemistry
   integer :: n_trc = 0                     !< number of tracer fields
   integer :: n_bgc1 = 0                    !< number of prognostic tracer fields
   integer :: n_bgc2 = 0                    !< number of diagnostic tracer fields
@@ -78,10 +86,11 @@ module mod_statevector_pdaf
   logical :: sv_uvel = .false. !< Whether to include u-velocity in state vector
   logical :: sv_vvel = .false. !< Whether to include v-velocity in state vector
 #if defined key_top
-  logical, allocatable :: sv_bgc1(:) !< Whether to include ERGOM in state vector
-  logical, allocatable :: sv_bgc2(:) !< Whether to include diagnosed ERGOM variables
+  logical, allocatable :: sv_bgc1(:) !< Whether to include BGC in state vector
+  logical, allocatable :: sv_bgc2(:) !< Whether to include diagnostic BGC variables
 #endif
 
+  ! Helpe variables to point to particular fields
   integer :: id_chl=0          ! Index of chlorophyll field in state vector
   integer :: id_dia=0          ! Index of diatom field in state vector
   integer :: id_fla=0          ! Index of flagellate field in state vector
@@ -95,8 +104,14 @@ module mod_statevector_pdaf
   ! Type variable holding field IDs in state vector
   type(field_ids) :: id
 
-  ! Type variable holding the defintions of model fields
+  ! Type variable holding the definitions of model fields
   type(state_field), allocatable :: sfields(:)
+
+  ! Type variable holding the definitions of local model fields
+  ! This is separate from sfields to support OpenMP
+  type(state_field_l), allocatable :: sfields_l(:)
+
+!$OMP THREADPRIVATE(sfields_l)
 
   ! Variables to handle multiple fields in the state vector
   integer :: n_fields          !< number of fields in state vector
@@ -109,6 +124,7 @@ module mod_statevector_pdaf
   logical :: update_nut = .true.       !< Whether to update nutrient variables of ERGOM (NH4, NO3, PO4, FE)
   logical :: update_oxy = .true.       !< Whether to update oxygen variable of ERGOM
   logical :: update_other = .true.     !< Whether to update non-phytoplankton variables of ERGOM
+  logical :: update_diag = .true.      !< Whether to update diagnostic variables of ERGOM
 
 contains
 
@@ -470,27 +486,25 @@ contains
         sfields(id_var)%file = 'NORDIC_1d_ERGOM_T_'
         sfields(id_var)%transform = 0
         sfields(id_var)%trafo_shift = 0.0
-        sfields(id_var)%update = .true.
+        if (update_diag) sfields(id_var)%update = .true.
 
         select case (id_bgc2)
         case (1)
-          sfields(id_var)%variable = 'PCO2'
-          sfields(id_var)%unit = 'micro atm'
+           sfields(id_var)%variable = 'PCO2'
+           sfields(id_var)%unit = 'micro atm'
         case (2)
-          sfields(id_var)%variable = 'PH'
-          sfields(id_var)%unit = '-'
+           sfields(id_var)%variable = 'PH'
+           sfields(id_var)%unit = '-'
         case (3)
-          id_chl = id_var        ! Store ID of chlorophyll to be used in observation module
-          sfields(id_var)%variable = 'CHL'
-          sfields(id_var)%unit = 'mg m-3'
-          ! Set log-transform if prognostic ERGOM variables are transformed
-          if (sfields(id%bgc1(1))%transform==2) then
-             sfields(id_var)%transform = 2   ! log-transform
-          end if
+           id_chl = id_var        ! Store ID of chlorophyll to be used in observation module
+           sfields(id_var)%variable = 'CHL'
+           sfields(id_var)%unit = 'mg m-3'
+           ! Set log-transform if prognostic chlorophyll are transformed
+           if (sfields(id%bgc1(1))%transform==2) sfields(id_var)%transform = 2   ! log-transform
         case (4)
-          id_netpp = id_var      ! Store ID of NETPP to be used in observation module
-          sfields(id_var)%variable = 'PP'
-          sfields(id_var)%unit = 'microgC m-3* -d'
+           id_netpp = id_var      ! Store ID of NETPP to be used in observation module
+           sfields(id_var)%variable = 'PP'
+           sfields(id_var)%unit = 'microgC m-3* -d'
         end select
       end if
     end do

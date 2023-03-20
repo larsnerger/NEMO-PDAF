@@ -13,6 +13,8 @@ subroutine l2g_state_pdaf(step, domain_p, dim_l, state_l, dim_p, state_p)
   use mod_kind_pdaf
   use mod_assimilation_pdaf, &
        only: id_lstate_in_pstate
+  use mod_statevector_pdaf, &
+       only: n_fields, sfields, sfields_l
 
   implicit none
 
@@ -25,7 +27,7 @@ subroutine l2g_state_pdaf(step, domain_p, dim_l, state_l, dim_p, state_p)
   real(pwp), intent(inout) :: state_p(dim_p) !< PE-local full state vector 
 
 ! *** local variables *** 
-  integer :: i                               ! Counter
+  integer :: i, ifield                       ! Counters
 
 
 ! **************************************************
@@ -33,10 +35,17 @@ subroutine l2g_state_pdaf(step, domain_p, dim_l, state_l, dim_p, state_p)
 ! **************************************************
 
   ! This generic initialization uses id_lstate_in_pstate
-  ! which has been initialied in init_dim_l_pdaf
+  ! and ifields_l which have been initialized in init_dim_l_pdaf
 
-  do i = 1, dim_l
-     state_p(id_lstate_in_pstate(i)) = state_l(i)
+  do ifield = 1, n_fields
+
+     ! Update DA-active variables
+     if (sfields(ifield)%update) then
+        do i = sfields_l(ifield)%off+1, sfields_l(ifield)%off + sfields_l(ifield)%dim
+           state_p(id_lstate_in_pstate(i)) = state_l(i)
+        end do
+     end if
+
   end do
 
 end subroutine l2g_state_pdaf
