@@ -352,20 +352,20 @@ contains
 
 !-------------------------------------------------------------------------------
 
+!> Timing and clean-up of PDAF
+!!
+!! The routine prints timing and memory information.
+!! It further deallocates PDAF internal arrays
+!! and the ASMINC increment array for BGC variables
+!!
+!! - Called from: `nemogcm`
+!!
   subroutine finalize_pdaf()
 
-    !>Timing and clean-up of PDAF
-    !!
-    !! **Calling Sequence**
-    !!
-    !! - Called from: `nemogcm`
-    !!
-    !! - Calls: `PDAF_deallocate`
-    !!
     use mod_parallel_pdaf, &
          only: mype_ens, comm_ensemble, mpierr, mype_model
     use mod_iau_pdaf, &
-         only: ssh_iau_pdaf, t_iau_pdaf, s_iau_pdaf, u_iau_pdaf, v_iau_pdaf
+         only: asm_inc_deallocate_pdaf
     use timer, &
          only: time_tot
 
@@ -380,9 +380,8 @@ contains
     ! Deallocate PDAF arrays
     call PDAF_deallocate()
 
-    ! Deallocaite IAU arrays
-    deallocate (ssh_iau_pdaf)
-    deallocate (t_iau_pdaf, s_iau_pdaf, u_iau_pdaf, v_iau_pdaf)
+    ! Deallocate ASMINC arrays
+    call asm_inc_deallocate_pdaf()
 
     if (mype_ens==0) then
        WRITE (*, '(24x, a, F11.3, 1x, a)') 'NEMO-PDAF: initialize MPI:', time_tot(1), 's'

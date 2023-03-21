@@ -225,11 +225,11 @@ contains
     use mod_statevector_pdaf, &
          only: id_netpp
     use mod_nemo_pdaf, &
-         only: jpi, jpj, jpk
+         only: jpi, jpj, jpk, calc_date
     use sms_ergom, &
          only: xnetpp
-    use diaobs, &
-         only: calc_date
+    use mod_iau_pdaf, &
+         only: update_asm_step_pdaf
 
 ! *** Arguments ***
     integer, intent(in) :: kt  ! time step
@@ -321,11 +321,14 @@ contains
 ! *** This is also used to trigger the Euler time step for nemo_coupling='odir'
     call PDAF_get_assim_flag(assim_flag)
 
+    if (assim_flag==0) call update_asm_step_pdaf()
+
 ! This Barrier is temporary to avoid that model tasks > 1 continue with model integrations
 ! Remove when distribute state is coded!
 
-    if (assim_flag==1) call MPI_Barrier(COMM_ensemble, MPIerr)
 
+    if (assim_flag==1) call MPI_Barrier(COMM_ensemble, MPIerr)
+assim_flag=0  ! Still temporary since we finally need to remove the checks for assim flag in NEMO code
     if (coupling_nemo/='odir') assim_flag=0
 
     ! Check for errors during execution of PDAF

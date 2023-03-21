@@ -15,8 +15,12 @@ module mod_nemo_pdaf
   use oce, &
        only: sshb, tsb, ub, vb, &
             sshn, tsn, un, vn
+  use in_out_manager, &
+       only: nitend, nit000
   use lbclnk, &
        only: lbc_lnk, lbc_lnk_multi
+  use diaobs, &
+       only: calc_date
 #if defined key_top
   use sms_ergom, &
        only: xph, xpco2, xchl, xnetpp

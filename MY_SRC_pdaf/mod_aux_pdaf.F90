@@ -37,6 +37,12 @@ module mod_aux_pdaf
     module procedure state2field_4d_dbl_mask
     module procedure state2field_4d_sgl_mask
   end interface state2field
+
+  interface state2field_inc
+     module procedure state2field_inc_2d
+     module procedure state2field_inc_3d
+  end interface
+
 contains
 !===============================================================================
 
@@ -880,6 +886,126 @@ contains
     end if
 
   end subroutine state2field_2d
+!==============================================================================
+
+!> Convert from state vector to NEMO model increment field
+!!
+  subroutine state2field_inc_3d(state, field, inc, offset, ndims)
+
+    implicit none
+
+! *** Arguments ***
+    real(pwp), intent(in)    :: state(:)         !< State vector
+    real(pwp), intent(in)    :: field(:,:,:)     !< Model field
+    real(pwp), intent(inout) :: inc(:,:,:)       !< Increment field
+    integer,   intent(in)    :: offset           !< Offset in state vector
+    integer,   intent(in)    :: ndims            !< Number of dimensions in field
+
+! *** Local variables ***
+    integer :: i, j, k
+    integer :: cnt
+    integer :: n_levels
+
+
+! *** Set number of model layers ***
+    if (ndims == 3) then
+       n_levels = nlvls
+    else
+       n_levels = 1
+    end if
+
+
+! *** Initialize model field from state vector
+
+    if (use_wet_state==1) then
+       
+       do k = 1, nlvls
+!$OMP PARALLEL DO PRIVATE (i, cnt)
+          do i = 1, nwet
+             cnt = i + nwet*(k-1) + offset
+             inc(wet_pts(6, i), wet_pts(7, i), k) &
+                  = state(cnt) - field(wet_pts(6, i), wet_pts(7, i), k)
+          end do
+!$OMP END PARALLEL DO
+       end do
+
+    elseif (use_wet_state==2) then
+
+       if (ndims == 3) then
+
+!!!!$OMP PARALLEL DO PRIVATE (i, cnt)
+          do i = 1, nwet
+             cnt = wet_pts(5,i) - 1 + offset
+             do k = 1, wet_pts(3,i)
+                inc(wet_pts(6, i), wet_pts(7, i), k) &
+                     = state(cnt + k) - field(wet_pts(6, i), wet_pts(7, i), k)
+             end do
+!!!!$OMP END PARALLEL DO
+          end do
+
+       else
+
+!!!!$OMP PARALLEL DO PRIVATE (i, cnt)
+          do i = 1, nwet
+             cnt = offset + i
+             inc(wet_pts(6, i), wet_pts(7, i), 1) &
+                  = state(cnt) - field(wet_pts(6, i), wet_pts(7, i), 1)
+!!!!$OMP END PARALLEL DO
+          end do
+
+       end if
+    else
+
+       cnt = 1 + offset
+       do k = 1, n_levels
+          do j = 1, nj_p
+             do i = 1, ni_p
+                inc(i,j,k) = state(cnt) - field(i,j,k)
+                cnt = cnt + 1
+             enddo
+          enddo
+       enddo
+
+    end if
+
+  end subroutine state2field_inc_3d
+!==============================================================================
+!> Convert from state vector to NEMO model field
+!!
+  subroutine state2field_inc_2d(state, field, inc, offset, ndims)
+
+    implicit none
+
+! *** Arguments ***
+    real(pwp), intent(in)    :: state(:)         !< State vector
+    real(pwp), intent(in)    :: field(:,:)       !< Model field
+    real(pwp), intent(inout) :: inc(:,:)         !< Increment field
+    integer,   intent(in)    :: offset           !< Offset in state vector
+    integer,   intent(in)    :: ndims            !< Number of dimensions in field
+
+! *** Local variables ***
+    integer :: i, j
+    integer :: cnt
+
+
+! *** Initialize model field from state vector
+
+    if ((use_wet_state==1) .or. (use_wet_state==2)) then
+       do i = 1, nwet
+          cnt = i + offset
+          inc(wet_pts(6, i), wet_pts(7, i)) = state(cnt) - field(wet_pts(6, i), wet_pts(7, i))
+       end do
+    else
+       cnt = 1 + offset
+       do j = 1, nj_p
+          do i = 1, ni_p
+             inc(i,j) = state(cnt) - field(i,j)
+             cnt = cnt + 1
+          enddo
+       enddo
+    end if
+
+  end subroutine state2field_inc_2d
 !==============================================================================
 !> Transform field, e.g. to log and back
 !!

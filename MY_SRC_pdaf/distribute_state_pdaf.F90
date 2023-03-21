@@ -35,8 +35,7 @@ subroutine distribute_state_pdaf(dim_p, state_p)
   use mod_aux_pdaf, &
        only: state2field, transform_field_mv
   use mod_iau_pdaf, &
-       only: ssh_iau_pdaf, u_iau_pdaf, v_iau_pdaf, t_iau_pdaf, &
-       s_iau_pdaf, div_damping_filter
+       only: update_bkginc_pdaf
 
   implicit none
 
@@ -45,9 +44,9 @@ subroutine distribute_state_pdaf(dim_p, state_p)
   real(pwp), intent(inout) :: state_p(dim_p) !< PE-local state vector
 
 ! *** Local variables ***
-  logical :: dist_direct = .true. ! Flag for direct update of model fields
-  integer :: i, j, k, cnt         ! Counters
-  integer :: id_var               ! Index
+  logical :: dist_direct = .false. ! Flag for direct update of model fields
+  integer :: i                    ! Counter 
+  integer :: id_var, i_bgcinc     ! Indices
   integer :: verbose              ! Control verbosity
 
 
@@ -65,7 +64,7 @@ subroutine distribute_state_pdaf(dim_p, state_p)
 
   call transform_field_mv(2, state_p, 21, verbose)  !21
 
-!  direct: if (dist_direct) then
+  direct: if (dist_direct) then
 
      if (verbose==1) write (*,'(a,4x,a)') 'NEMO-PDAF', 'distribute state to model fields'
 
@@ -188,109 +187,16 @@ subroutine distribute_state_pdaf(dim_p, state_p)
      end do
 #endif
 
-!  else direct
-!     ! ***********************************************
-!     ! Compute increment for state vector 2d variables
-!     ! ***********************************************
-!
-!     if (verbose==1) write (*,'(a,4x,a)') 'NEMO-PDAF', 'distribute state increment'
-!
-!     ! SSH
-!     if (id%ssh > 0) then
-!        cnt = sfields(id%ssh)%off + 1
-!        do j = 1 + j0, nj_p + j0
-!           do i = 1 + i0, ni_p + i0
-!              ssh_iau_pdaf(i, j) = state_p(cnt) - sshb(i, j)
-!              cnt = cnt + 1
-!           end do
-!        end do
-!
-!        ! Fill halo regions
-!        call lbc_lnk('distribute_state_pdaf', ssh_iau_pdaf, 'T', 1.)
-!     end if
-!
-!
-!     ! ***********************************************
-!     ! Compute increment for state vector 3d variables
-!     ! ***********************************************
-!     ! T
-!     if (id%temp > 0) then
-!        cnt = sfields(id%temp)%off + 1
-!        do k = 1, nk_p
-!           do j = 1 + j0, nj_p + j0
-!              do i = 1 + i0, ni_p + i0
-!                 t_iau_pdaf(i, j, k) = state_p(cnt) - tsb(i, j, k, jp_tem)
-!                 cnt = cnt + 1
-!              end do
-!           end do
-!        end do
-!     end if
-!
-!     ! S
-!     if (id%salt > 0) then
-!        cnt = sfields(id%salt)%off + 1
-!        do k = 1, nk_p
-!           do j = 1 + j0, nj_p + j0
-!              do i = 1 + i0, ni_p + i0
-!                 s_iau_pdaf(i, j, k) = state_p(cnt) - tsb(i, j, k, jp_sal)
-!                 cnt = cnt + 1
-!              end do
-!           end do
-!        end do
-!     end if
-!
-!     if (id%temp>0 .or. id%salt>0) then
-!        ! Fill halo regions
-!        call lbc_lnk_multi('distribute_state_pdaf', t_iau_pdaf(:, :, :), 'T', &
-!             1., s_iau_pdaf(:, :, :), 'T', 1.)
-!     end if
-!
-!     ! U
-!     if (id%uvel > 0) then
-!        cnt = sfields(id%uvel)%off + 1
-!        do k = 1, nk_p
-!           do j = 1 + j0, nj_p + j0
-!              do i = 1 + i0, ni_p + i0
-!                 u_iau_pdaf(i, j, k) = state_p(cnt) - ub(i, j, k)
-!                 cnt = cnt + 1
-!              end do
-!           end do
-!        end do
-!     end if
-!
-!     ! V
-!     if (id%vvel > 0) then
-!        cnt = sfields(id%vvel)%off + 1
-!        do k = 1, nk_p
-!           do j = 1 + j0, nj_p + j0
-!              do i = 1 + i0, ni_p + i0
-!                 v_iau_pdaf(i, j, k) = state_p(cnt) - vb(i, j, k)
-!                 cnt = cnt + 1
-!              end do
-!           end do
-!        end do
-!     end if
-!
-!     if (id%uvel>0 .or. id%vvel>0) then
-!        ! Fill halo regions
-!        call lbc_lnk_multi('distribute_state_pdaf', u_iau_pdaf, 'U', -1., &
-!             v_iau_pdaf, 'V', -1.)
-!     end if
-!     call div_damping_filter
-!
-!     do id_var = 1, n_trc
-!        cnt = sfields(id%trcs(id_var))%off + 1
-!        do k = 1, nk_p
-!           do j = 1 + j0, nj_p + j0
-!              do i = 1 + i0, ni_p + i0
-!                 bgc_iau_pdaf(i, j, k, id_var) = state_p(cnt) - trb(i, j, k, sfields(id_var)%jptrc)
-!                 cnt = cnt + 1
-!              end do
-!           end do
-!        end do
-!        ! Fill halo regions
-!        call lbc_lnk('distribute_state_pdaf', bgc_iau_pdaf(:, :, :, id_var), 'T', 1.)
-!     end do
-!  end if direct
+  else direct
+     ! ************************************************
+     ! Compute increment for state vector variables ***
+     ! for use in ASMINC module of NEMO             ***
+     ! ************************************************
+
+     if (verbose==1) write (*,'(a,4x,a)') 'NEMO-PDAF', 'distribute state increment'
+
+     CALL update_bkginc_pdaf(dim_p, state_p, verbose)
+
+  end if direct
 
 end subroutine distribute_state_pdaf

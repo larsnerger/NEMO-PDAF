@@ -20,8 +20,11 @@ subroutine next_observation_pdaf(stepnow, nsteps, doexit, time)
        only: delt_obs
   use mod_parallel_pdaf, &
        only: mype_ens
-  use in_out_manager, &
-       only: nitend
+  use mod_nemo_pdaf, &
+       only: nitend, nit000
+  use mod_iau_pdaf, &
+       only: store_asm_step_pdaf, update_asm_step_pdaf
+
 
   implicit none
 
@@ -41,11 +44,23 @@ subroutine next_observation_pdaf(stepnow, nsteps, doexit, time)
 
   if (stepnow + delt_obs <= nitend) then
      ! *** During the assimilation process ***
-     nsteps = delt_obs   ! This assumes a constant time step interval
+     
      doexit = 0          ! Not used in this implementation
+
+     if (stepnow == nit000 - 1) then
+        ! First analysis step 
+        nsteps = delt_obs - 1   ! This assumes a constant time step interval
+     else
+        nsteps = delt_obs       ! This assumes a constant time step interval
+     end if
 
      if (mype_ens == 0) write (*, '(a, i7, 3x, a, i7)') &
           'NEMO-PDAF', stepnow, 'Next observation at time step', stepnow + nsteps
+
+     ! Update analysis step information for NEMO-ASM
+     call store_asm_step_pdaf(stepnow+nsteps)
+     if (stepnow == nit000 - 1) call update_asm_step_pdaf()
+
   else
      ! *** End of assimilation process ***
      nsteps = 0          ! No more steps
