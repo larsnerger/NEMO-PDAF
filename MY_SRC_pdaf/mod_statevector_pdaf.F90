@@ -71,31 +71,31 @@ module mod_statevector_pdaf
      integer :: off = 0                    ! Offset of field in state vector
   end type state_field_l
 
-#if defined key_top
-  ! Variables for biogeochemistry
-  integer :: n_trc = 0                     !< number of tracer fields
-  integer :: n_bgc1 = 0                    !< number of prognostic tracer fields
-  integer :: n_bgc2 = 0                    !< number of diagnostic tracer fields
-  integer, parameter :: jptra2 = 4         !< number of total diagnostic tracer fields
-#endif
-
   ! Variables to activate a field from the namelist
   logical :: sv_temp = .false. !< Whether to include temperature in state vector
   logical :: sv_salt = .false. !< Whether to include salinity in state vector
   logical :: sv_ssh = .false.  !< Whether to include SSH in state vector
   logical :: sv_uvel = .false. !< Whether to include u-velocity in state vector
   logical :: sv_vvel = .false. !< Whether to include v-velocity in state vector
+
 #if defined key_top
+  ! Variables for biogeochemistry
+  integer :: n_trc = 0                     !< number of tracer fields
+  integer :: n_bgc1 = 0                    !< number of prognostic tracer fields
+  integer :: n_bgc2 = 0                    !< number of diagnostic tracer fields
+  integer, parameter :: jptra2 = 4         !< number of total diagnostic tracer fields
+
+  ! Variables to activate a field from the namelist
   logical, allocatable :: sv_bgc1(:) !< Whether to include BGC in state vector
   logical, allocatable :: sv_bgc2(:) !< Whether to include diagnostic BGC variables
-#endif
 
-  ! Helpe variables to point to particular fields
-  integer :: id_chl=0          ! Index of chlorophyll field in state vector
-  integer :: id_dia=0          ! Index of diatom field in state vector
-  integer :: id_fla=0          ! Index of flagellate field in state vector
-  integer :: id_cya=0          ! Index of cyanobacteria field in state vector
-  integer :: id_netpp=0        ! Index of net primary production in state vector
+  ! Helper variables to point to particular fields
+  integer :: id_chl=0          !< Index of chlorophyll field in state vector
+  integer :: id_dia=0          !< Index of diatom field in state vector
+  integer :: id_fla=0          !< Index of flagellate field in state vector
+  integer :: id_cya=0          !< Index of cyanobacteria field in state vector
+  integer :: id_netpp=0        !< Index of net primary production in state vector
+#endif
 
   !---- The next variables usually do not need editing -----
 
@@ -117,14 +117,14 @@ module mod_statevector_pdaf
   integer :: n_fields          !< number of fields in state vector
   integer :: n_fields_covar=0  !< number of fields to read from covariance matrix file
 
-  logical :: update_phys = .true.      !< Whether to update NEMO physics after analysis step
-  logical :: update_phyto = .true.     !< Whether to update phytoplankton variables of ERGOM (DIA, FLA, CYA)
-  logical :: update_zoo = .true.       !< Whether to update zooplankton variables of ERGOM (MIZ, MEZ)
-  logical :: update_det = .true.       !< Whether to update detritus variables of ERGOM (DET, DETs)
-  logical :: update_nut = .true.       !< Whether to update nutrient variables of ERGOM (NH4, NO3, PO4, FE)
-  logical :: update_oxy = .true.       !< Whether to update oxygen variable of ERGOM
-  logical :: update_other = .true.     !< Whether to update non-phytoplankton variables of ERGOM
-  logical :: update_diag = .true.      !< Whether to update diagnostic variables of ERGOM
+  logical :: update_phys  = .false.     !< Whether to update NEMO physics after analysis step
+  logical :: update_phyto = .false.     !< Whether to update phytoplankton variables of ERGOM (DIA, FLA, CYA)
+  logical :: update_zoo   = .false.     !< Whether to update zooplankton variables of ERGOM (MIZ, MEZ)
+  logical :: update_det   = .false.     !< Whether to update detritus variables of ERGOM (DET, DETs)
+  logical :: update_nut   = .false.     !< Whether to update nutrient variables of ERGOM (NH4, NO3, PO4, FE)
+  logical :: update_oxy   = .false.     !< Whether to update oxygen variable of ERGOM
+  logical :: update_other = .false.     !< Whether to update non-phytoplankton variables of ERGOM
+  logical :: update_diag  = .false.     !< Whether to update diagnostic variables of ERGOM
 
 contains
 
@@ -570,8 +570,6 @@ contains
     do i = 2, n_fields
        sfields(i)%off = sfields(i-1)%off + sfields(i-1)%dim
     end do
-if (mype==11 .and. task_id==2) write (*,*) 'dims', sfields(:)%dim
-if (mype==11 .and. task_id==2) write (*,*) 'offs', sfields(:)%off
 
 ! *** Set state vector dimension ***
 
