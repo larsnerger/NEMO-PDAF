@@ -35,10 +35,6 @@ MODULE sshwzv
    USE lib_mpp        ! MPP library
    USE timing         ! Timing
    USE wet_dry        ! Wetting/Drying flux limiting
-#if defined key_USE_PDAF
-    USE mod_assimilation_pdaf,&
-           ONLY: assim_flag
-#endif
 
    IMPLICIT NONE
    PRIVATE
@@ -87,11 +83,7 @@ CONTAINS
       ENDIF
       !
       z2dt = 2._wp * rdt                          ! set time step size (Euler/Leapfrog)
-#if defined key_USE_PDAF
-      IF( (neuler == 0 .AND. kt == nit000) .OR. assim_flag==1 )  z2dt = rdt
-#else
       IF( neuler == 0 .AND. kt == nit000 )   z2dt = rdt
-#endif
       zcoef = 0.5_wp * r1_rau0
 
       !                                           !------------------------------!
@@ -170,11 +162,7 @@ CONTAINS
       !                                           !------------------------------!
       z1_2dt = 1. / ( 2. * rdt ) 
       ! set time step size (Euler/Leapfrog)
-#if defined key_USE_PDAF
-      IF( (neuler == 0 .AND. kt == nit000) .OR. assim_flag==1 )   z1_2dt = 1. / rdt
-#else
       IF( neuler == 0 .AND. kt == nit000 )   z1_2dt = 1. / rdt
-#endif
       !
       IF( ln_vvl_ztilde .OR. ln_vvl_layer ) THEN      ! z_tilde and layer cases
          ALLOCATE( zhdiv(jpi,jpj,jpk) ) 
@@ -258,11 +246,7 @@ CONTAINS
          IF(lwp) WRITE(numout,*) '~~~~~~~ '
       ENDIF
       !              !==  Euler time-stepping: no filter, just swap  ==!
-#if defined key_USE_PDAF
-      IF ( (neuler == 0 .AND. kt == nit000) .OR. assim_flag==1 ) THEN
-#else
       IF ( neuler == 0 .AND. kt == nit000 ) THEN
-#endif
          sshn(:,:) = ssha(:,:)                              ! now    <-- after  (before already = now)
          !
       ELSE           !==  Leap-Frog time-stepping: Asselin filter + swap  ==!

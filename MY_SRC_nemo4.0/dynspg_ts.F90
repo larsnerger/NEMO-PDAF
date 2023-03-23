@@ -63,11 +63,6 @@ MODULE dynspg_ts
    USE restart         ! only for lrst_oce
    USE diatmb          ! Top,middle,bottom output
 
-#if defined key_USE_PDAF
-    USE mod_assimilation_pdaf,&
-           ONLY: assim_flag
-#endif
-
    IMPLICIT NONE
    PRIVATE
 
@@ -187,11 +182,7 @@ CONTAINS
       zwdramp = r_rn_wdmin1               ! simplest ramp 
 !     zwdramp = 1._wp / (rn_wdmin2 - rn_wdmin1) ! more general ramp
       !                                         ! reciprocal of baroclinic time step 
-#if defined key_USE_PDAF
-      IF( (kt == nit000 .AND. neuler == 0) .OR. assim_flag==1 ) THEN   ;   z2dt_bf =          rdt
-#else
       IF( kt == nit000 .AND. neuler == 0 ) THEN   ;   z2dt_bf =          rdt
-#endif
       ELSE                                        ;   z2dt_bf = 2.0_wp * rdt
       ENDIF
       r1_2dt_b = 1.0_wp / z2dt_bf 
@@ -210,17 +201,9 @@ CONTAINS
          IF(lwp) WRITE(numout,*) '~~~~~~~~~~   free surface with time splitting'
          IF(lwp) WRITE(numout,*)
          !
-#if defined key_USE_PDAF
-         IF( neuler == 0 .or. assim_flag==1 )   ll_init=.TRUE.
-#else
          IF( neuler == 0 )   ll_init=.TRUE.
-#endif
          !
-#if defined key_USE_PDAF
-         IF( ln_bt_fw .OR. neuler == 0 .or. assim_flag==1 ) THEN
-#else
          IF( ln_bt_fw .OR. neuler == 0 ) THEN
-#endif
             ll_fw_start =.TRUE.
             noffset     = 0
          ELSE
@@ -360,11 +343,7 @@ CONTAINS
       !
       ! If forward start at previous time step, and centered integration, 
       ! then update averaging weights:
-#if defined key_USE_PDAF
-      IF (.NOT.ln_bt_fw .AND.(( neuler==0 .AND. kt==nit000+1 ) .OR. assim_flag==1) ) THEN
-#else
       IF (.NOT.ln_bt_fw .AND.( neuler==0 .AND. kt==nit000+1 ) ) THEN
-#endif
          ll_fw_start=.FALSE.
          CALL ts_wgt( ln_bt_av, ll_fw_start, icycle, wgtbtp1, wgtbtp2 )
       ENDIF
@@ -1235,11 +1214,7 @@ CONTAINS
       IF (ln_bt_fw) THEN
          zwx(:,:) = un_adv(:,:)
          zwy(:,:) = vn_adv(:,:)
-#if defined key_USE_PDAF
-         IF( .NOT.( (kt == nit000 .AND. neuler==0) .OR. assim_flag==1 ) ) THEN
-#else
          IF( .NOT.( kt == nit000 .AND. neuler==0 ) ) THEN
-#endif
             un_adv(:,:) = r1_2 * ( ub2_b(:,:) + zwx(:,:) - atfp * un_bf(:,:) )
             vn_adv(:,:) = r1_2 * ( vb2_b(:,:) + zwy(:,:) - atfp * vn_bf(:,:) )
             !

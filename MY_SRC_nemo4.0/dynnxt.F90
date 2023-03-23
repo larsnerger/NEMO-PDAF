@@ -50,10 +50,6 @@ MODULE dynnxt
 #if defined key_agrif
    USE agrif_oce_interp
 #endif
-#if defined key_USE_PDAF
-    USE mod_assimilation_pdaf,&
-           ONLY: assim_flag
-#endif
 
    IMPLICIT NONE
    PRIVATE
@@ -157,11 +153,7 @@ CONTAINS
       !
       IF( l_trddyn ) THEN             ! prepare the atf trend computation + some diagnostics
          z1_2dt = 1._wp / (2. * rdt)        ! Euler or leap-frog time step 
-#if defined key_USE_PDAF
-         IF( (neuler == 0 .AND. kt == nit000) .OR. assim_flag==1 )   z1_2dt = 1._wp / rdt
-#else
          IF( neuler == 0 .AND. kt == nit000 )   z1_2dt = 1._wp / rdt
-#endif
          !
          !                                  ! Kinetic energy and Conversion
          IF( ln_KE_trd  )   CALL trd_dyn( ua, va, jpdyn_ken, kt )
@@ -180,11 +172,7 @@ CONTAINS
 
       ! Time filter and swap of dynamics arrays
       ! ------------------------------------------
-#if defined key_USE_PDAF
-      IF( (neuler == 0 .AND. kt == nit000) .OR. assim_flag==1 ) THEN 
-#else
       IF( neuler == 0 .AND. kt == nit000 ) THEN        !* Euler at first time-step: only swap
-#endif
 
          DO jk = 1, jpkm1
             un(:,:,jk) = ua(:,:,jk)                         ! un <-- ua
