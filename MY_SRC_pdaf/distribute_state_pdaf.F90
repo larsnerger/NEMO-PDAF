@@ -193,7 +193,7 @@ subroutine distribute_state_pdaf(dim_p, state_p)
      ! for use in ASMINC module of NEMO             ***
      ! ************************************************
 
-     if (verbose==1) write (*,'(a,4x,a)') 'NEMO-PDAF', 'distribute state increment'
+     if (verbose==1) write (*,'(a,4x,a)') 'NEMO-PDAF', 'Distribute state increment'
 
      CALL update_bkginc_pdaf(dim_p, state_p, verbose)
 

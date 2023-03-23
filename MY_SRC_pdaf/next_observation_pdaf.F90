@@ -49,17 +49,22 @@ subroutine next_observation_pdaf(stepnow, nsteps, doexit, time)
 
      if (stepnow == nit000 - 1) then
         ! First analysis step 
-        nsteps = delt_obs - 1   ! This assumes a constant time step interval
+        nsteps = delt_obs-1     ! Analysis step one step before end of day
      else
-        nsteps = delt_obs       ! This assumes a constant time step interval
+        nsteps = delt_obs       ! Follow-up analysis steps daily
      end if
 
      if (mype_ens == 0) write (*, '(a, i7, 3x, a, i7)') &
           'NEMO-PDAF', stepnow, 'Next observation at time step', stepnow + nsteps
 
      ! Update analysis step information for NEMO-ASM
-     call store_asm_step_pdaf(stepnow+nsteps)
-     if (stepnow == nit000 - 1) call update_asm_step_pdaf()
+     if (stepnow == nit000 - 1) then
+        ! First analysis step - apply increments after first analysis step
+        call store_asm_step_pdaf(stepnow+nsteps)
+     else
+        ! First analysis step - apply increments after current analysis step
+        call store_asm_step_pdaf(stepnow)
+     end if
 
   else
      ! *** End of assimilation process ***

@@ -156,9 +156,8 @@ contains
          only: mype_ens
     use mod_assimilation_pdaf, &
          only: filtertype, subtype, type_trans, type_sqrt, &
-         locweight, perturb_params, stddev_params
-    use mod_assimilation_pdaf, &
-         only: screen, dim_ens, ensscale, delt_obs, &
+         locweight, perturb_params, stddev_params, &
+         screen, dim_ens, ensscale, delt_obs, &
          type_forget, forget, &
          type_ens_init, type_central_state, ens_restart, &
          type_hyb, hyb_gamma, hyb_kappa
@@ -169,6 +168,9 @@ contains
     use mod_statevector_pdaf, &
          only: update_phys, update_phyto, update_zoo, update_det, update_nut, &
          update_oxy, update_other, update_diag
+    use mod_iau_pdaf, &
+         only: do_asmiau, do_bgciau, steps_asmiau, steps_bgciau, &
+         shape_asmiau, shape_bgciau
     use mod_obs_ssh_mgrid_pdafomi, &
          only: assim_ssh_mgrid, rms_ssh_mgrid, file_ssh_mgrid, &
          lradius_ssh_mgrid, sradius_ssh_mgrid, varname_ssh_mgrid
@@ -177,13 +179,13 @@ contains
          lradius_sst_cmems, sradius_sst_cmems, mode_sst_cmems, dist_sst_cmems, &
          varname_sst_cmems, omit_sst_cmems
     use mod_obs_chl_baltic_cmems_pdafomi, &
-         only: assim_chl_baltic_cmems, path_chl_baltic_cmems, file_chl_baltic_cmems, rms_obs_chl_baltic_cmems, &
-         lradius_chl_baltic_cmems, sradius_chl_baltic_cmems, mode_chl_baltic_cmems, dist_chl_baltic_cmems, &
-         varname_chl_baltic_cmems, omit_chl_baltic_cmems
+         only: assim_chl_baltic_cmems, path_chl_baltic_cmems, file_chl_baltic_cmems, &
+         rms_obs_chl_baltic_cmems, lradius_chl_baltic_cmems, sradius_chl_baltic_cmems, &
+         mode_chl_baltic_cmems, dist_chl_baltic_cmems, varname_chl_baltic_cmems, omit_chl_baltic_cmems
     use mod_obs_chl_nsea_cmems_pdafomi, &
-         only: assim_chl_nsea_cmems, path_chl_nsea_cmems, file_chl_nsea_cmems, rms_obs_chl_nsea_cmems, &
-         lradius_chl_nsea_cmems, sradius_chl_nsea_cmems, mode_chl_nsea_cmems, dist_chl_nsea_cmems, &
-         varname_chl_nsea_cmems, omit_chl_nsea_cmems
+         only: assim_chl_nsea_cmems, path_chl_nsea_cmems, file_chl_nsea_cmems, &
+         rms_obs_chl_nsea_cmems, lradius_chl_nsea_cmems, sradius_chl_nsea_cmems, &
+         mode_chl_nsea_cmems, dist_chl_nsea_cmems, varname_chl_nsea_cmems, omit_chl_nsea_cmems
 
     !< Namelist file
     character(lc) :: nmlfile
@@ -200,7 +202,9 @@ contains
 
     namelist /update_nml/ &
          update_phys, update_phyto, update_zoo, update_det, update_nut, &
-         update_oxy, update_other, update_diag
+         update_oxy, update_other, update_diag, &
+         do_asmiau, do_bgciau, steps_asmiau, steps_bgciau, &
+         shape_asmiau, shape_bgciau
 
     namelist /obs_ssh_mgrid_nml/ &
          assim_ssh_mgrid, rms_ssh_mgrid, file_ssh_mgrid, &

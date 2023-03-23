@@ -85,7 +85,8 @@ MODULE asminc
    LOGICAL, PUBLIC :: ln_flainc     !: No flagellate concentration increment
    LOGICAL, PUBLIC :: ln_diainc     !: No diatom concentration increment
    LOGICAL, PUBLIC :: ln_cyainc     !: No cyano concentration increment
-   LOGICAL, PUBLIC :: ln_bgcdi      !: No DI BGC of increment
+   LOGICAL, PUBLIC :: ln_bgcdin     !: No DI BGC of increment
+   LOGICAL, PUBLIC :: ln_bgciau     !: No applying forcing with an assimilation increment
 
    REAL(wp), PUBLIC :: oxyfac=1.0       !:Weight factor for bgc oxy increment 
    REAL(wp), PUBLIC :: no3fac=1.0       !:Weight factor for bgc no3 increment
@@ -112,6 +113,9 @@ MODULE asminc
    REAL(wp), PUBLIC, DIMENSION(:,:,:)  , ALLOCATABLE ::   fla_bkginc
    REAL(wp), PUBLIC, DIMENSION(:,:,:)  , ALLOCATABLE ::   dia_bkginc
    REAL(wp), PUBLIC, DIMENSION(:,:,:)  , ALLOCATABLE ::   cya_bkginc
+
+   INTEGER , PUBLIC ::   niaufnbgc   !: Type of BGC IAU weighing function: = 0   Constant weighting
+   !                                 !: = 1   Linear hat-like, centred in middle of IAU interval 
 #endif
    !                                !!! time steps relative to the cycle interval [0,nitend-nit000-1]
    INTEGER , PUBLIC ::   nitbkg      !: Time step of the background state used in the Jb term
@@ -191,7 +195,8 @@ CONTAINS
          &                 nitbkg, nitdin, nitiaustr, nitiaufin, niaufn,   &
          &                 ln_salfix, salfixmin, nn_divdmp, ln_trcinc,     &
          &                 ln_oxyinc, ln_no3inc, ln_nh4inc, ln_po4inc,     &
-         &                 ln_flainc, ln_diainc, ln_cyainc, ln_bgcdi,      &
+         &                 ln_flainc, ln_diainc, ln_cyainc, ln_bgcdin,      &
+         &                 ln_bgciau, niaufnbgc, &
          &                 nitdinbgc, nitibgcstr, nitibgcfin, oxyfac,      &
          &                 no3fac, nh4fac, po4fac, diafac, cyafac, flafac
       !!----------------------------------------------------------------------
@@ -205,8 +210,7 @@ CONTAINS
 #if defined key_USE_PDAF
       IF(lwp) THEN
          WRITE(numout,*)
-         WRITE(numout,*) 'asm_inc_init : PDAF - reading of namelist nam_asminc deactivated'
-         WRITE(*,*) 'asm_inc_init : PDAF - reading of namelist nam_asminc deactivated'
+         WRITE(numout,*) 'asm_inc_init : PDAF-coupling - reading of namelist nam_asminc deactivated'
       END IF
 #else
       REWIND( numnam_ref )              ! Namelist nam_asminc in reference namelist : Assimilation increment
@@ -222,7 +226,7 @@ CONTAINS
          WRITE(numout,*)
          WRITE(numout,*) 'asm_inc_init : Assimilation increment initialization :'
 #if defined key_USE_PDAF
-         WRITE(numout,*) '++++     NOTE for PDAF: The settings here will be overwritten by PDAF   +++'
+         WRITE(numout,*) '++++     NOTE: The settings here will be overwritten by PDAF   +++'
 #endif
          WRITE(numout,*) '~~~~~~~~~~~~'
          WRITE(numout,*) '   Namelist namasm : set assimilation increment parameters'
@@ -244,18 +248,28 @@ CONTAINS
          IF (ln_trcinc) WRITE(numout,*) ' Logical switch for applying flagell increment  ln_flainc = ', ln_flainc
          IF (ln_trcinc) WRITE(numout,*) ' Logical switch for applying cya increment      ln_cyainc = ', ln_cyainc
          IF (ln_trcinc) WRITE(numout,*) ' Logical switch for applying diatom increment   ln_diainc = ', ln_diainc
-         IF (ln_trcinc) WRITE(numout,*) ' Logical switch for applying incr. at one ts    ln_bgcdi  = ', ln_bgcdi
 #endif
-         IF (ln_trcinc) WRITE(numout,*) ' Timestep for DI of BGC                         nitdinbgc = ', nitdinbgc
-         IF (ln_trcinc) WRITE(numout,*) ' Timestep of start of IAU interval for BGC     nitibgcstr = ', nitibgcstr
-         IF (ln_trcinc) WRITE(numout,*) ' Timestep of end of IAU interval for BGC       nitibgcfin = ', nitibgcfin
+         IF (ln_trcinc) THEN
+            WRITE(numout,*) ' Logical switch for applying incr. at one ts    ln_bgcdin = ', ln_bgcdin
+            IF (ln_bgcdin) THEN
+               WRITE(numout,*) ' Timestep for DI of BGC                         nitdinbgc = ', nitdinbgc
+            END IF
+            WRITE(numout,*) ' Logical switch for IAU of BGC                  ln_bgciau = ', ln_bgciau
+            IF (ln_bgciau) THEN
+               WRITE(numout,*) ' Timestep of start of IAU interval for BGC     nitibgcstr = ', nitibgcstr
+               WRITE(numout,*) ' Timestep of end of IAU interval for BGC       nitibgcfin = ', nitibgcfin
+               WRITE(numout,*) ' Type of BCG IAU weighting function            niaufnbgc  = ', niaufnbgc
+            END IF
+         END IF
 #endif
-         WRITE(numout,*) '      Timestep of end of IAU interval in [0,nitend-nit000-1]   nitiaufin = ', nitiaufin
-	 WRITE(numout,*) '      Timestep of background in [0,nitend-nit000-1]            nitbkg    = ', nitbkg
-         WRITE(numout,*) '      Timestep of background for DI in [0,nitend-nit000-1]     nitdin    = ', nitdin
-         WRITE(numout,*) '      Timestep of start of IAU interval in [0,nitend-nit000-1] nitiaustr = ', nitiaustr
-         WRITE(numout,*) '      Timestep of end of IAU interval in [0,nitend-nit000-1]   nitiaufin = ', nitiaufin
-         WRITE(numout,*) '      Type of IAU weighting function                           niaufn    = ', niaufn
+         IF (ln_asmiau) THEN
+            WRITE(numout,*) '      Timestep of end of IAU interval in [0,nitend-nit000-1]   nitiaufin = ', nitiaufin
+            WRITE(numout,*) '      Timestep of background in [0,nitend-nit000-1]            nitbkg    = ', nitbkg
+            WRITE(numout,*) '      Timestep of background for DI in [0,nitend-nit000-1]     nitdin    = ', nitdin
+            WRITE(numout,*) '      Timestep of start of IAU interval in [0,nitend-nit000-1] nitiaustr = ', nitiaustr
+            WRITE(numout,*) '      Timestep of end of IAU interval in [0,nitend-nit000-1]   nitiaufin = ', nitiaufin
+            WRITE(numout,*) '      Type of IAU weighting function                           niaufn    = ', niaufn
+         END IF
          WRITE(numout,*) '      Logical switch for ensuring that the sa > salfixmin      ln_salfix = ', ln_salfix
          WRITE(numout,*) '      Minimum salinity after applying the increments           salfixmin = ', salfixmin
       ENDIF
@@ -321,6 +335,10 @@ CONTAINS
          & CALL ctl_stop( ' ln_asmdin and ln_asmiau :', &
          &                ' Choose Direct Initialization OR Incremental Analysis Updating')
 
+      IF ( ( ln_bgcdin ).AND.( ln_bgciau ) )   &
+         & CALL ctl_stop( ' ln_bgcdin and ln_bgciau :', &
+         &                ' Choose Direct Initialization OR Incremental Analysis Updating')
+
       IF (      ( ( .NOT. ln_asmdin ).AND.( .NOT. ln_asmiau ) ) &
            .AND.( ( ln_trainc ).OR.( ln_dyninc ).OR.( ln_sshinc ) .OR. ( ln_seaiceinc) )) &
          & CALL ctl_stop( ' One or more of ln_trainc, ln_dyninc, ln_sshinc and ln_seaiceinc is set to .true.', &
@@ -329,6 +347,10 @@ CONTAINS
 
       IF ( ( niaufn /= 0 ).AND.( niaufn /= 1 ) ) &
          & CALL ctl_stop( ' niaufn /= 0 or niaufn /=1 :',  &
+         &                ' Type IAU weighting function is invalid')
+
+      IF ( ( niaufnbgc /= 0 ).AND.( niaufnbgc /= 1 ) ) &
+         & CALL ctl_stop( ' niaufnbgc /= 0 or niaufnbgc /=1 :',  &
          &                ' Type IAU weighting function is invalid')
 
       IF ( ( .NOT. ln_trainc ).AND.( .NOT. ln_dyninc ).AND.( .NOT. ln_sshinc ).AND.( .NOT. ln_seaiceinc ) &
@@ -341,17 +363,17 @@ CONTAINS
         & CALL ctl_stop('trc assimilation only implemented and tested for ERGOM model (set ln_ergom=.true.)')
 #endif
 
-      IF (ln_trcinc .AND. ln_asmdin) &
-           CALL ctl_stop( 'no direct initialisation implemented for BGC assimilation as in ASM module: use ln_bgcdi')
+!      IF (ln_trcinc .AND. ln_asmdin) &
+!           CALL ctl_stop( 'no direct initialisation implemented for BGC assimilation as in ASM module: use ln_bgcdin')
 
-      IF (ln_trcinc .AND. (.NOT.ln_bgcdi).AND.(.NOT.ln_asmiau)) &
-           CALL ctl_stop( 'either ln_bgcdi or ln_asmiau have to be true for bgc DA')
+      IF (ln_trcinc .AND. (.NOT.ln_bgcdin).AND.(.NOT.ln_bgciau)) &
+           CALL ctl_stop( 'either ln_bgcdin or ln_bcgiau have to be true for bgc DA')
 
       IF ( ( ln_asmiau ).AND.( nitiaustr == nitiaufin ) ) &
          & CALL ctl_stop( ' nitiaustr = nitiaufin :',  &
          &                ' IAU interval is of zero length')
 
-      IF ( ( ln_asmiau ).AND. (ln_trcinc).AND.( nitibgcstr == nitibgcfin ) ) &
+      IF ( ( ln_bgciau ).AND. (ln_trcinc).AND.( nitibgcstr == nitibgcfin ) ) &
          & CALL ctl_stop( ' nitibgcstr = nitibgcfin :',  &
          &                ' IAU interval is of zero length')
 
@@ -360,7 +382,7 @@ CONTAINS
          &                ' IAU starting or final time step is outside the cycle interval', &
          &                 ' Valid range nit000 to nitend')
 
-      IF ( ( ln_asmiau ).AND. (ln_trcinc).AND.( ( nitibgcstr_r < nit000 ).OR.( nitibgcfin_r > nitend ) ) ) &
+      IF ( ( ln_bgciau ).AND. (ln_trcinc).AND.( ( nitibgcstr_r < nit000 ).OR.( nitibgcfin_r > nitend ) ) ) &
          & CALL ctl_stop( ' nitibgcstr or nitibgcfin :',  &
          &                ' IAU starting or final time step is outside the cycle interval', &
          &                 ' Valid range nit000 to nitend')
@@ -379,7 +401,7 @@ CONTAINS
       !--------------------------------------------------------------------
       ! Initialize the Incremental Analysis Updating weighting function
       !--------------------------------------------------------------------
-      IF( ln_asmiau ) THEN
+      asmiau: IF( ln_asmiau ) THEN
          !
          ALLOCATE( wgtiau( icycper ) )
          !
@@ -419,83 +441,88 @@ CONTAINS
                wgtiau(jt+nitiaustr-1) = REAL( iiauper - jt + 1 ) * znorm
             END DO
          ENDIF
-            !
-         IF (ln_trcinc .AND. (.NOT.ln_bgcdi)) THEN !Build weights for iau of bgc seperate to physics
+      END IF asmiau
+
+      bgciau: IF (ln_trcinc .AND. (ln_bgciau)) THEN !Build weights for iau of bgc seperate to physics
                 !
-             ALLOCATE( wgtiaubgc( icycper ) )
+         ALLOCATE( wgtiaubgc( iiauperbgc ) )
              !
-             wgtiaubgc(:) = 0._wp
+         wgtiaubgc(:) = 0._wp
              !
              !   
              !---------------------------------------------------------
-             IF( niaufn == 0 ) THEN           ! Constant IAU forcing 
+         IF( niaufnbgc == 0 ) THEN           ! Constant IAU forcing 
               !                             !---------------------------------------------------------
-                DO jt = 1, iiauperbgc
-                   wgtiaubgc(jt+nitibgcstr-1) = 1.0 / REAL( iiauperbgc )
-                END DO
+            DO jt = 1, iiauperbgc
+               wgtiaubgc(jt) = 1.0 / REAL( iiauperbgc )
+            END DO
                 !                             !---------------------------------------------------------
-             ELSEIF ( niaufn == 1 ) THEN      ! Linear hat-like, centred in middle of IAU interval 
+         ELSEIF ( niaufnbgc == 1 ) THEN      ! Linear hat-like, centred in middle of IAU interval 
               !                             !---------------------------------------------------------
               ! Compute the normalization factor
-                znorm = 0._wp
-                IF( MOD( iiauperbgc, 2 ) == 0 ) THEN   ! Even number of time steps in IAU interval
-                   imid = iiauperbgc / 2 
-                   DO jt = 1, imid
-                      znorm = znorm + REAL( jt )
-                   END DO
-                   znorm = 2.0 * znorm
-                ELSE                                ! Odd number of time steps in IAU interval
-                   imid = ( iiauperbgc + 1 ) / 2        
-                   DO jt = 1, imid - 1
-                       znorm = znorm + REAL( jt )
-                   END DO
-                   znorm = 2.0 * znorm + REAL( imid )
-                ENDIF
-                znorm = 1.0 / znorm
-              !
-                DO jt = 1, imid - 1
-                   wgtiaubgc(jt+nitibgcstr-1) = REAL( jt ) * znorm
-                END DO
-                DO jt = imid, iiauper
-                   wgtiaubgc(jt+nitibgcstr-1) = REAL( iiauperbgc - jt + 1 ) * znorm
-                END DO
-               !
-             ENDIF 
-         ENDIF 
-
-         ! Test that the integral of the weights over the weighting interval equals 1
-          IF(lwp) THEN
-             WRITE(numout,*)
-             WRITE(numout,*) 'asm_inc_init : IAU weights'
-             WRITE(numout,*) '~~~~~~~~~~~~'
-             WRITE(numout,*) '             time step         IAU  weight'
-             WRITE(numout,*) '             =========     ====================='
-             ztotwgt = 0.0
-             DO jt = 1, icycper
-                ztotwgt = ztotwgt + wgtiau(jt)
-                WRITE(numout,*) '         ', jt, '       ', wgtiau(jt) 
-             END DO   
-             WRITE(numout,*) '         ==================================='
-             WRITE(numout,*) '         Time-integrated weight = ', ztotwgt
-             WRITE(numout,*) '         ==================================='
-             IF (ln_trcinc .AND.(.NOT.ln_bgcdi)) THEN
-                 WRITE(numout,*)
-                 WRITE(numout,*) 'asm_inc_init : IAU weights for BGC'
-                 WRITE(numout,*) '~~~~~~~~~~~~'
-                 WRITE(numout,*) '             time step         IAU  weight'
-                 WRITE(numout,*) '             =========     ====================='
-                 ztotwgt = 0.0
-                 DO jt = 1, icycper
-                    ztotwgt = ztotwgt + wgtiaubgc(jt)
-                    WRITE(numout,*) '         ', jt, '       ', wgtiaubgc(jt) 
-                 END DO   
-                 WRITE(numout,*) '         ==================================='
-                 WRITE(numout,*) '         Time-integrated weight = ', ztotwgt
-                 WRITE(numout,*) '         ==================================='
-                 ENDIF
-          ENDIF
-         
+            znorm = 0._wp
+            IF( MOD( iiauperbgc, 2 ) == 0 ) THEN   ! Even number of time steps in IAU interval
+               imid = iiauperbgc / 2 
+               DO jt = 1, imid
+                  znorm = znorm + REAL( jt )
+               END DO
+               znorm = 2.0 * znorm
+            ELSE                                ! Odd number of time steps in IAU interval
+               imid = ( iiauperbgc + 1 ) / 2        
+               DO jt = 1, imid - 1
+                  znorm = znorm + REAL( jt )
+               END DO
+               znorm = 2.0 * znorm + REAL( imid )
+            ENDIF
+            znorm = 1.0 / znorm
+                !
+            DO jt = 1, imid - 1
+!               wgtiaubgc(jt+nitibgcstr-1) = REAL( jt ) * znorm
+               wgtiaubgc(jt) = REAL( jt ) * znorm
+            END DO
+            DO jt = imid, iiauperbgc
+!               wgtiaubgc(jt+nitibgcstr-1) = REAL( iiauperbgc - jt + 1 ) * znorm
+               wgtiaubgc(jt) = REAL( iiauperbgc - jt + 1 ) * znorm
+            END DO
+                !
+         ENDIF
+      ENDIF bgciau
+      
+      ! Test that the integral of the weights over the weighting interval equals 1
+      IF(lwp) THEN
+         IF (ln_asmiau) THEN
+            WRITE(numout,*)
+            WRITE(numout,*) 'asm_inc_init : IAU weights'
+            WRITE(numout,*) '~~~~~~~~~~~~'
+            WRITE(numout,*) '             time step         IAU  weight'
+            WRITE(numout,*) '             =========     ====================='
+            ztotwgt = 0.0
+            DO jt = 1, icycper
+               ztotwgt = ztotwgt + wgtiau(jt)
+               WRITE(numout,*) '         ', jt, '       ', wgtiau(jt) 
+            END DO
+            WRITE(numout,*) '         ==================================='
+            WRITE(numout,*) '         Time-integrated weight = ', ztotwgt
+            WRITE(numout,*) '         ==================================='
+         END IF
+         IF (ln_trcinc .AND.(ln_bgciau)) THEN
+            WRITE(numout,*)
+            WRITE(numout,*) 'asm_inc_init : IAU weights for BGC'
+            WRITE(numout,*) '~~~~~~~~~~~~'
+            WRITE(numout,*) '             IAU step           IAU  weight'
+            WRITE(numout,*) '            ==========     ====================='
+            ztotwgt = 0.0
+            DO jt = 1, iiauperbgc
+               ztotwgt = ztotwgt + wgtiaubgc(jt)
+               WRITE(numout,*) '         ', jt, '       ', wgtiaubgc(jt) 
+            END DO
+            WRITE(numout,*) '         ==================================='
+            WRITE(numout,*) '         Time-integrated weight = ', ztotwgt
+            WRITE(numout,*) '         Number of IAU steps = ', iiauperbgc
+            WRITE(numout,*) '         ==================================='
+         ENDIF
       ENDIF
+      
 
       !--------------------------------------------------------------------
       ! Allocate and initialize the increment arrays
@@ -630,7 +657,7 @@ if (lwp)write (numout,*) 'Allocate BGC increment arrays'
          CALL iom_close( inum )
          !
       ENDIF
-#endif    ! key_USE_PDAF
+#endif
       !
       !                                            !--------------------------------------
       IF ( ln_dyninc .AND. nn_divdmp > 0 ) THEN    ! Apply divergence damping filter
@@ -1268,23 +1295,18 @@ if (lwp)write (numout,*) 'Allocate BGC increment arrays'
 
     !!----------------------------------------------------------------------
       !
-   IF (ln_bgcdi) THEN
+   IF (ln_bgcdin) THEN
       IF ( (ln_top_euler .AND. ( kt == nitdinbgc_r )) .OR. &
            & (.NOT. ln_top_euler .AND.( kt == nitdinbgc_r .OR. kt == (nitdinbgc_r+1) )) )THEN
 
          ! If Euler time scheme is applied for trc transport, di works at 1 time step
          ! IF Leap-frog time integration is applied, di has to be introduced 2x (2Dt in eq.)
-         IF (lwp) WRITE(numout,*) 'BGC Increment is added in one timestep'
-                   !
-         it = kt - nit000 + 1
-                   !
                   !
-                  !  IF(lwp) THEN
-                  !     WRITE(numout,*) 
-                  !     WRITE(numout,*) 'trc_asm_inc : TRC IAU at time step =', &
-                  !       & kt,' with IAU weight =', oxyfac 
-                  !     WRITE(numout,*) '~~~~~~~~~~~~'
-                  !  ENDIF
+         IF(lwp) THEN
+            WRITE(numout,*) 
+            WRITE(numout,*) 'trc_asm_inc : TRC DIN at time step =', kt
+            WRITE(numout,*) '~~~~~~~~~~~~'
+         ENDIF
 #if defined key_USE_PDAF
          IF (lwp) WRITE(*,*) 'NEMO-ASMINC BGC Increment is added at timestep', kt
 
@@ -1304,11 +1326,11 @@ if (lwp)write (numout,*) 'Allocate BGC increment arrays'
                 ! 
       ENDIF
              !
-   ELSEIF(ln_asmiau) THEN
+   ELSEIF(ln_bgciau) THEN
              !
       IF ( ( kt >= nitibgcstr_r ).AND.( kt <= nitibgcfin_r ) ) THEN
            !
-         it = kt - nit000 + 1
+         it = kt - nit000 + 1 - nitibgcstr_r + 1
              ! this is not a trend but a state and therefore shall not be div. by rdt 
          IF (ln_top_euler) THEN
             zincwgt = wgtiaubgc(it) !Euler time integration
@@ -1319,7 +1341,7 @@ if (lwp)write (numout,*) 'Allocate BGC increment arrays'
          IF(lwp) THEN
             WRITE(numout,*) 
             WRITE(numout,*) 'trc_asm_inc : TRC IAU at time step = ', &
-                 &  kt,' with IAU weight = ', wgtiaubgc(it)
+                 &  kt,' IAU step', it, ' with IAU weight = ', wgtiaubgc(it)
             WRITE(numout,*) '~~~~~~~~~~~~'
          ENDIF
             !

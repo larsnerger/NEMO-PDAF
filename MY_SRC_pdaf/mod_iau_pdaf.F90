@@ -13,31 +13,39 @@ module mod_iau_pdaf
        only: mype_ens
   use mod_nemo_pdaf, &
        only: nitend, nit000
-  use mod_assimilation_pdaf, &
-       only: delt_obs
   use mod_statevector_pdaf, &
        only: update_phys
   use asminc, &
        ONLY: ln_bkgwri, ln_trainc, ln_dyninc, ln_sshinc, &
        ln_asmdin, ln_asmiau, nitbkg, nitdin, nitiaustr, nitiaufin, &
        niaufn, ln_salfix, salfixmin, nn_divdmp
+  use asmpar, &
+       only: nitdin_r, nitiaustr_r, nitiaufin_r
 #if defined key_top
   use mod_statevector_pdaf, only: n_trc, jptra, sv_bgc1, sfields, id
   use asminc, &
-       only: n_update_bgc, ids_update_bgc, bgc_bkginc, nitdinbgc, &
-       ln_trcinc, ln_bgcdi, nitdinbgc, ln_oxyinc, ln_no3inc, &
-       ln_nh4inc, ln_po4inc, ln_flainc, ln_diainc, ln_cyainc, &
-       nitibgcstr, nitibgcfin
+       only: n_update_bgc, ids_update_bgc, bgc_bkginc, &
+       nitdinbgc, nitibgcstr, nitibgcfin, niaufnbgc, &
+       ln_trcinc, ln_bgcdin, ln_bgciau, &
+       ln_oxyinc, ln_no3inc, ln_nh4inc, ln_po4inc, &
+       ln_flainc, ln_diainc, ln_cyainc
   use asmpar, &
-       only: nitdinbgc_r
+       only: nitdinbgc_r, nitibgcstr_r, nitibgcfin_r
 #endif
 
    implicit none
    save
+   public
+
+   logical :: do_asmiau = .false.      ! Whether to apply IAU for ocean physics; if FALSE, DI is used
+   logical :: do_bgciau = .false.      ! Whether to apply IAU for BGC; if FALSE, DI is used
+   integer :: steps_asmiau = 1         ! Number of steps for physics IAU
+   integer :: steps_bgciau = 1         ! Number of steps for BGC IAU
+   integer :: shape_asmiau = 0         ! Shape of physics IAU function: (0) constant; (1) hat
+   integer :: shape_bgciau = 0         ! Shape of BGC IAU function: (0) constant; (1) hat
 
 ! *** Local variables ***
-   integer :: next_inc = 0
-
+   integer, private :: next_inc = 0
 contains
 
 !> Routine to initialises variables for NEMO's ASMINC module
@@ -47,44 +55,75 @@ contains
 !! The routine also initializes the increment array for the
 !! BGC data assimilation uypdate.
 !!
-   subroutine asm_inc_init_pdaf
+   subroutine asm_inc_init_pdaf(delt_obs)
 
      implicit none
 
+! *** Arguments ***
+     integer, intent(in) :: delt_obs
+
+! *** Local variables
      integer :: id_bgc1
      integer :: id_var
 
-     ! Set switches and parameters for ASMINC
+
+! *******************************************
+! *** Initialize Settings for NEMO ASMINC ***
+! *******************************************
+
+     ! Set initial increment step
+     next_inc = delt_obs
+
+     ! Set switches and parameters for ASMINC - physics
+
      ln_bkgwri  = .false.   !  Logical switch for writing out background state
      if (.not. update_phys) then
         ln_trainc  = .false.   !  Logical switch for applying tracer increments
         ln_dyninc  = .false.   !  Logical switch for applying velocity increments
         ln_sshinc  = .false.   !  Logical switch for applying SSH increments
+        ln_asmdin  = .false.      !  Logical switch for Direct Initialization (DI)
+        ln_asmiau  = .false.   !  Logical switch for Incremental Analysis Updating (IAU)
      else
         ln_trainc  = .true.    !  Logical switch for applying tracer increments
         ln_dyninc  = .true.    !  Logical switch for applying velocity increments
         ln_sshinc  = .true.    !  Logical switch for applying SSH increments
+        if (do_asmiau) then
+           ln_asmiau  = .true.    !  Logical switch for Incremental Analysis Updating (IAU)
+           ln_asmdin  = .false.      !  Logical switch for Direct Initialization (DI)
+        else
+           ln_asmiau  = .false.   !  Logical switch for Incremental Analysis Updating (IAU)
+           ln_asmdin  = .true.      !  Logical switch for Direct Initialization (DI)
+        end if
      end if
-     ln_asmdin  = .false.   !  Logical switch for Direct Initialization (DI)
-     ln_asmiau  = .false.   !  Logical switch for Incremental Analysis Updating (IAU)
-
      nitbkg     = 0         !  Timestep of background in [0,nitend-nit000-1]
      nitdin     = delt_obs  !  Timestep of background for DI in [0,nitend-nit000-1]
-     nitiaustr  = 1         !  Timestep of start of IAU interval in [0,nitend-nit000-1]
-     nitiaufin  = 40        !  Timestep of end of IAU interval in [0,nitend-nit000-1]
-     niaufn     = 0         !  Type of IAU weighting function
+     nitiaustr = delt_obs                !  Timestep of start of BGC IAU interval
+     nitiaufin = delt_obs+steps_asmiau   !  Timestep of end of BGC IAU interval
+     niaufn     = shape_asmiau           !  Type of IAU weighting function
      ln_salfix  = .false.   !  Logical switch for ensuring that the sa > salfixmin
      salfixmin  = -9999     !  Minimum salinity after applying the increments
      nn_divdmp  = 0         !  Number of iterations of divergence damping operator
 
+
 #if defined key_top
 
-     ! Switches and settings for BGC increments
-     ln_trcinc  = .true.    !  Logical switch for applying BGC increments
-     ln_bgcdi = .true.      !  Logical switch for applying DI for BGC
-     nitdinbgc = delt_obs   !  Timestep for DI for BGC
-!     nitibgcstr = 1         !  Timestep of start of BGC IAU interval
-!     nitibgcfin = 3         !  Timestep of end of BGC IAU interval
+     ! Switches and parameters for ASM BGC increments
+
+     ln_trcinc  = .true.        !  Logical switch for applying BGC increments
+
+     if (do_bgciau) then        ! Switch between IAU and direct insertion
+        ln_bgciau  = .true.     !  Logical switch for Incremental Analysis Updating (IAU)
+        ln_bgcdin = .false.     !  Logical switch for applying DI for BGC
+     else
+        ln_bgciau  = .false.    !  Logical switch for Incremental Analysis Updating (IAU)
+        ln_bgcdin = .true.      !  Logical switch for applying DI for BGC
+     end if
+     niaufnbgc  = shape_bgciau  !  Type of BGC IAU weighting function
+     
+     ! The steps are initialized here and later changed in cycled DA
+     nitdinbgc = delt_obs                 !  Timestep for DI for BGC
+     nitibgcstr = delt_obs                !  Timestep of start of BGC IAU interval
+     nitibgcfin = delt_obs+steps_bgciau-1 !  Timestep of end of BGC IAU interval
 
      ! The folloing switches should be set for consistency
      ! they are not used with PDAF
@@ -95,11 +134,14 @@ contains
      ln_flainc = .false.     !: No flagellate concentration increment
      ln_diainc = .false.     !: No diatom concentration increment
      ln_cyainc = .false.     !: No cyano concentration increment
+#endif
 
 
 ! *************************************************
 ! *** Prepare increment array for BCG variables ***
 ! *************************************************
+
+#if defined key_top
 
     ! Count number of prognostic BGC fields that are updated by the DA
     allocate(ids_update_bgc(jptra))
@@ -120,30 +162,52 @@ contains
     allocate(bgc_bkginc(jpi, jpj, jpk, n_update_bgc))
     bgc_bkginc = 0.0
 
+    ! Update ln_trcinc if no BGC updates are done by PDAF
+    if (n_update_bgc==0) ln_trcinc  = .false.    !  Logical switch for applying tracer increments
+
 #endif
+
+
+! *********************
+! *** Screen output ***
+! *********************
 
     if (mype_ens==0) then
        write (*,'(/a,2x,a)') 'NEMO-PDAF', '*** Setup for NEMO ASM ***'
        if (update_phys) then 
-          write (*,'(/a,5x,a)') 'NEMO-PDAF', '--- Apply increment for NEMO physics'
+          write (*,'(a,5x,a)') 'NEMO-PDAF', '--- Apply increment for NEMO physics'
+          if (ln_asmdin) write (*,'(a,5x,a)') 'NEMO-PDAF', '--- Use DIN for NEMO fields'
+          if (ln_asmiau) write (*,'(a,5x,a)') 'NEMO-PDAF', '--- Use IAU for NEMO fields'
        else
-          write (*,'(/a,5x,a)') 'NEMO-PDAF', '--- No increment for NEMO physics'
+          write (*,'(a,5x,a)') 'NEMO-PDAF', '--- No increment for NEMO physics'
        end if
 #if defined key_top
-       write (*,'(a,5x,a,i5)') 'NEMO-PDAF', '--- Number of updated BCG fields:', n_update_bgc
-       if (ln_bgcdi) write (*,'(a,5x,a)') 'NEMO-PDAF', '--- Use DI for BGC fields'
+       if (ln_trcinc) then
+
+          write (*,'(a,5x,a,i5)') 'NEMO-PDAF', '--- Number of updated BCG fields:', n_update_bgc
+          if (ln_bgciau) then
+             write (*,'(a,5x,a)') 'NEMO-PDAF', '--- Use IAU for BGC fields'
+          else
+             write (*,'(a,5x,a)') 'NEMO-PDAF', '--- Use DIN for BGC fields'
+          end if
+
+       else
+          write (*,'(a,5x,a,i5)') 'NEMO-PDAF', '--- No increment for BCG fields!'
+       end if
 #endif
-       if (ln_asmdin) write (*,'(a,5x,a)') 'NEMO-PDAF', '--- Use DI for NEMO fields'
-       if (ln_asmiau) write (*,'(a,5x,a)') 'NEMO-PDAF', '--- Use IAU for NEMO fields'
-       write (*,'(/a)') ' '
+!       write (*,'(/a)') ' '
 
  write (*,*) 'NEMO-PDAF', 'TRC-IDs of updated BGC fields', ids_update_bgc(1:n_update_bgc)
     end if
+
+     ! Update increment step
+     call update_asm_step_pdaf()
 
    end subroutine asm_inc_init_pdaf
 
 
 
+!-------------------------------------------------------------------------------
 !> Routine to store analysis step for NEMO-ASM
 !!
 !! For direct initialization, the increment is applied on the
@@ -152,34 +216,79 @@ contains
 
      implicit none
 
-     integer, intent(in) :: nextinc
+     integer, intent(in) :: nextinc      ! Time of (starting) next assimilation increment
 
+     ! Store step of (start) of next increments
      next_inc = nextinc + 1
+
+     call update_asm_step_pdaf()
 
    end subroutine store_asm_step_pdaf
 
 
-!> Routine to update analysis step for NEMO-ASM
+
+!-------------------------------------------------------------------------------
+!> Routine to update analysis step values for NEMO-ASM
 !!
 !! This routine is called in assimilate_pdaf to
 !! update the time step information for applying
-!! assimilation increments
+!! assimilation increments.
+!!
    subroutine update_asm_step_pdaf()
 
      implicit none
 
-     nitdin = next_inc
-     nitdinbgc = next_inc
-     nitdinbgc_r    = nitdinbgc    + nit000 - 1            ! Background time for DI referenced to nit000
-!     nitibgcstr_r = nitibgcstr + nit000 - 1            ! Start of IAU interval referenced to nit000
-!     nitibgcfin_r = nitibgcfin + nit000 - 1            ! End of IAU interval referenced to nit000
-!     iiauperbgc   = nitibgcfin_r - nitibgcstr_r + 1     ! IAU interval length
+! *** Settings for ASMINC physics ***
+
+     nitdin       = next_inc                           ! Time step of the background state for direct initialization
+     nitdin_r     = nitdin    + nit000 - 1             ! Background time for DI referenced to nit000
+     nitiaustr   = next_inc                            ! Timestep of start of IAU interval
+     nitiaufin   = next_inc+steps_asmiau - 1           ! Timestep of end of IAU interval
+     nitiaustr_r = nitiaustr + nit000 - 1              ! Start of IAU interval referenced to nit000
+     nitiaufin_r = nitiaufin + nit000 - 1              ! End of IAU interval referenced to nit000
+
+     if (mype_ens==0) then
+        if (ln_trainc .or. ln_dyninc .or. ln_sshinc) then
+           if (ln_bgciau) then
+              write (*,'(a,5x,a,2i)') 'NEMO-PDAF', '--- set IAU steps for ASMINC: ', nitiaustr_r, nitiaufin_r
+           else
+              write (*,'(a,5x,a,i)') 'NEMO-PDAF', '--- set DIN step for ASMINC: ', nitdin_r
+           end if
+        end if
+     end if
+
+
+#if defined key_top
+! *** Settings for ASMINC BGC ***
+
+     nitdinbgc    = next_inc                           ! Time step of direct init for BGC
+     nitdinbgc_r  = nitdinbgc    + nit000 - 1          ! Background time for DI referenced to nit000
+     nitibgcstr   = next_inc                           ! Timestep of start of BGC IAU interval
+     nitibgcfin   = next_inc+steps_bgciau - 1          ! Timestep of end of BGC IAU interval
+     nitibgcstr_r = nitibgcstr + nit000 - 1            ! Start of BGC IAU interval referenced to nit000
+     nitibgcfin_r = nitibgcfin + nit000 - 1            ! End of BGC IAU interval referenced to nit000
+
+     if (mype_ens==0) then
+        if (ln_trcinc) then
+           if (ln_bgciau) then
+              write (*,'(a,5x,a,2i)') 'NEMO-PDAF', '--- set BGC IAU steps for ASMINC: ', nitibgcstr_r, nitibgcfin_r
+           else
+              write (*,'(a,5x,a,i)') 'NEMO-PDAF', '--- set BGC DIN step for ASMINC: ', nitdinbgc_r
+           end if
+        end if
+     end if
+#endif
 
    end subroutine update_asm_step_pdaf
 
 
 
+!-------------------------------------------------------------------------------
 !> Routine to update the bkginc arrays of NEMO-ASM
+!!
+!! This routine updates the increment arrays for the
+!! ASMINC module of NEMO.
+!!
    subroutine update_bkginc_pdaf(dim_p, state_p, verbose)
 
      use mod_statevector_pdaf, &
@@ -210,6 +319,10 @@ contains
      integer :: i_bgcinc, i_trn     ! Indices
      integer :: id_var              ! Indices
 
+
+! *************************************************
+! *** Prepare increment arrays for NEMO physics ***
+! *************************************************
 
      physics: if (update_phys > 0) then
 
@@ -268,7 +381,11 @@ contains
 
      end if physics
 
-     ! BGC
+
+! *************************************************
+! *** Prepare increment array for BCG variables ***
+! *************************************************
+
 #if defined key_top
      do i_bgcinc = 1, n_update_bgc
 
@@ -281,7 +398,6 @@ contains
            id_var=id%bgc1(i_trn)
 
            if (sfields(id_var)%update) then
-     if (verbose==1) write (*,*) 'NEMO-PDAF', 'increment IDs', i_bgcinc, i_trn, id_var, sfields(id_var)%variable
 
               ! Update prognostic BGC variables
               call state2field_inc(state_p, &
@@ -297,10 +413,12 @@ contains
            end if
         end if
      end do
+if (mype_ens==12) write (*,*) 'MAXBGC', 1,maxval(BGC_bkginc(:,:,1,1))
 #endif
 
    end subroutine update_bkginc_pdaf
 
+!-------------------------------------------------------------------------------
 
    subroutine bgc3d_asm_inc( kt )
 !       use dom_oce, only: rdt

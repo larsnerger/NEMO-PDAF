@@ -255,13 +255,6 @@ contains
     call PDAF_set_comm_pdaf(COMM_ensemble)
       
 
-! **************************************
-! *** Initialise PDAF arrays for IAU ***
-! **************************************
-
-    call asm_inc_init_PDAF()
-
-
 ! ********************************
 ! *** Perturb ERGOM parameters ***
 ! ********************************
@@ -341,6 +334,13 @@ contains
 
     call PDAF_get_state(steps, timenow, doexit, next_observation_pdaf, &
          distribute_state_init_pdaf, prepoststep_ens_pdaf, status_pdaf)
+
+
+! **************************************
+! *** Initialise PDAF arrays for IAU ***
+! **************************************
+
+    call asm_inc_init_pdaf(delt_obs)
 
   end subroutine init_pdaf
 
