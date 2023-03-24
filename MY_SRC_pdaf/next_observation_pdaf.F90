@@ -41,12 +41,11 @@ subroutine next_observation_pdaf(stepnow, nsteps, doexit, time)
 
   ! Not used in this implementation
   time = 0.0
+  doexit = 0
 
   if (stepnow + delt_obs <= nitend) then
      ! *** During the assimilation process ***
      
-     doexit = 0          ! Not used in this implementation
-
      if (stepnow == nit000 - 1) then
         ! First analysis step 
         nsteps = delt_obs-1     ! Analysis step one step before end of day
@@ -59,20 +58,24 @@ subroutine next_observation_pdaf(stepnow, nsteps, doexit, time)
 
      ! Update analysis step information for NEMO-ASM
      if (stepnow == nit000 - 1) then
-        ! First analysis step - apply increments after first analysis step
+        ! At initial time - apply increments after first analysis step
         call store_asm_step_pdaf(stepnow+nsteps)
      else
-        ! First analysis step - apply increments after current analysis step
+        ! analysis step - apply increments after current analysis step
         call store_asm_step_pdaf(stepnow)
      end if
 
   else
      ! *** End of assimilation process ***
-     nsteps = 0          ! No more steps
-     doexit = 1          ! Not used in this implementation
+
+     ! Set nsteps so stepnow+delt_bs>nitend to ensure that PDAF calls distribute_state
+     nsteps = delt_obs        
 
      if (mype_ens == 0) write (*, '(a, i7, 3x, a)') &
-          'NEMO-PDAF', stepnow, 'No more observations - end assimilation'
+          'NEMO-PDAF', stepnow, 'No more observations - end assimilation and complete forecast'
+
+     ! Update analysis step information for NEMO-ASM
+     call store_asm_step_pdaf(stepnow)
   end if
 
 end subroutine next_observation_pdaf
