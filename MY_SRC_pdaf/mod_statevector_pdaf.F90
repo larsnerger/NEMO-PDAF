@@ -47,6 +47,7 @@ module mod_statevector_pdaf
      integer :: off = 0                    ! Offset of field in state vector
      integer :: jptrc = 0                  ! index of the tracer in nemo tracer variable
      logical :: update = .false.           ! Whether to update this variable in the analysis step
+     character(len=3) :: type = ''         ! Type of field (phy/bio)
      character(len=10) :: variable = ''    ! Name of field
      character(len=20) :: name_incr = ''   ! Name of field in increment file
      character(len=20) :: name_rest_n = '' ! Name of field in restart file (n-field)
@@ -262,6 +263,7 @@ contains
        sfields(id_var)%file = 'files_surf_T.txt'
        sfields(id_var)%rst_file = 'restart_in.nc'
        sfields(id_var)%unit = 'm'
+       sfields(id_var)%type = 'phy'
        sfields(id_var)%transform = 0
        sfields(id_var)%trafo_shift = 0.0
        sfields(id_var)%limit = 0
@@ -280,6 +282,7 @@ contains
        sfields(id_var)%file = 'files_T.txt'
        sfields(id_var)%rst_file = 'restart_in.nc'
        sfields(id_var)%unit = 'degC'
+       sfields(id_var)%type = 'phy'
        sfields(id_var)%transform = 0
        sfields(id_var)%trafo_shift = 0.0
        if (update_phys) sfields(id_var)%update = .true.
@@ -297,6 +300,7 @@ contains
        sfields(id_var)%file = 'files_T.txt'
        sfields(id_var)%rst_file = 'restart_in.nc'
        sfields(id_var)%unit = 'psu'
+       sfields(id_var)%type = 'phy'
        sfields(id_var)%transform = 0
        sfields(id_var)%trafo_shift = 0.0
        if (update_phys) sfields(id_var)%update = .true.
@@ -314,6 +318,7 @@ contains
        sfields(id_var)%file = 'files_U.txt'
        sfields(id_var)%rst_file = 'restart_in.nc'
        sfields(id_var)%unit = 'm/s'
+       sfields(id_var)%type = 'phy'
        sfields(id_var)%transform = 0
        sfields(id_var)%trafo_shift = 0.0
        if (update_phys) sfields(id_var)%update = .true.
@@ -331,6 +336,7 @@ contains
        sfields(id_var)%file = 'files_V.txt'
        sfields(id_var)%rst_file = 'restart_in.nc'
        sfields(id_var)%unit = 'm/s'
+       sfields(id_var)%type = 'phy'
        sfields(id_var)%transform = 0
        sfields(id_var)%trafo_shift = 0.0
        if (update_phys) sfields(id_var)%update = .true.
@@ -346,6 +352,7 @@ contains
         sfields(id_var)%jptrc = id_bgc1
         sfields(id_var)%file = 'NORDIC_1d_ERGOM_T_'
         sfields(id_var)%rst_file = 'restart_trc_in.nc'
+        sfields(id_var)%type = 'bio'
         sfields(id_var)%transform = 0   ! log-transform
         sfields(id_var)%limit = 1
         sfields(id_var)%min_limit = 0.00000001_pwp
