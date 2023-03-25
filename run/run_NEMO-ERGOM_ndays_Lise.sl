@@ -2,12 +2,13 @@
 #SBATCH --job-name=EGMDA
 #SBATCH -p mpp
 #SBATCH --nodes=8
-#SBATCH --ntasks-per-node=96
+#SBATCH --tasks-per-node=96
 #SBATCH --time=1:00:00
-#SBATCH --partition=standard96:test
-##SBATCH --partition=standard96
+##SBATCH --partition=standard96:test
+#SBATCH --partition=standard96
+##SBATCH --constraint=turbo_off
 #SBATCH --mail-user=_EMAIL-ADDRESS_
-#SBATCH --mail-type=END
+#SBATCH --mail-type=END,FAIL
 #SBATCH -A _PROJECT-ID_
 
 # Run script for HLRN-Lise using OpenMPI 4.1.4
@@ -18,7 +19,6 @@
 
 module load intel/18.0.6
 module load openmpi/intel/4.1.4
-#module load netcdf-parallel/ompi/intel.18/4.7.4
 
 ulimit -s unlimited
 
@@ -30,7 +30,7 @@ yy=2015 #Start year
 mm=01   #Start month
 dd=01   #Start day
 
-tstr2='20150101' #End date yyyymmdd
+tstr_end='20150101' #End date yyyymmdd
 
 np_nemo=186  #number of PE's for nemo
 np_xios=6    #number of PE's for xios
@@ -57,14 +57,21 @@ initial_date=20150101
 #set -xv #debugging
 
 # ---------------------------------------------------------------------------------------------------
-nemo_exe_dir='/home/hzfblner/SEAMLESS/nemo4_dev_allEuler/cfgs/NEMO-ERGOM-PDAF_ompi414/BLD/bin'
-xios_exe_dir='/home/hzfblner/SEAMLESS/xios-2.0_par_ompi414/bin'
+# Name of experiment and output directory
+EXP='exp.free_N30_new'
+OUTDIR="."
+# ---------------------------------------------------------------------------------------------------
+
+nemo_exe_dir='/home/hbknerge/SEAMLESS/nemo4_dev_allEuler/cfgs/NEMO-ERGOM-PDAF/BLD/bin'
+xios_exe_dir='/home/hzfblner/SEAMLESS/xios-2.0_par_intel22/bin'
 #rebuild='/home_ad/bm1405/balmfc_git/nemo4_dev/tools/REBUILD_NEMO/'
 restart_out='output/restarts'
 archive='/scratch/usr/hzfblner/SEAMLESS/forcing_ergom_allEuler'
 archive_ln='/scratch/usr/hzfblner/SEAMLESS/forcings'
 inputs_nc='/scratch/usr/hzfblner/SEAMLESS/run/inputs_allEuler_nc4'
-setup_store='/scratch/usr/hzfblner/SEAMLESS/run/config_ERGOM_allEuler'
+#setup_store='/scratch/usr/hbkycsun/data/setup_store'
+#setup_store='/scratch/usr/hbknerge/SEAMLESS/run/config_ERGOM_allEuler_Smago'
+setup_store='/scratch/usr/hbknerge/SEAMLESS/run/config_ERGOM_allEuler'
 initialdir='/scratch/usr/hzfblner/SEAMLESS/restart'
 disrestartdir='/scratch/usr/hzfblner/SEAMLESS/run/restart_dist_20150101'
 # ---------------------------------------------------------------------------------------------------
@@ -76,14 +83,29 @@ export archive
 
 # ---------------------------------------------------------------------------------------------------
 
-tstr0=`date +%Y%m%d`
-
 sdte=`date --date "$dte0 0 day" +'%Y-%m-%d %H:%M:%S'`
 yyp1=`date +'%Y' -d"$sdte"`                     #  formating
 mmp1=`date +'%m' -d"$sdte"`
 ddp1=`date +'%d' -d"$sdte"`
-tstr="$yy$mm$dd"
-tstr_ini=$tstr    # Store date at start of run
+
+tstr_ini="$yy$mm$dd"                          # Date at start of run
+tstrm1=$(date -I -d "$tstr_ini - 1 day ")         # Previous day (used to link forcings)
+tstrendp1=$(date -I -d "$tstr_end + 1 day ")  # Final day plus one (used to link forcings)
+tstr=$tstr_ini                                # Store date at start of run
+#echo 'TSTR', $tstr, $tstr_ini, $tstr_end, $tstrm1, $tstrendp1
+
+echo '----------------------------------------'
+echo 'NEMO-ERGOM-PDAF data assimilation'
+if [ $tstr -eq $initial_date ]; then
+    echo "Start from initial date: " $initial_date
+else
+    echo "Restart at date:         " $tstr
+fi
+echo "Final date:              " $tstr_end
+echo "Experiment:              " $EXP
+echo "Results are stored in: " $OUTDIR/$EXP
+echo 'Ensemble size = ' $NENS
+echo '----------------------------------------'
 
 # ---------------------------------------------------------------------------------------------------
 
@@ -93,10 +115,11 @@ if [ $prepare -eq 1 ]; then
     if [ $tstr -eq $initial_date ]; then
 
 	# Prepare PDAF namelist
-	cp $setup_store/namelist_cfg.pdaf_template ./
+	#cp $setup_store/namelist_cfg.pdaf_template ./
 	cat namelist_cfg.pdaf_template     \
 	    | sed -e "s:_DIMENS_:$NENS:"     \
 	    | sed -e "s:_RESTART_:.false.:"     \
+	    | sed -e "s:_MONTH_:$mm:"     \
 	    > namelist_cfg.pdaf
     else
 
@@ -104,6 +127,7 @@ if [ $prepare -eq 1 ]; then
 	cat namelist_cfg.pdaf_template     \
 	    | sed -e "s:_DIMENS_:$NENS:"     \
 	    | sed -e "s:_RESTART_:.true.:"     \
+	    | sed -e "s:_MONTH_:$mm:"     \
 	    > namelist_cfg.pdaf
 
     fi # if [ $tstr -eq $initial_date ]
@@ -156,13 +180,23 @@ if [ $prepare -eq 1 ]; then
 	  export wdir
 	  mkdir -p $wdir/output/restarts
 	  mkdir -p $wdir/output/log
-	  mkdir -p $wdir/output/data
-	  mkdir -p $wdir/output/DA
+#	  mkdir -p $wdir/output/cfg
+#	  mkdir -p $wdir/output/data
+#	  mkdir -p $wdir/output/DA
 	  mkdir -p $wdir/initialstate
 	  mkdir -p $wdir/forcing
 
 	  echo 'Run directory: ' $wdir
 	done
+
+        # Create experiment output directories
+        echo  ' '
+        echo 'Create experiment output directories...'
+        #mkdir -p $OUTDIR/$EXP/output/log
+        mkdir -p $OUTDIR/$EXP/cfg
+        mkdir -p $OUTDIR/$EXP/data
+        mkdir -p $OUTDIR/$EXP/DA
+
 	echo ' '
 
 # ---------------------------------------------------------------------------------------------------
@@ -183,14 +217,6 @@ if [ $prepare -eq 1 ]; then
     fi # if [ $tstr -eq $initial_date ]
     
 # ---------------------------------------------------------------------------------------------------
-#    tstr0=`date +%Y%m%d`
-
-#    sdte=`date --date "$dte0 0 day" +'%Y-%m-%d %H:%M:%S'`
-#    yyp1=`date +'%Y' -d"$sdte"`                     #  formating
-#    mmp1=`date +'%m' -d"$sdte"`
-#    ddp1=`date +'%d' -d"$sdte"`
-#    tstr="$yy$mm$dd"
-#    tstr_ini=$tstr    # Store date at start of run
 
     echo 'Simulation with nemo executable from ' $nemo_exe_dir
 
@@ -203,10 +229,15 @@ if [ $prepare -eq 1 ]; then
       ENSstr=`printf %03d $i`
       wdir=`pwd`/${ENSstr}
       export wdir
-      echo 'linking restart...'
+      if [ $i -eq 1 ]; then
+	  echo '----------------------------------------'
+	  echo 'Prepare restart files'
+      fi
       if [ $tstr -eq $initial_date ]; then
 	  if [ $restart_dis -eq 0 ]; then
-	      echo "Link initial restart files for full domain"
+	      if [ $i -eq 1 ]; then
+		  echo "Link initial restart files for full domain"
+	      fi
 	      if [ ! -f $wdir/initialstate/restart_in.nc ]; then
 		  ln -s $initialdir/NORDIC_2015010100_restart.nc $wdir/initialstate/restart_in.nc
 	      fi
@@ -225,24 +256,22 @@ if [ $prepare -eq 1 ]; then
 		  ln -s $inputs_nc/initialstate/NORDIC-NS1_restart_ptrc_in.nc $wdir/NORDIC-NS1_restart_ptrc_in.nc
 	      fi
 	  else
-	      echo "Link distributed initial restart files"
-	      for((i=1;i<=$NENS;i++))
-		do
-		ENSstr=`printf %03d $i`
-		wdir=`pwd`/${ENSstr}
-		export wdir
-		ln -s ${disrestartdir}/* ${wdir}/initialstate
-	      done
+	      if [ $i -eq 1 ]; then
+		  echo "Link distributed initial restart files"
+	      fi
+	      ln -s ${disrestartdir}/* $wdir/initialstate
 	  fi
       else
-	  echo "Use distributed restart files from previous run"
+	  if [ $i -eq 1 ]; then
+	      echo "Use distributed restart files from previous run"
+	  fi
       fi
     done
 
 # ---------------------------------------------------------------------------------------------------
     echo '----------------------------------------'
     echo 'Preparing forcing'
-    echo 'Time period from ' $tstr 'until' $tstr2
+    echo 'Time period from ' $tstrm1 'until' $tstrendp1
 
     if [ $tstr -eq $initial_date ]; then
 
@@ -252,7 +281,7 @@ if [ $prepare -eq 1 ]; then
 	  ENSstr=`printf %03d $i`
 	  wdir=`pwd`/${ENSstr}
 	  export wdir
-    #echo 'linking input...'
+
 	  if [ ! -f $wdir/forcing/river_data.nc ]; then
 	      ln -s $inputs_nc/river_data.nc $wdir/forcing
 	  fi
@@ -275,9 +304,8 @@ if [ $prepare -eq 1 ]; then
 	  ln -s $inputs_nc/domain_cfg.nc          $wdir/
 	  ln -s $inputs_nc/eddy_viscosity_3D.nc   $wdir/
 	  ln -s $inputs_nc/eddy_diffusivity_3D.nc $wdir/
-    #ln -s $inputs_nc/np_ergom.nc            $wdir/
 
-    # for ERGOM_allEuler
+          # for ERGOM_allEuler
 	  ln -s $inputs_nc/bfr_roughness.nc       $wdir/
 	  ln -s $inputs_nc/carbon.nc              $wdir/
 	  ln -s $inputs_nc/iron_dummy.nc          $wdir/
@@ -285,101 +313,145 @@ if [ $prepare -eq 1 ]; then
 	  ln -s $inputs_nc/sed_init_1k.nc         $wdir/
 	  ln -s $inputs_nc/z2d_ben201401.nc       $wdir/
 
-    # for PDAF
+          # for PDAF
 	  ln -s $setup_store/*.txt       $wdir/
 	done
     fi # if [ $tstr -eq $initial_date ]
+
     
-    #Loop over dates
+    # Link time-dependent forcing files
+    tstrhere=$tstrm1
+    while [ "$(date -d "$tstrhere" +%Y%m%d)" -le "$(date -d "$tstrendp1" +%Y%m%d)" ]; do
+	date_nemo=$(date -d "$tstrhere" +y%Ym%md%d)
+	date_force=$(date -d "$tstrhere" +%Y%m%d)
+	date_NS01=$(date -d "$tstrhere" +y%Ym%m)
+	tstrhere=$(date -d "$tstrhere" +%Y%m%d)
 
-    ndays=0
-    while [ "$(date -d "$tstr" +%Y%m%d)" -le "$(date -d "$tstr2" +%Y%m%d)" ]; do
-	date_nemo=$(date -d "$tstr" +y%Ym%md%d)
-	date_force=$(date -d "$tstr" +%Y%m%d)
-	date_NS01=$(date -d "$tstr" +y%Ym%m)
-	tstr=$(date -d "$tstr" +%Y%m%d)
-
-	echo 'Link time-varying forcing files ... date ' $tstr
+	echo 'Link time-varying forcing files ... date ' $tstrhere
 	for((i=1;i<=$NENS;i++))
 	  do
 	  ENSstr=`printf %03d $i`
 	  wdir=`pwd`/${ENSstr}
 	  export wdir
-#    echo 'Preparing input... member ' $i
 
           #1. get river forcing
 	  if [ -f $wdir/forcing/EHYPE_$date_nemo.nc ]; then
-	      echo 'Use file ' $wdir/forcing/EHYPE_$date_nemo'+024H.nc'
+	      if [ $i -eq 1 ]; then
+		  echo 'Use existing file ' EHYPE_$date_nemo.nc
+	      fi
 	  else
-	      ln -s $archive_ln/EHYPE_$date_nemo'+024H.nc' $wdir/forcing/EHYPE_$date_nemo.nc || { echo '1. failed' ; exit 1; }
-#      echo '************************************'
-#      echo '1. river forcing done'
+  	     if [ -f $archive_ln/EHYPE_$date_nemo'+024H.nc' ]; then
+ 	       ln -s $archive_ln/EHYPE_$date_nemo'+024H.nc' $wdir/forcing/EHYPE_$date_nemo.nc || { echo '1. failed' ; exit 1; }
+	     else
+		 if [ $i -eq 1 ]; then
+		     echo 'Non-existing forcing file ' $archive_ln/EHYPE_$date_nemo'+024H.nc'
+		 fi
+	     fi
 	  fi
 
           #2. get atm. force
 	  if [ -f $wdir/forcing/FORCE_$date_nemo.nc ]; then
-	      echo 'Use file ' $wdir/forcing/FORCE_$tstr'+24.nc'
+	      if [ $i -eq 1 ]; then
+		  echo 'Use existing file ' FORCE_$date_nemo.nc
+	      fi
 	  else
-	      ln -s $archive_ln/FORCE_$tstr'+24.nc' $wdir/forcing/FORCE_$date_nemo.nc  #|| { echo '2. failed' ; exit 1; }
-#      echo '************************************'
-#      echo '2. atm. forcing done'
+  	     if [ -f $archive_ln/FORCE_$tstrhere'+24.nc' ]; then
+  	        ln -s $archive_ln/FORCE_$tstrhere'+24.nc' $wdir/forcing/FORCE_$date_nemo.nc  || { echo '2. failed' ; exit 1; }
+	     else
+		 if [ $i -eq 1 ]; then
+		     echo 'Non-existing forcing file ' $archive_ln/FORCE_$tstrhere'+24.nc'
+		 fi
+	     fi
 	  fi
 
           #3a. get uhv bdy
 	  if [ -f $wdir/forcing/bdy_uvh_$date_nemo.nc ]; then
-	      echo 'Use file ' $wdir/forcing/bdy_uvh_$tstr.nc
+	      if [ $i -eq 1 ]; then
+		  echo 'Use existing file ' bdy_uvh_$date_nemo.nc
+	      fi
 	  else
-	      ln -s $archive_ln/bdy_uvh_$tstr.nc  $wdir/forcing/bdy_uvh_$date_nemo.nc || { echo '3. failed' ; exit 1; }
-#      echo '************************************'
-#      echo '3. bdy done'
+  	     if [ -f $archive_ln/bdy_uvh_$tstrhere.nc ]; then
+		 ln -s $archive_ln/bdy_uvh_$tstrhere.nc  $wdir/forcing/bdy_uvh_$date_nemo.nc || { echo '3. failed' ; exit 1; }
+	     else
+		 if [ $i -eq 1 ]; then
+		     echo 'Non-existing forcing file ' $archive_ln/bdy_uvh_$tstrhere.nc
+		 fi
+	     fi
 	  fi
 
           #4. get ts bdy
 	  if [ -f $wdir/forcing/bdy_ts_$date_nemo.nc ]; then
-	      echo 'Use file ' $wdir/forcing/bdy_ts_$tstr.nc
+	      if [ $i -eq 1 ]; then
+		  echo 'Use existing file ' bdy_ts_$date_nemo.nc
+	      fi
 	  else
-	      ln -s $archive_ln/bdy_ts_$tstr.nc  $wdir/forcing/bdy_ts_$date_nemo.nc || { echo '4. failed' ; exit 1; }
-#      echo '************************************'
-#      echo '4. obc done'
+  	     if [ -f $archive_ln/bdy_ts_$tstrhere.nc ]; then
+	        ln -s $archive_ln/bdy_ts_$tstrhere.nc  $wdir/forcing/bdy_ts_$date_nemo.nc || { echo '4. failed' ; exit 1; }
+	     else
+		 if [ $i -eq 1 ]; then
+		     echo 'Non-existing forcing file ' $archive_ln/bdy_ys_$tstrhere.nc
+		 fi
+	     fi
 	  fi
 
           #5. ERGOM river loads
 	  if [ -f $wdir/forcing/ERGOM_CBC_$date_nemo.nc ]; then
-	      echo 'Use file ' $wdir/forcing/ERGOM_CBC_$date_nemo.nc
+	      if [ $i -eq 1 ]; then
+		  echo 'Use existing file ' ERGOM_CBC_$date_nemo.nc
+	      fi
 	  else
-	      ln -s $archive/ERGOM_CBC_$date_nemo.nc  $wdir/forcing/ERGOM_CBC_$date_nemo.nc || { echo '5. failed' ; exit 1; }
-	    #$wdir/do_ergom_cbc-rivers $date_nemo || { echo '5. failed' ; exit 1; }
-#      echo '************************************'
-#      echo '5. ergom river loads done'
+  	     if [ -f $archive/ERGOM_CBC_$date_nemo.nc ]; then
+	        ln -s $archive/ERGOM_CBC_$date_nemo.nc  $wdir/forcing/ERGOM_CBC_$date_nemo.nc || { echo '5. failed' ; exit 1; }
+	     else
+		 if [ $i -eq 1 ]; then
+		     echo 'Non-existing forcing file ' $archive/ERGOM_CBC_$date_nemo.nc
+		 fi
+	     fi
 	  fi
 
           #6. ergom surface bdy conditions
 	  if [ -f $wdir/forcing/ERGOM_SBC_$date_nemo.nc ]; then
-	      echo 'Use file ' $wdir/forcing/ERGOM_SBC_$date_nemo.nc
+	      if [ $i -eq 1 ]; then
+		  echo 'Use existing file ' ERGOM_SBC_$date_nemo.nc
+	      fi
 	  else
-	      ln -s $archive/ERGOM_SBC_$date_nemo.nc  $wdir/forcing/ERGOM_SBC_$date_nemo.nc || { echo '6. failed' ; exit 1; }
-      #$wdir/do_ergom_sbc-depo $date_nemo || { echo '5. failed' ; exit 1; }
-#      echo '************************************'
-#      echo '6. ergom sbc done'
+  	     if [ -f $archive/ERGOM_SBC_$date_nemo.nc ]; then
+	        ln -s $archive/ERGOM_SBC_$date_nemo.nc  $wdir/forcing/ERGOM_SBC_$date_nemo.nc || { echo '6. failed' ; exit 1; }
+	     else
+		 if [ $i -eq 1 ]; then
+		     echo 'Non-existing forcing file ' $archive/ERGOM_SBC_$date_nemo.nc
+		 fi
+	     fi
 	  fi
 
           #7. open ergom boundary conditions
 	  if [ -f $wdir/forcing/ERGOM_OBC_$date_nemo.nc ]; then
-	      echo 'Use file ' $wdir/forcing/ERGOM_OBC_$date_nemo.nc
+	      if [ $i -eq 1 ]; then
+		  echo 'Use existing file ' ERGOM_OBC_$date_nemo.nc
+	      fi
 	  else
-	      ln -s $archive/ERGOM_OBC_$date_nemo.nc  $wdir/forcing/ERGOM_OBC_$date_nemo.nc || { echo '7. failed' ; exit 1; }
-      #$wdir/do_ergom_obc-bounds $date_nemo || { echo '6. failed' ; exit 1; }
-#      echo '************************************'
-#      echo '7. ergom obc done '
+  	     if [ -f $archive/ERGOM_OBC_$date_nemo.nc ]; then
+	        ln -s $archive/ERGOM_OBC_$date_nemo.nc  $wdir/forcing/ERGOM_OBC_$date_nemo.nc || { echo '7. failed' ; exit 1; }
+	     else
+		 if [ $i -eq 1 ]; then
+		     echo 'Non-existing forcing file ' $archive/ERGOM_OBC_$date_nemo.nc
+		 fi
+	     fi
 	  fi
 	done
 
-	tstr=$(date -I -d "$tstr + 1 day ")
+	tstrhere=$(date -I -d "$tstrhere + 1 day ")
 	
-        # Count days
-	ndays=$(($ndays + 1))
     done
 
+    echo '----------------------------------------'
+
+    # Count days
+    ndays=0
+    while [ "$(date -d "$tstr" +%Y%m%d)" -le "$(date -d "$tstr_end" +%Y%m%d)" ]; do
+	tstr=$(date -I -d "$tstr + 1 day ")
+	ndays=$(($ndays + 1))
+    done
     echo 'Number of days in this run: ' $ndays
 
     rn_rdt=90
@@ -387,10 +459,8 @@ if [ $prepare -eq 1 ]; then
     nnstep=`printf %08d $rnl`
     echo 'run length rnl: ' $rnl
 
+    echo '----------------------------------------'
 
-    echo 'FORCING READY FOR SIMULATION '
-    echo '************************************'
-    echo '************************************'
 # ---------------------------------------------------------------------------------------------------
 
     # Prepare namelists
@@ -428,6 +498,14 @@ if [ $prepare -eq 1 ]; then
     FILE501flag=.true. #oce grid_W
     FILE601flag=.true. #ice ice_grid_T
     FILE701flag=.true. #ergom _ERGOM_T
+#    FILE101flag=.false. #oce SURF_grid_T
+#    FILE201flag=.false. #.true. #oce grid_T
+#    FILE301flag=.false. #.true. #oce grid_U
+#    FILE401flag=.false. #.true. #oce grid_V
+#    FILE501flag=.false. #.true. #oce grid_W
+#    FILE601flag=.false. #.true. #ice ice_grid_T
+#    FILE701flag=.false. #.true. #ergom _ERGOM_T
+
    #define NEMO_00X output
     FILE10Xflag=.false. #oce SURF_grid_T
     FILE20Xflag=.false. #oce grid_T
@@ -435,7 +513,8 @@ if [ $prepare -eq 1 ]; then
     FILE40Xflag=.false. #oce grid_V
     FILE50Xflag=.false. #oce grid_W
     FILE60Xflag=.false. #ice ice_grid_T
-    FILE70Xflag=.true. #.false. #ergom _ERGOM_T
+    FILE70Xflag=.true. #ergom _ERGOM_T
+#    FILE70Xflag=.false. #ergom _ERGOM_T
 
     for((i=1;i<=$NENS;i++))
       do
@@ -523,12 +602,14 @@ if [ $prepare -eq 1 ]; then
       #echo $(((i-1)*($np_nemo+$np_xios)+$np_nemo))'-'$(((i)*($np_nemo+$np_xios)-1))' ./xios'${ENSstr}.sh >> mpmd.conf
       echo $(((i-1)*($np_nemo+$np_xios)+$np_nemo))'-'$(((i)*($np_nemo+$np_xios)-1))' ./xios001.sh' >> mpmd.conf
     done
-
+    
+    cat mpmd.conf
+    
     echo 'JOB PREPARATIONS COMPLETED'
+    echo '----------------------------------------'
 
 fi  # if $prepare==1
 
-cat mpmd.conf
 
 # Execute the run
 if [ $dorun -eq 1 ]; then
@@ -564,9 +645,16 @@ if [ $postproc -eq 1 ]; then
 
     echo "Move NORDIC and DA output files in task 001"
     wdir=`pwd`
-    mv $wdir/001/???_NORDIC_* $wdir/001/output/data/
-    mv $wdir/001/state_*.nc $wdir/001/output/DA/
-    mv $wdir/001/variance_*.nc $wdir/001/output/DA/
+#    mv $wdir/001/???_NORDIC_* $wdir/001/output/data/
+#    mv $wdir/001/state_*.nc $wdir/001/output/DA/
+#    mv $wdir/001/variance_*.nc $wdir/001/output/DA/
+#    cp $wdir/001/namelist_cfg.pdaf $wdir/001/output/cfg/namelist_cfg.pdaf_$tstr
+
+    mv $wdir/001/???_NORDIC_* $OUTDIR/$EXP/data/
+    mv $wdir/001/state_*.nc $OUTDIR/$EXP/DA/
+    mv $wdir/001/variance_*.nc $OUTDIR/$EXP/DA/
+    cp $wdir/001/namelist_cfg.pdaf $OUTDIR/$EXP/cfg/namelist_cfg.pdaf_$tstr_ini
+
 
 
 # ---------------------------------------------------------------------------------------------------
