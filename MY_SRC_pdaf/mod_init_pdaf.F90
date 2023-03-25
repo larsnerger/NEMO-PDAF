@@ -60,7 +60,7 @@ contains
     use mod_iau_pdaf, &
          only: asm_inc_init_pdaf
     use mod_nemo_pdaf, &
-         only: set_nemo_grid
+         only: set_nemo_grid, lwp, numout
     use mod_statevector_pdaf, &
          only: setup_statevector
     use mod_util_pdaf, &
@@ -99,6 +99,13 @@ contains
 ! ***************************
 ! ***   Initialize PDAF   ***
 ! ***************************
+
+    ! Output into NEMO's ocean.output file
+    IF(lwp) THEN
+       WRITE(numout,*) 
+       WRITE(numout,*) 'init_pdaf : Initialize PDAF'
+       WRITE(numout,*) '~~~~~~~~~~~'
+    ENDIF
 
     if (mype_ens == 0) then
        write (*, '(/a,1x,a)') 'NEMO-PDAF', 'INITIALIZE PDAF - ONLINE MODE'

@@ -372,7 +372,15 @@ contains
          only: asm_inc_deallocate_pdaf
     use timer, &
          only: time_tot
+    use mod_nemo_pdaf, &
+         only: lwp, numout
 
+    ! Output into NEMO's ocean.output file
+    IF(lwp) THEN
+       WRITE(numout,*) 
+       WRITE(numout,*) 'finalize_pdaf : PDAF deallocates and information output'
+       WRITE(numout,*) '~~~~~~~~~~~'
+    ENDIF
 
     ! Show allocated memory for PDAF
     if (mype_ens==0) call PDAF_print_info(10)

@@ -225,7 +225,7 @@ contains
     use mod_statevector_pdaf, &
          only: id_netpp
     use mod_nemo_pdaf, &
-         only: jpi, jpj, jpk, calc_date
+         only: jpi, jpj, jpk, calc_date, lwp, numout
     use sms_ergom, &
          only: xnetpp
     use mod_iau_pdaf, &
@@ -321,6 +321,13 @@ USE trc,       ONLY : trn
 ! *** Query whether analysis step was performed
 ! *** This is also used to trigger the Euler time step for nemo_coupling='odir'
     call PDAF_get_assim_flag(assim_flag)
+
+    ! Output into NEMO's ocean.output file
+    IF(assim_flag==1 .and. lwp) THEN
+       WRITE(numout,*) 
+       WRITE(numout,*) 'assimilate_pdaf : PDAF data assimilation was applied at step ', kt
+       WRITE(numout,*) '~~~~~~~~~~~'
+    ENDIF
 
 ! This Barrier is temporary to avoid that model tasks > 1 continue with model integrations
 ! Remove when distribute state is coded!
