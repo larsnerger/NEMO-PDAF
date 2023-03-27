@@ -100,18 +100,17 @@ contains
 !!
   subroutine init_dim_obs_sst_cmems(step, dim_obs)
 
+    use netcdf
     use PDAFomi, &
          only: PDAFomi_gather_obs, PDAFomi_get_interp_coeff_lin
     use mod_assimilation_pdaf, &
-         only: filtertype, deg2rad, screen
+         only: filtertype, screen
     use mod_statevector_pdaf, &
          only: id, sfields
     use mod_parallel_pdaf, only: mype_filter, npes_filter
     use mod_io_pdaf, only: check
     use mod_nemo_pdaf, only: lat1_p, lon1_p, nlats=>nj_p, nlons=>ni_p, &
-         idx_nwet, use_wet_state, nlei, nlej
-    use netcdf
-    use diaobs, only: calc_date
+         idx_nwet, use_wet_state, nlei, nlej, calc_date, deg2rad
 
     implicit none
 

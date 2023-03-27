@@ -18,11 +18,12 @@ subroutine init_dim_l_pdaf(step, domain_p, dim_l)
 
   use mod_kind_pdaf
   use mod_assimilation_pdaf, &
-       only: domain_coords, dim_state_p, id_lstate_in_pstate, deg2rad
+       only: domain_coords, dim_state_p, id_lstate_in_pstate
   use mod_statevector_pdaf, &
        only: n_fields, sfields, sfields_l
   use mod_nemo_pdaf, &
-       only: lons, lats, use_wet_state, nwet, wet_pts, sdim2d
+       only: lons, lats, use_wet_state, nwet, wet_pts, &
+       sdim2d, deg2rad
 use mod_parallel_pdaf, only: mype_filter
   implicit none
 

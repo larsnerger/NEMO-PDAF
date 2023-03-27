@@ -3,20 +3,20 @@ module mod_nemo_pdaf
   use mod_kind_pdaf
 
   ! Include variables from NEMO
+  ! user routines should only include from mod_nemo_pdaf not from NEMO modules
   use par_oce, &
-       only: jpi, jpj, jpk, jpiglo, jpjglo
+       only: jpi, jpj, jpk, jpiglo, jpjglo, &
+       jp_tem, jp_sal
   use dom_oce, &
        only: nldi, nldj, nlei, nlej, glamt, gphit, &
        nimpp, njmpp, tmask, gdept_1d, ndastp, neuler
-  use par_oce, &
-       only: jp_tem, jp_sal
   use trc, &
        only: trb, trn
   use oce, &
        only: sshb, tsb, ub, vb, &
-            sshn, tsn, un, vn
+       sshn, tsn, un, vn
   use in_out_manager, &
-       only: nitend, nit000
+       only: nitend, nit000, lwp, numout
   use lbclnk, &
        only: lbc_lnk, lbc_lnk_multi
   use diaobs, &
@@ -86,8 +86,6 @@ contains
          only: mype_model, task_id
     use PDAFomi, &
          only: PDAFomi_set_domain_limits
-!    use mod_assimilation_pdaf, &
-!         only: deg2rad
 
     implicit none
 

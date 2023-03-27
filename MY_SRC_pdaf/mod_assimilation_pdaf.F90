@@ -192,10 +192,6 @@ module mod_assimilation_pdaf
 
   integer :: assim_flag = 0   ! Flag whether assimilation step was just done
 
-! Constants for coordinate calculations
-  real(8), parameter  :: pi     = 3.14159265358979323846_pwp
-  real :: deg2rad = pi / 180.0_pwp      ! Conversion from degrees to radian
-
 ! Array for computing daily net primary production
   real(pwp), allocatable, save :: netppsum(:,:,:)
 
