@@ -56,7 +56,7 @@ contains
          incremental, type_forget, forget, rank_analysis_enkf, &
          type_trans, type_sqrt, delt_obs, locweight, type_ens_init, &
          type_central_state, perturb_params, stddev_params, &
-         type_hyb, hyb_gamma, hyb_kappa
+         type_hyb, hyb_gamma, hyb_kappa, n_sweeps, type_sweep
     use mod_iau_pdaf, &
          only: asm_inc_init_pdaf
     use mod_nemo_pdaf, &
@@ -82,6 +82,7 @@ contains
     implicit none
 
 ! *** Local variables
+    integer :: i                 ! Counter
     integer :: filter_param_i(7) ! Integer parameter array for filter
     real    :: filter_param_r(3) ! Real parameter array for filter
     integer :: status_pdaf       ! PDAF status flag
@@ -253,6 +254,41 @@ contains
 
     ! Setup state vector
     call setup_statevector(dim_state, dim_state_p)
+
+
+! **********************************
+! *** Define local analysis loop ***
+! **********************************
+
+    if ((assim_sst_cmems .or. assim_ssh_mgrid) &
+         .and. (assim_chl_baltic_cmems .or. assim_chl_nsea_cmems)) then
+       ! Observations of both physics and BGC are assimilated
+       n_sweeps = 2
+       type_sweep(1) = 'phy'
+       type_sweep(2) = 'bio'
+    else
+       ! Either physics or BGC observations are assimilated
+       n_sweeps = 1
+       if (assim_sst_cmems .or. assim_ssh_mgrid) then
+          ! Only observations of physics are assimilated
+          type_sweep(1) = 'phy'
+       elseif (assim_chl_baltic_cmems .or. assim_chl_nsea_cmems) then
+          ! Only observations of BGC are assimilated
+          type_sweep(1) = 'bio'
+       else
+          ! No observation active - set sweep to physics
+          type_sweep(1) = 'phy'
+       end if
+    end if
+
+    if (mype_ens == 0) then
+       write (*,'(a,2x,a)') 'NEMO-PDAF', '*** Setup for coupled DA ***'
+       write (*, '(a,4x,a,i5)') 'NEMO-PDAF', 'Number of local analysis sweeps', n_sweeps
+       write (*, '(a,4x,a)') 'NEMO-PDAF','Type of sweeps:'
+       do i = 1, n_sweeps
+          write (*, '(a,14x,a,i5,a,a)') 'NEMO-PDAF','sweep', i, ' type: ', trim(type_sweep(i))
+       end do
+    end if
 
 
 ! *****************************************************

@@ -160,7 +160,7 @@ contains
          screen, dim_ens, ensscale, delt_obs, &
          type_forget, forget, &
          type_ens_init, type_central_state, ens_restart, &
-         type_hyb, hyb_gamma, hyb_kappa
+         type_hyb, hyb_gamma, hyb_kappa, cda_phy, cda_bio
     use mod_io_pdaf, &
          only: verbose_io, path_inistate, path_ens, file_ens, file_covar, &
          sgldbl_io, coupling_nemo, save_var, save_state, save_ens_sngl, &
@@ -204,7 +204,8 @@ contains
          update_phys, update_phyto, update_zoo, update_det, update_nut, &
          update_oxy, update_other, update_diag, &
          do_asmiau, do_bgciau, steps_asmiau, steps_bgciau, &
-         shape_asmiau, shape_bgciau, iter_divdmp
+         shape_asmiau, shape_bgciau, iter_divdmp, &
+         cda_phy, cda_bio
 
     namelist /obs_ssh_mgrid_nml/ &
          assim_ssh_mgrid, rms_ssh_mgrid, file_ssh_mgrid, &
@@ -301,6 +302,8 @@ contains
        write (*, '(a,5x,a,l)') 'NEMO-PDAF','update_oxy      ', update_oxy
        write (*, '(a,5x,a,l)') 'NEMO-PDAF','update_other    ', update_other
        write (*, '(a,5x,a,l)') 'NEMO-PDAF','update_diag     ', update_diag
+       write (*, '(a,5x,a,6x,a)')'NEMO-PDAF','cda_phy         ', trim(cda_phy)
+       write (*, '(a,5x,a,6x,a)')'NEMO-PDAF','cda_bio         ', trim(cda_bio)
        write (*, *) ''
        write (*, '(a,3x,a)') 'NEMO-PDAF','[obs_ssh_mgrid_nml]:'
        write (*, '(a,5x,a,5x,l)') 'NEMO-PDAF','assim_ssh_mgrid      ', assim_ssh_mgrid
@@ -317,6 +320,7 @@ contains
        if (assim_sst_cmems) then
           write (*, '(a,5x,a,f12.4)') 'NEMO-PDAF','rms_obs_sst_cmems  ', rms_obs_sst_cmems
           write (*, '(a,5x,a,a)') 'NEMO-PDAF','file_sst_cmems        ', trim(file_sst_cmems)
+          write (*, '(a,5x,a,a)') 'NEMO-PDAF','path_sst_cmems        ', trim(path_sst_cmems)
           write (*, '(a,5x,a,a)') 'NEMO-PDAF','varname_sst_cmems     ', trim(varname_sst_cmems)
           write (*, '(a,5x,a,es12.4)') 'NEMO-PDAF','lradius_sst_cmems      ', lradius_sst_cmems
           write (*, '(a,5x,a,es12.4)') 'NEMO-PDAF','sradius_sst_cmems      ', sradius_sst_cmems
@@ -329,6 +333,7 @@ contains
        if (assim_chl_baltic_cmems) then
           write (*, '(a,5x,a,f12.4)') 'NEMO-PDAF','rms_obs_chl_baltic_cmems  ', rms_obs_chl_baltic_cmems
           write (*, '(a,5x,a,a)') 'NEMO-PDAF','file_chl_baltic_cmems        ', trim(file_chl_baltic_cmems)
+          write (*, '(a,5x,a,a)') 'NEMO-PDAF','path_chl_baltic_cmems        ', trim(path_chl_baltic_cmems)
           write (*, '(a,5x,a,a)') 'NEMO-PDAF','varname_chl_baltic_cmems     ', trim(varname_chl_baltic_cmems)
           write (*, '(a,5x,a,es12.4)') 'NEMO-PDAF','lradius_chl_baltic_cmems      ', lradius_chl_baltic_cmems
           write (*, '(a,5x,a,es12.4)') 'NEMO-PDAF','sradius_chl_baltic_cmems      ', sradius_chl_baltic_cmems
@@ -341,6 +346,7 @@ contains
        if (assim_chl_nsea_cmems) then
           write (*, '(a,5x,a,f12.4)') 'NEMO-PDAF','rms_obs_chl_nsea_cmems  ', rms_obs_chl_nsea_cmems
           write (*, '(a,5x,a,a)') 'NEMO-PDAF','file_chl_nsea_cmems        ', trim(file_chl_nsea_cmems)
+          write (*, '(a,5x,a,a)') 'NEMO-PDAF','path_chl_nsea_cmems        ', trim(path_chl_nsea_cmems)
           write (*, '(a,5x,a,a)') 'NEMO-PDAF','varname_chl_nsea_cmems     ', trim(varname_chl_nsea_cmems)
           write (*, '(a,5x,a,es12.4)') 'NEMO-PDAF','lradius_chl_nsea_cmems      ', lradius_chl_nsea_cmems
           write (*, '(a,5x,a,es12.4)') 'NEMO-PDAF','sradius_chl_nsea_cmems      ', sradius_chl_nsea_cmems

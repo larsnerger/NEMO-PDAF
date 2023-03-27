@@ -14,28 +14,46 @@
 !! 
 !! - Called from: `PDAFomi_assimilate_local`/`mod_assimilation_pdaf`
 !!
-subroutine init_dim_l_pdaf(step, domain_p, dim_l)
+subroutine init_dim_l_pdaf(step, domain_p_all, dim_l)
 
   use mod_kind_pdaf
   use mod_assimilation_pdaf, &
-       only: domain_coords, dim_state_p, id_lstate_in_pstate
+       only: domain_coords, dim_state_p, id_lstate_in_pstate, isweep
   use mod_statevector_pdaf, &
        only: n_fields, sfields, sfields_l
   use mod_nemo_pdaf, &
        only: lons, lats, use_wet_state, nwet, wet_pts, &
        sdim2d, deg2rad
-use mod_parallel_pdaf, only: mype_filter
+
   implicit none
 
 ! *** Arguments ***
-  integer, intent(in)  :: step     !< Current time step
-  integer, intent(in)  :: domain_p !< Current local analysis domain
-  integer, intent(out) :: dim_l    !< Local state dimension
+  integer, intent(in)  :: step         !< Current time step
+  integer, intent(in)  :: domain_p_all !< Current local analysis domain
+  integer, intent(out) :: dim_l        !< Local state dimension
 
 ! *** Local variables
   integer :: i, cnt, ifield        ! Counters
   integer :: id_surf               ! state vector index of surface grid point
   integer :: id_i, id_j            ! Grid coordinates for local analysis domain
+  integer :: domain_p              ! Local analysis domain accounting for multiple sweeps
+
+
+  ! ********************************************************
+  ! ***  Account for multi sweeps in local analysis loop ***
+  ! ********************************************************
+
+  if (domain_p_all <= nwet) then
+     domain_p = domain_p_all
+
+     ! Set index of sweep
+     isweep = 1
+  else
+     domain_p = domain_p_all - nwet
+
+     ! Set index of sweep
+     isweep = 2
+  end if
 
 
   ! ****************************************

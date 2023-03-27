@@ -14,6 +14,8 @@ subroutine init_n_domains_pdaf(step, n_domains_p)
 
   use mod_nemo_pdaf, &
        only: nwet
+  use mod_assimilation_pdaf, &
+       only: n_sweeps
 
   implicit none
 
@@ -35,6 +37,6 @@ subroutine init_n_domains_pdaf(step, n_domains_p)
   !
   ! *******************************************
 
-  n_domains_p = nwet
+  n_domains_p = n_sweeps * nwet
 
 end subroutine init_n_domains_pdaf

@@ -165,37 +165,46 @@ module mod_assimilation_pdaf
   integer :: mcols_cvec_ens = 1 !< Multiplication factor for number of columns for ensemble control vector
   real(pwp) :: beta_3dvar = 0.5 !< Hybrid weight for hybrid 3D-Var
 !    ! NETF/LNETF
-  integer :: type_winf     ! Set weights inflation: (1) activate
-  real(pwp)    :: limit_winf  ! Limit for weights inflation: N_eff/N>limit_winf
+  integer :: type_winf     !< Set weights inflation: (1) activate
+  real(pwp)    :: limit_winf  !< Limit for weights inflation: N_eff/N>limit_winf
 !    ! hybrid LKNETF
-  INTEGER :: type_hyb      ! Type of hybrid weight: (2) adaptive from N_eff/N
-  REAL    :: hyb_gamma     ! Hybrid filter weight for state (1.0: LETKF, 0.0 LNETF)
-  REAL    :: hyb_kappa     ! Hybrid norm for using skewness and kurtosis
+  INTEGER :: type_hyb      !< Type of hybrid weight: (2) adaptive from N_eff/N
+  REAL    :: hyb_gamma     !< Hybrid filter weight for state (1.0: LETKF, 0.0 LNETF)
+  REAL    :: hyb_kappa     !< Hybrid norm for using skewness and kurtosis
 !    ! Particle filter
-  integer :: pf_res_type   ! Resampling type for PF
-                           ! (1) probabilistic resampling
-                           ! (2) stochastic universal resampling
-                           ! (3) residual resampling        
-  integer :: pf_noise_type    ! Resampling type for PF
-                           ! (0) no perturbations, (1) constant stddev, 
-                           ! (2) amplitude of stddev relative of ensemble variance
-  real(pwp) :: pf_noise_amp ! Noise amplitude (>=0.0, only used if pf_noise_type>0)
+  integer :: pf_res_type   !< Resampling type for PF
+                           !< (1) probabilistic resampling
+                           !< (2) stochastic universal resampling
+                           !< (3) residual resampling        
+  integer :: pf_noise_type    !< Resampling type for PF
+                           !< (0) no perturbations, (1) constant stddev, 
+                           !< (2) amplitude of stddev relative of ensemble variance
+  real(pwp) :: pf_noise_amp !< Noise amplitude (>=0.0, only used if pf_noise_type>0)
 
-  logical :: perturb_params = .false.   ! Whether to perturb ERGOM parameters
-  real(pwp) :: stddev_params = 0.125    ! Relatibe stddev to perturb ERGOM parameters lognormally
+  logical :: perturb_params = .false.   !< Whether to perturb ERGOM parameters
+  real(pwp) :: stddev_params = 0.125    !< Relatibe stddev to perturb ERGOM parameters lognormally
+
+! For coupled DA
+  character(len=6) :: cda_phy = 'weak'  !< Perform 'weak'ly or 'strong'ly coupled DA with physics data
+  character(len=6) :: cda_bio = 'weak'  !< Perform 'weak'ly or 'strong'ly coupled DA with BGC data  
+  
 
 !    ! Other variables - _NOT_ available as command line options!
   real(pwp) :: time        !< model time
 
-  integer, allocatable :: id_lstate_in_pstate(:) ! Indices of local state vector in global vector
-  real(pwp) :: domain_coords(2) !> Coordinates of local analysis domain
+  integer, allocatable :: id_lstate_in_pstate(:) !< Indices of local state vector in global vector
+  real(pwp) :: domain_coords(2)       !< Coordinates of local analysis domain
 
-  integer :: assim_flag = 0   ! Flag whether assimilation step was just done
+  integer :: n_sweeps = 1             !< Number of sweeps in local analysis loop
+  character(len=3) :: type_sweep(2)   !< Type of sweep in local analysis loop
+  integer :: isweep                   !< Index of sweep during the local analysis loop
+
+  integer :: assim_flag = 0   !< Flag whether assimilation step was just done
 
 ! Array for computing daily net primary production
   real(pwp), allocatable, save :: netppsum(:,:,:)
 
-!$OMP THREADPRIVATE(domain_coords, id_lstate_in_pstate)
+!$OMP THREADPRIVATE(domain_coords, id_lstate_in_pstate, isweep)
 
 contains
 
@@ -226,7 +235,6 @@ contains
          only: xnetpp
     use mod_iau_pdaf, &
          only: update_asm_step_pdaf
-USE trc,       ONLY : trn
 
 ! *** Arguments ***
     integer, intent(in) :: kt  ! time step
@@ -286,7 +294,8 @@ USE trc,       ONLY : trn
        end if
 
        if (real(floor(rdate)) - rdate == 0.0) then
-          if (mype_ens==0.and.task_id==1) write (*,*) 'assimilate_PDAF: reset netppsum'
+          if (mype_ens==0.and.task_id==1) &
+               write (*,'(a,5x,a)') 'NEMO-PDAF', 'assimilate_pdaf: reset netppsum'
           netppsum = 0.0
        end if
 

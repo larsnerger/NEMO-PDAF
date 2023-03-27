@@ -485,12 +485,14 @@ contains
 
     ! Diagnostic BGC fields - not part of restart files
     do id_bgc2 = 1, jptra2
+
       if (sv_bgc2(id_bgc2)) then
         id_var=id%bgc2(id_bgc2)
         sfields(id_var)%ndims = 3
         sfields(id_var)%dim = sdim3d
         sfields(id_var)%jptrc = id_bgc2
         sfields(id_var)%file = 'NORDIC_1d_ERGOM_T_'
+        sfields(id_var)%type = 'bio'
         sfields(id_var)%transform = 0
         sfields(id_var)%trafo_shift = 0.0
         if (update_diag) sfields(id_var)%update = .true.
