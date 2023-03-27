@@ -20,8 +20,7 @@ subroutine collect_state_init_pdaf(dim_p, state_p)
        only: sfields, id
   use mod_nemo_pdaf, &
        only: ni_p, nj_p, nk_p, i0, j0, &
-       jp_tem, jp_sal, ndastp, &
-       sshn, tsn, un, vn
+       jp_tem, jp_sal, sshn, tsn, un, vn
 #if defined key_top
   use mod_statevector_pdaf, &
        only: n_trc, n_bgc1, n_bgc2, &

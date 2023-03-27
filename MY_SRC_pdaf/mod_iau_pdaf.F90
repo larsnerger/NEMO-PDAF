@@ -16,9 +16,10 @@ module mod_iau_pdaf
   use mod_statevector_pdaf, &
        only: update_phys
   use asminc, &
-       ONLY: ln_bkgwri, ln_trainc, ln_dyninc, ln_sshinc, &
+       only: ln_bkgwri, ln_trainc, ln_dyninc, ln_sshinc, &
        ln_asmdin, ln_asmiau, nitbkg, nitdin, nitiaustr, nitiaufin, &
-       niaufn, ln_salfix, salfixmin, nn_divdmp
+       niaufn, ln_salfix, salfixmin, nn_divdmp, &
+       tra_asm_inc, dyn_asm_inc, ssh_asm_inc
   use asmpar, &
        only: nitdin_r, nitiaustr_r, nitiaufin_r
 #if defined key_top
@@ -37,15 +38,18 @@ module mod_iau_pdaf
    save
    public
 
-   logical :: do_asmiau = .false.      ! Whether to apply IAU for ocean physics; if FALSE, DI is used
-   logical :: do_bgciau = .false.      ! Whether to apply IAU for BGC; if FALSE, DI is used
-   integer :: steps_asmiau = 1         ! Number of steps for physics IAU
+   ! Variables that control the behavior of increments
+   ! Next to these, the DA parameters set for PDAF influence the increments
+   logical :: do_asmiau = .false.      ! Whether to apply IAU for ocean physics; if FALSE, DIN is used
+   logical :: do_bgciau = .false.      ! Whether to apply IAU for BGC; if FALSE, DIN is used
+   integer :: steps_asmiau = 1         ! Number of steps for physics IAU 
    integer :: steps_bgciau = 1         ! Number of steps for BGC IAU
-   integer :: shape_asmiau = 0         ! Shape of physics IAU function: (0) constant; (1) hat
-   integer :: shape_bgciau = 0         ! Shape of BGC IAU function: (0) constant; (1) hat
+   integer :: shape_asmiau = 0         ! Shape of physics IAU function: (0) constant; (1) hat (NEMO: niaufn)
+   integer :: shape_bgciau = 0         ! Shape of BGC IAU function: (0) constant; (1) hat (NEMO: niaufnbgc)
 
 ! *** Local variables ***
    integer, private :: next_inc = 0
+
 contains
 
 !> Routine to initialises variables for NEMO's ASMINC module
@@ -173,31 +177,34 @@ contains
 ! *********************
 
     if (mype_ens==0) then
-       write (*,'(/a,2x,a)') 'NEMO-PDAF', '*** Setup for NEMO ASM ***'
+       write (*,'(/a,4x,a)') 'NEMO-PDAF', '******** Setup for NEMO ASM ********'
        if (update_phys) then 
-          write (*,'(a,5x,a)') 'NEMO-PDAF', '--- Apply increment for NEMO physics'
-          if (ln_asmdin) write (*,'(a,5x,a)') 'NEMO-PDAF', '--- Use DIN for NEMO fields'
-          if (ln_asmiau) write (*,'(a,5x,a)') 'NEMO-PDAF', '--- Use IAU for NEMO fields'
+          write (*,'(a,4x,a)') 'NEMO-PDAF', '--- Apply increment for NEMO physics'
+          if (ln_asmdin) write (*,'(a,9x,a)') 'NEMO-PDAF', '--- Use DIN for NEMO fields'
+          if (ln_asmiau) then
+             write (*,'(a,8x,a)') 'NEMO-PDAF', '--- Use IAU for NEMO fields'
+             write (*,'(a,8x,a,i9)') 'NEMO-PDAF', '--- Number of IAU steps', steps_asmiau
+          end if
        else
-          write (*,'(a,5x,a)') 'NEMO-PDAF', '--- No increment for NEMO physics'
+          write (*,'(a,4x,a)') 'NEMO-PDAF', '--- No increment for NEMO physics'
        end if
+
 #if defined key_top
        if (ln_trcinc) then
-
-          write (*,'(a,5x,a,i5)') 'NEMO-PDAF', '--- Number of updated BCG fields:', n_update_bgc
+          write (*,'(a,4x,a)') 'NEMO-PDAF', '--- Apply increment for BGC'
+          write (*,'(a,4x,a,i5)') 'NEMO-PDAF', '--- Number of updated BCG fields:', n_update_bgc
           if (ln_bgciau) then
-             write (*,'(a,5x,a)') 'NEMO-PDAF', '--- Use IAU for BGC fields'
+             write (*,'(a,8x,a)') 'NEMO-PDAF', '--- Use IAU for BGC fields'
+             write (*,'(a,8x,a,i9)') 'NEMO-PDAF', '--- Number of BGC IAU steps', steps_bgciau
           else
-             write (*,'(a,5x,a)') 'NEMO-PDAF', '--- Use DIN for BGC fields'
+             write (*,'(a,8x,a)') 'NEMO-PDAF', '--- Use DIN for BGC fields'
           end if
 
        else
-          write (*,'(a,5x,a,i5)') 'NEMO-PDAF', '--- No increment for BCG fields!'
+          write (*,'(a,4x,a,i5)') 'NEMO-PDAF', '--- No increment for BCG fields'
        end if
 #endif
-!       write (*,'(/a)') ' '
-
- write (*,*) 'NEMO-PDAF', 'TRC-IDs of updated BGC fields', ids_update_bgc(1:n_update_bgc)
+       write (*,'(a,4x,a)') 'NEMO-PDAF', '************************************'
     end if
 
      ! Update increment step
@@ -249,7 +256,7 @@ contains
 
      if (mype_ens==0) then
         if (ln_trainc .or. ln_dyninc .or. ln_sshinc) then
-           if (ln_bgciau) then
+           if (ln_asmiau) then
               write (*,'(a,5x,a,2i)') 'NEMO-PDAF', '--- set IAU steps for ASMINC: ', nitiaustr_r, nitiaufin_r
            else
               write (*,'(a,5x,a,i)') 'NEMO-PDAF', '--- set DIN step for ASMINC: ', nitdin_r
@@ -298,7 +305,8 @@ contains
           jp_tem, jp_sal, lbc_lnk, lbc_lnk_multi, &
           sshn, tsn, un, vn, tmask
      use asminc, &
-          only: ssh_bkginc, t_bkginc, s_bkginc, u_bkginc, v_bkginc
+          only: ssh_bkginc, t_bkginc, s_bkginc, u_bkginc, v_bkginc, &
+          ssh_bkg, t_bkg, s_bkg, u_bkg, v_bkg
 #if defined key_top
      use mod_statevector_pdaf, &
           only: jptra, sv_bgc1
@@ -317,14 +325,26 @@ contains
 
 ! *** Local variables ***
      integer :: i_bgcinc, i_trn     ! Indices
-     integer :: id_var              ! Indices
+     integer :: id_var              ! Index
 
 
 ! *************************************************
 ! *** Prepare increment arrays for NEMO physics ***
 ! *************************************************
 
-     physics: if (update_phys > 0) then
+     physics: if (update_phys) then
+
+        ! Ensure that the increment arrays are allocated and set to zero
+        if (.not. allocated(ssh_bkginc)) allocate(ssh_bkginc(jpi,jpj))
+        if (.not. allocated(t_bkginc)) allocate(t_bkginc(jpi,jpj,jpk))
+        if (.not. allocated(s_bkginc)) allocate(s_bkginc(jpi,jpj,jpk))
+        if (.not. allocated(u_bkginc)) allocate(u_bkginc(jpi,jpj,jpk))
+        if (.not. allocated(v_bkginc)) allocate(v_bkginc(jpi,jpj,jpk))
+        ssh_bkginc = 0.0_pwp
+        t_bkginc = 0.0_pwp
+        s_bkginc = 0.0_pwp
+        u_bkginc = 0.0_pwp
+        v_bkginc = 0.0_pwp
 
         ! SSH
         if (id%ssh > 0) then
@@ -377,6 +397,41 @@ contains
            ! Fill halo regions
            call lbc_lnk_multi('distribute_state_pdaf', u_bkginc, 'U', -1., v_bkginc, 'V', -1.)
 
+           ! Apply divergence damping to the velocity increment
+           call div_damping_filter()
+        end if
+
+
+        ! For direct initialization we intialize the background arrays
+        ! and apply the increments here. They are set the Euler flag
+        if (ln_asmdin) then
+
+           
+           ! Ensure that the background arrays are allocated
+           if (.not. allocated(ssh_bkg)) allocate(ssh_bkg(jpi,jpj))
+           if (.not. allocated(t_bkg)) allocate(t_bkg(jpi,jpj,jpk))
+           if (.not. allocated(s_bkg)) allocate(s_bkg(jpi,jpj,jpk))
+           if (.not. allocated(u_bkg)) allocate(u_bkg(jpi,jpj,jpk))
+           if (.not. allocated(v_bkg)) allocate(v_bkg(jpi,jpj,jpk))
+
+           ! Initialize background fields for use in asm_inc routines
+           ssh_bkg = sshn
+           t_bkg = tsn(:,:,:,jp_tem)
+           s_bkg = tsn(:,:,:,jp_sal)
+           u_bkg = un
+           v_bkg = vn
+           
+           if (mype_ens==0) &
+                write (*,'(a,4x,a)') 'NEMO-PDAF', '--- Apply full increment in ASMINC'
+
+           ! Apply assimilation increment
+           IF( ln_trainc )   CALL tra_asm_inc(next_inc)      ! Tracers
+           IF( ln_dyninc )   CALL dyn_asm_inc(next_inc)      ! Dynamics
+           IF( ln_sshinc )   CALL ssh_asm_inc(next_inc)      ! SSH
+
+        else
+           if (mype_ens==0) &
+                write (*,'(a,4x,a)') 'NEMO-PDAF', '--- Store increments for IAU'
         end if
 
      end if physics
@@ -413,10 +468,74 @@ contains
            end if
         end if
      end do
-if (mype_ens==12) write (*,*) 'MAXBGC', 1,maxval(BGC_bkginc(:,:,1,1))
 #endif
 
    end subroutine update_bkginc_pdaf
+
+
+!-------------------------------------------------------------------------------
+!< Routine to apply divergence damping
+!!
+!! The functionality inside the routine is copied from NEMO's
+!! routine asm_inc_init
+!!
+   subroutine div_damping_filter()
+
+     use asminc, &
+          only: u_bkginc, v_bkginc
+     use par_oce, only: jpkm1, jpjm1, jpim1
+     use dom_oce, only: e1v, e3v_n, e2u, e3u_n, e3t_n, &
+          r1_e1u, r1_e2v, umask, vmask
+     use lbclnk, only: lbc_lnk
+
+     implicit none
+
+! *** Local variables ***
+     integer :: ji, jj, jt, jk                       ! Counters
+     real(pwp), allocatable ::   zhdiv(:,:)   ! 2D workspace
+
+   !! * Substitutions
+#include "vectopt_loop_substitute.h90"
+
+! ***************************************
+! *** Apply divergence damping filter ***
+! ***************************************
+
+     divdmp: if ( ln_dyninc .and. nn_divdmp > 0 ) then    ! Apply divergence damping filter
+
+        allocate( zhdiv(jpi,jpj) ) 
+
+        do jt = 1, nn_divdmp
+
+           do jk = 1, jpkm1           ! zhdiv = e1e1 * div
+              zhdiv(:,:) = 0.0
+              do jj = 2, jpjm1
+                 do ji = fs_2, fs_jpim1   ! vector opt.
+                    zhdiv(ji,jj) = (  e2u(ji  ,jj) * e3u_n(ji  ,jj,jk) * u_bkginc(ji  ,jj,jk)    &
+                         &            - e2u(ji-1,jj) * e3u_n(ji-1,jj,jk) * u_bkginc(ji-1,jj,jk)    &
+                         &            + e1v(ji,jj  ) * e3v_n(ji,jj  ,jk) * v_bkginc(ji,jj  ,jk)    &
+                         &            - e1v(ji,jj-1) * e3v_n(ji,jj-1,jk) * v_bkginc(ji,jj-1,jk)  ) / e3t_n(ji,jj,jk)
+                 end do
+              end do
+              call lbc_lnk( 'asminc', zhdiv, 'T', 1. )   ! lateral boundary cond. (no sign change)
+
+              do jj = 2, jpjm1
+                 do ji = fs_2, fs_jpim1   ! vector opt.
+                    u_bkginc(ji,jj,jk) = u_bkginc(ji,jj,jk)                         &
+                         + 0.2_pwp * ( zhdiv(ji+1,jj) - zhdiv(ji  ,jj) ) * r1_e1u(ji,jj) * umask(ji,jj,jk)
+                    v_bkginc(ji,jj,jk) = v_bkginc(ji,jj,jk)                         &
+                         + 0.2_pwp * ( zhdiv(ji,jj+1) - zhdiv(ji,jj  ) ) * r1_e2v(ji,jj) * vmask(ji,jj,jk) 
+                 end do
+              end do
+           end do
+
+        end do
+
+        deallocate( zhdiv ) 
+
+     endif divdmp
+
+   end subroutine div_damping_filter
 
 !-------------------------------------------------------------------------------
 

@@ -1009,7 +1009,7 @@ contains
 !==============================================================================
 !> Transform field, e.g. to log and back
 !!
-  subroutine transform_field(type, trafo, shift, state, dim, off, var)
+  subroutine transform_field(type, trafo, shift, state, dim, off, var, verbose)
 
     implicit none
 
@@ -1020,6 +1020,7 @@ contains
     integer,         intent(in)    :: dim      !< dimension of field in state vector
     integer,         intent(in)    :: off      !< Offset of field in state vector
     character(len=*),intent(in)    :: var      !< Name of variable
+    integer,         intent(in)    :: verbose  !< (1) to write screen output
 
 
     if (type==1) then
@@ -1029,10 +1030,12 @@ contains
        case(0)
 !          write(*,*) 'No Transformation of variable ', trim(var)
        case(1)
-          write(*,*) 'use log basis 10 transformation of variable ', trim(var)
+          if (verbose>0) write(*,'(a, 4x, a, 1x, a)') &
+               'NEMO-PDAF', '--- apply log-10 transformation to ', trim(var)
           state(off+1 : off+dim) = log10(state(off+1 : off+dim) + shift)
        case(2)
-          write(*,*) 'use ln transformation of variable ', trim(var)
+          if (verbose>0) write(*,'(a, 4x, a, 1x, a)') &
+               'NEMO-PDAF', '--- apply ln transformation to', trim(var)
           state(off+1 : off+dim) = log(state(off+1 : off+dim) + shift)
        case(3)
           write(*,*) 'no transformation- box cox still needs to be implemented'
@@ -1047,10 +1050,12 @@ contains
        case(0)
 !          write(*,*) 'No Transformation of bio limit'
        case(1)
-          write(*,*) 'use log basis 10 transformation of bio variable'
+          if (verbose>0) write(*,'(a, 4x, a, 1x, a)') &
+               'NEMO-PDAF', '--- revert log-10 transformation to ', trim(var)
           state(off+1 : off+dim) = (10.D0**state(off+1 : off+dim))-shift
        case(2)
-          write(*,*) 'use ln transformation of bio variable'
+          if (verbose>0) write(*,'(a, 4x, a, 1x, a)') &
+               'NEMO-PDAF', '--- revert ln transformation to', trim(var)
           state(off+1 : off+dim) = (exp(state(off+1 : off+dim)))-shift
        case(3)
           write(*,*) 'no transformation- box cox still needs to be implemented'
@@ -1083,6 +1088,7 @@ contains
 
 ! *** Local variables ***
     integer           :: i,j        ! Counters
+    integer           :: cnt, cnt2  ! Counters
     integer           :: trafo      ! Type of transformation
     real(pwp)         :: shift      ! constant for shifting value in transformation
     integer           :: dim        ! dimension of field in state vector
@@ -1091,10 +1097,9 @@ contains
     integer           :: dolimit    ! Whether to apply a min/max limit
     real(pwp)         :: max_limit  ! Maximum limiting value
     real(pwp)         :: min_limit  ! Minimum limiting value
-integer:: cnt, cnt2
 
 
-    ! *** Apply limits before performing transformation
+    ! *** Apply limits before performing transformation ***
     if (type==1) then
 
           ! Apply limits to original variable
@@ -1104,6 +1109,12 @@ integer:: cnt, cnt2
           ! Apply limits to transformed variable
           if (limits==22) call var_limits_mv(state, verbose)
     end if
+
+
+    ! *** Apply field transformations ***
+
+    if (verbose>0) write(*,'(a, 4x, a)') &
+         'NEMO-PDAF', 'Apply field transformations'
 
     do i = 1, n_fields
 
@@ -1127,12 +1138,12 @@ integer:: cnt, cnt2
 !             if (verbose>0) write(*,'(a, 1x, a, 1x, a)') &
 !                  'No transformation of variable ', trim(var)
           case(1)
-             if (verbose>0) write(*,'(a, 1x, a, 1x, a)') &
-                  'NEMO-PDAF', 'apply log-10 transformation to ', trim(var)
+             if (verbose>0) write(*,'(a, 4x, a, 1x, a)') &
+                  'NEMO-PDAF', '--- apply log-10 transformation to ', trim(var)
              state(off+1 : off+dim) = log10(state(off+1 : off+dim) + shift)
           case(2)
-             if (verbose>0) write(*,'(a, 1x, a, 1x, a)') &
-                  'NEMO-PDAF', 'apply ln transformation to', trim(var)
+             if (verbose>0) write(*,'(a, 4x, a, 1x, a)') &
+                  'NEMO-PDAF', '--- apply ln transformation to', trim(var)
              cnt=0
              cnt2=0
 
@@ -1146,7 +1157,7 @@ integer:: cnt, cnt2
                 end if
              end do
 
-             if (verbose>0 .and. cnt>0) write (*,'(a,1x,a,1x,a,2i9)') &
+             if (verbose>0 .and. cnt>0) write (*,'(a,8x,a,1x,a,2i9)') &
                   'NEMO-PDAF','--- number of <=0, >0:', trim(var), cnt, cnt2
 
           case DEFAULT
@@ -1162,12 +1173,12 @@ integer:: cnt, cnt2
 !             if (verbose>0) write(*,'(a, 1x, a, 1x, a)') &
 !                  'No transformation of variable ', trim(var)
           case(1)
-             if (verbose>0) write(*,'(a, 1x, a, 1x, a)') &
-                  'NEMO-PDAF', 'revert log-10 transformation of ', trim(var)
+             if (verbose>0) write(*,'(a, 4x, a, 1x, a)') &
+                  'NEMO-PDAF', '--- revert log-10 transformation of ', trim(var)
              state(off+1 : off+dim) = (10.D0**state(off+1 : off+dim))-shift
           case(2)
-             if (verbose>0) write(*,'(a, 1x, a, 1x, a)') &
-                  'NEMO-PDAF', 'revert ln transformation of ', trim(var)
+             if (verbose>0) write(*,'(a, 4x, a, 1x, a)') &
+                  'NEMO-PDAF', '--- revert ln transformation of ', trim(var)
              cnt=0
              cnt2=0
              do j = off+1, off+dim 
@@ -1180,7 +1191,7 @@ integer:: cnt, cnt2
                 end if
              end do
 
-             if (verbose>0 .and. cnt>0) write (*,'(a,1x,a,1x,a,2i9)') &
+             if (verbose>0 .and. cnt>0) write (*,'(a,8x,a,1x,a,2i9)') &
                   'NEMO-PDAF','--- number of <=0, >0:', trim(var), cnt, cnt2
 
           case DEFAULT
@@ -1191,7 +1202,7 @@ integer:: cnt, cnt2
 
     end do
 
-    ! *** Apply limits after performing transformation
+    ! *** Apply limits after performing transformation ***
     if (type==1) then
 
           ! Forward transform: Apply limits to transformed variable
@@ -1226,6 +1237,9 @@ integer:: cnt, cnt2
     real(pwp)         :: min_limit  ! Minimum limiting value
 
 
+    if (verbose>0) write(*,'(a, 4x, a)') &
+         'NEMO-PDAF', 'Apply limits to model fields'
+
     do i = 1, n_fields
 
        ! Initialize values from sfields
@@ -1242,8 +1256,8 @@ integer:: cnt, cnt2
        cnt = 0
        if (dolimit == 1) then
 
-          if (verbose>0) write(*,'(a, 1x, a, es12.3, 1x, a, 1x, a)') &
-               'NEMO-PDAF', 'apply min. limit',min_limit,'to ', trim(var)
+          if (verbose>0) write(*,'(a, 4x, a, es12.3, 1x, a, 1x, a)') &
+               'NEMO-PDAF', '--- apply min. limit',min_limit,'to ', trim(var)
 
           ! Apply minimum limit
           do j = off+1, off+dim
@@ -1254,36 +1268,46 @@ integer:: cnt, cnt2
           end do
 
           if (cnt>0 .and. verbose>0) &
-               write(*,'(a, 1x, a, i)') 'NEMO-PDAF', '--- number of affected values', cnt
+               write(*,'(a, 8x, a, i)') 'NEMO-PDAF', '--- number of affected values', cnt
 
        elseif (dolimit == 2) then
 
-          if (verbose>0) write(*,'(a, 1x, a, es12.3, 1x, a, 1x, a)') &
-               'NEMO-PDAF', 'apply max. limit',min_limit,'to ', trim(var)
+          if (verbose>0) write(*,'(a, 4x, a, es12.3, 1x, a, 1x, a)') &
+               'NEMO-PDAF', '--- apply max. limit',min_limit,'to ', trim(var)
 
           ! Apply maximum limit
           do j = off+1, off+dim
-             if (state(j) > max_limit) state(j) = max_limit
+             if (state(j) > max_limit) then
+                state(j) = max_limit
+                cnt = cnt + 1
+             end if
           end do
+
+          if (cnt>0 .and. verbose>0) &
+               write(*,'(a, 8x, a, i)') 'NEMO-PDAF', '--- number of affected values', cnt
 
        elseif (dolimit == 3) then
 
-          if (verbose>0) write(*,'(a, 1x, a, 2es12.3, es12.3, 1x, a, 1x, a)') &
-               'NEMO-PDAF', 'apply min/max limits of',min_limit,max_limit, 'to ', trim(var)
+          if (verbose>0) write(*,'(a, 4x, a, 2es12.3, es12.3, 1x, a, 1x, a)') &
+               'NEMO-PDAF', '--- apply min/max limits of',min_limit,max_limit, 'to ', trim(var)
 
           ! Apply minimum and maximum limits
           do j = off+1, off+dim
              if (state(j) < min_limit) then
                 state(j) = min_limit
+                cnt = cnt + 1
              elseif (state(j) > max_limit) then
                 state(j) = max_limit
+                cnt = cnt + 1
              end if
           end do
 
+          if (cnt>0 .and. verbose>0) &
+               write(*,'(a, 8x, a, i)') 'NEMO-PDAF', '--- number of affected values', cnt
        else
 
-          if (verbose>0) write(*,'(a, 1x, a, 1x, a)') &
-               'NEMO-PDAF', 'no limit applied to ', trim(var)
+          if (verbose>0) write(*,'(a, 4x, a, 1x, a)') &
+               'NEMO-PDAF', '--- no limit applied to ', trim(var)
        end if
 
     end do

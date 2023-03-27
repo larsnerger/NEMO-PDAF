@@ -23,7 +23,8 @@ subroutine next_observation_pdaf(stepnow, nsteps, doexit, time)
   use mod_nemo_pdaf, &
        only: nitend, nit000
   use mod_iau_pdaf, &
-       only: store_asm_step_pdaf, update_asm_step_pdaf
+       only: do_asmiau, do_bgciau, steps_asmiau, steps_bgciau, &
+       store_asm_step_pdaf, update_asm_step_pdaf
 
 
   implicit none
@@ -48,7 +49,17 @@ subroutine next_observation_pdaf(stepnow, nsteps, doexit, time)
      
      if (stepnow == nit000 - 1) then
         ! First analysis step 
-        nsteps = delt_obs-1     ! Analysis step one step before end of day
+        if (do_asmiau .or. do_bgciau) then
+           ! Apply IAU
+           if (do_asmiau) then
+              nsteps = delt_obs - steps_asmiau
+           else
+              nsteps = delt_obs - steps_bgciau
+           end if
+        else
+           ! Direct initialization with increments
+           nsteps = delt_obs-1     ! Analysis step one step before end of day
+        endif
      else
         nsteps = delt_obs       ! Follow-up analysis steps daily
      end if

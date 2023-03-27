@@ -131,7 +131,7 @@ MODULE asminc
    !                                 !: = 1   Linear hat-like, centred in middle of IAU interval 
    REAL(wp), PUBLIC ::   salfixmin   !: Ensure that the salinity is larger than this  value if (ln_salfix)
 
-   REAL(wp), DIMENSION(:,:), ALLOCATABLE ::   ssh_bkg               ! Background sea surface height
+   REAL(wp), PUBLIC, DIMENSION(:,:), ALLOCATABLE ::   ssh_bkg               ! Background sea surface height
    REAL(wp), PUBLIC, DIMENSION(:,:), ALLOCATABLE :: ssh_bkginc      ! Sea surface height increment
    REAL(wp), DIMENSION(:,:), ALLOCATABLE ::   seaice_bkginc         ! Increment to the background sea ice conc
 #if defined key_cice && defined key_asminc
@@ -207,12 +207,7 @@ CONTAINS
       ln_seaiceinc   = .FALSE.
       ln_temnofreeze = .FALSE.
 
-#if defined key_USE_PDAF
-      IF(lwp) THEN
-         WRITE(numout,*)
-         WRITE(numout,*) 'asm_inc_init : PDAF-coupling - reading of namelist nam_asminc deactivated'
-      END IF
-#else
+#ifndef key_USE_PDAF
       REWIND( numnam_ref )              ! Namelist nam_asminc in reference namelist : Assimilation increment
       READ  ( numnam_ref, nam_asminc, IOSTAT = ios, ERR = 901)
 901   IF( ios /= 0 )   CALL ctl_nam ( ios , 'nam_asminc in reference namelist', lwp )
@@ -225,11 +220,15 @@ CONTAINS
       IF(lwp) THEN
          WRITE(numout,*)
          WRITE(numout,*) 'asm_inc_init : Assimilation increment initialization :'
-#if defined key_USE_PDAF
-         WRITE(numout,*) '++++     NOTE: The settings here will be overwritten by PDAF   +++'
-#endif
          WRITE(numout,*) '~~~~~~~~~~~~'
+#if defined key_USE_PDAF
+         WRITE(numout,*) '      PDAF online coupling:'
+         WRITE(numout,*) '           - Reading of namelist nam_asminc deactivated'
+         WRITE(numout,*) '           - Configuration via PDAF user routines / namelists'
+         WRITE(numout,*) '           - Time-step settings will be updated by PDAF for cycled DA'
+#else
          WRITE(numout,*) '   Namelist namasm : set assimilation increment parameters'
+#endif
          WRITE(numout,*) '      Logical switch for writing out background state          ln_bkgwri = ', ln_bkgwri
          WRITE(numout,*) '      Logical switch for applying tracer increments            ln_trainc = ', ln_trainc
          WRITE(numout,*) '      Logical switch for applying velocity increments          ln_dyninc = ', ln_dyninc
@@ -403,16 +402,17 @@ CONTAINS
       !--------------------------------------------------------------------
       asmiau: IF( ln_asmiau ) THEN
          !
-         ALLOCATE( wgtiau( icycper ) )
+!         ALLOCATE( wgtiau( icycper ) )
+         ALLOCATE( wgtiau( iiauper ) )
          !
          wgtiau(:) = 0._wp
          !
-         !   
-         !---------------------------------------------------------
+         !                                !---------------------------------------------------------
          IF( niaufn == 0 ) THEN           ! Constant IAU forcing 
             !                             !---------------------------------------------------------
             DO jt = 1, iiauper
-               wgtiau(jt+nitiaustr-1) = 1.0 / REAL( iiauper )
+!               wgtiau(jt+nitiaustr-1) = 1.0 / REAL( iiauper )
+               wgtiau(jt) = 1.0 / REAL( iiauper )
             END DO
             !                             !---------------------------------------------------------
          ELSEIF ( niaufn == 1 ) THEN      ! Linear hat-like, centred in middle of IAU interval 
@@ -435,10 +435,12 @@ CONTAINS
             znorm = 1.0 / znorm
             !
             DO jt = 1, imid - 1
-               wgtiau(jt+nitiaustr-1) = REAL( jt ) * znorm
+!               wgtiau(jt+nitiaustr-1) = REAL( jt ) * znorm
+               wgtiau(jt) = REAL( jt ) * znorm
             END DO
             DO jt = imid, iiauper
-               wgtiau(jt+nitiaustr-1) = REAL( iiauper - jt + 1 ) * znorm
+!               wgtiau(jt+nitiaustr-1) = REAL( iiauper - jt + 1 ) * znorm
+               wgtiau(jt) = REAL( iiauper - jt + 1 ) * znorm
             END DO
          ENDIF
       END IF asmiau
@@ -497,12 +499,14 @@ CONTAINS
             WRITE(numout,*) '             time step         IAU  weight'
             WRITE(numout,*) '             =========     ====================='
             ztotwgt = 0.0
-            DO jt = 1, icycper
+!            DO jt = 1, icycper
+            DO jt = 1, iiauper
                ztotwgt = ztotwgt + wgtiau(jt)
                WRITE(numout,*) '         ', jt, '       ', wgtiau(jt) 
             END DO
             WRITE(numout,*) '         ==================================='
             WRITE(numout,*) '         Time-integrated weight = ', ztotwgt
+            WRITE(numout,*) '         Number of IAU steps = ', iiauper
             WRITE(numout,*) '         ==================================='
          END IF
          IF (ln_trcinc .AND.(ln_bgciau)) THEN
@@ -517,8 +521,8 @@ CONTAINS
                WRITE(numout,*) '         ', jt, '       ', wgtiaubgc(jt) 
             END DO
             WRITE(numout,*) '         ==================================='
-            WRITE(numout,*) '         Time-integrated weight = ', ztotwgt
-            WRITE(numout,*) '         Number of IAU steps = ', iiauperbgc
+            WRITE(numout,*) '         Time-integrated weight =  ', ztotwgt
+            WRITE(numout,*) '         Number of BGC IAU steps = ', iiauperbgc
             WRITE(numout,*) '         ==================================='
          ENDIF
       ENDIF
@@ -553,8 +557,7 @@ if (lwp)write (numout,*) 'Allocate BGC increment arrays'
       ALLOCATE( ndaice_da    (jpi,jpj)     )   ;   ndaice_da    (:,:)   = 0._wp
 #endif
       !
-#if defined key_USE_PDAF
-#else
+#ifndef key_USE_PDAF
       IF ( ln_trainc .OR. ln_dyninc .OR.   &       !--------------------------------------
          & ln_sshinc .OR. ln_seaiceinc .OR. ln_trcinc ) THEN    ! Read the increments from file
          !                                         !--------------------------------------
@@ -708,6 +711,7 @@ if (lwp)write (numout,*) 'Allocate BGC increment arrays'
          ! Read from file the background state at analysis time
          !--------------------------------------------------------------------
          !
+#ifndef key_USE_PDAF
          CALL iom_open( c_asmdin, inum )
          !
          CALL iom_get( inum, 'rdastp', zdate_bkg ) 
@@ -743,10 +747,12 @@ if (lwp)write (numout,*) 'Allocate BGC increment arrays'
          !
          CALL iom_close( inum )
          !
+#endif
       ENDIF
       !
       IF(lwp) WRITE(numout,*) '   ==>>>   Euler time step switch is ', neuler
       !
+#ifndef key_USE_PDAF
       IF( lk_asminc ) THEN                            !==  data assimilation  ==!
          IF( ln_bkgwri )   CALL asm_bkg_wri( nit000 - 1 )      ! Output background fields
          IF( ln_asmdin ) THEN                                  ! Direct initialization
@@ -755,6 +761,7 @@ if (lwp)write (numout,*) 'Allocate BGC increment arrays'
             IF( ln_sshinc )   CALL ssh_asm_inc( nit000 - 1 )      ! SSH
          ENDIF
       ENDIF
+#endif
       !
    END SUBROUTINE asm_inc_init
    
@@ -789,7 +796,7 @@ if (lwp)write (numout,*) 'Allocate BGC increment arrays'
          !
          IF ( ( kt >= nitiaustr_r ).AND.( kt <= nitiaufin_r ) ) THEN
             !
-            it = kt - nit000 + 1
+            it = kt - nit000 + 1 - nitiaustr_r + 1
             zincwgt = wgtiau(it) / rdt   ! IAU weight for the current time step
             !
             IF(lwp) THEN
@@ -832,6 +839,7 @@ if (lwp)write (numout,*) 'Allocate BGC increment arrays'
          !                             !--------------------------------------
          !            
          IF ( kt == nitdin_r ) THEN
+            IF (lwp) WRITE(numout,*) 'tra_asm_inc: Tracer DIN'
             !
             neuler = 0  ! Force Euler forward step
             !
@@ -906,7 +914,8 @@ if (lwp)write (numout,*) 'Allocate BGC increment arrays'
          !
          IF ( ( kt >= nitiaustr_r ).AND.( kt <= nitiaufin_r ) ) THEN
             !
-            it = kt - nit000 + 1
+!            it = kt - nit000 + 1
+            it = kt - nit000 + 1 - nitiaustr_r + 1
             zincwgt = wgtiau(it) / rdt   ! IAU weight for the current time step
             !
             IF(lwp) THEN
@@ -932,6 +941,7 @@ if (lwp)write (numout,*) 'Allocate BGC increment arrays'
          !                          !-----------------------------------------
          !         
          IF ( kt == nitdin_r ) THEN
+            IF (lwp) WRITE(numout,*) 'dyn_asm_inc: Dynamics DIN'
             !
             neuler = 0                    ! Force Euler forward step
             !
@@ -976,7 +986,8 @@ if (lwp)write (numout,*) 'Allocate BGC increment arrays'
          !
          IF ( ( kt >= nitiaustr_r ).AND.( kt <= nitiaufin_r ) ) THEN
             !
-            it = kt - nit000 + 1
+!            it = kt - nit000 + 1
+            it = kt - nit000 + 1 - nitiaustr_r + 1
             zincwgt = wgtiau(it) / rdt   ! IAU weight for the current time step
             !
             IF(lwp) THEN
@@ -1007,6 +1018,7 @@ if (lwp)write (numout,*) 'Allocate BGC increment arrays'
          !                          !-----------------------------------------
          !
          IF ( kt == nitdin_r ) THEN
+            IF (lwp) WRITE(numout,*) 'ssh_asm_inc: SSH DIN'
             !
             neuler = 0                                   ! Force Euler forward step
             !
@@ -1047,19 +1059,24 @@ if (lwp)write (numout,*) 'Allocate BGC increment arrays'
       !!----------------------------------------------------------------------
       ! 
 #if defined key_asminc
-      CALL ssh_asm_inc( kt ) !==   (calculate increments)
+      IF (ln_sshinc .and. &
+          ((ln_asmiau .and. kt >= nitiaustr_r .AND. kt <= nitiaufin_r ) .OR.  &
+          (ln_asmdin .and. kt == nitiaufin_r+1))) THEN
+
+         CALL ssh_asm_inc( kt ) !==   (calculate increments)
       !
-      IF( ln_linssh ) THEN 
-         phdivn(:,:,1) = phdivn(:,:,1) - ssh_iau(:,:) / e3t_n(:,:,1) * tmask(:,:,1)
-      ELSE 
-         ALLOCATE( ztim(jpi,jpj) )
-         ztim(:,:) = ssh_iau(:,:) / ( ht_n(:,:) + 1.0 - ssmask(:,:) )
-         DO jk = 1, jpkm1                                 
-            phdivn(:,:,jk) = phdivn(:,:,jk) - ztim(:,:) * tmask(:,:,jk) 
-         END DO
+         IF( ln_linssh ) THEN 
+            phdivn(:,:,1) = phdivn(:,:,1) - ssh_iau(:,:) / e3t_n(:,:,1) * tmask(:,:,1)
+         ELSE 
+            ALLOCATE( ztim(jpi,jpj) )
+            ztim(:,:) = ssh_iau(:,:) / ( ht_n(:,:) + 1.0 - ssmask(:,:) )
+            DO jk = 1, jpkm1                                 
+               phdivn(:,:,jk) = phdivn(:,:,jk) - ztim(:,:) * tmask(:,:,jk) 
+            END DO
          !
-         DEALLOCATE(ztim)
-      ENDIF
+            DEALLOCATE(ztim)
+         ENDIF
+      END IF
 #endif
       !
    END SUBROUTINE ssh_asm_div
@@ -1093,7 +1110,8 @@ if (lwp)write (numout,*) 'Allocate BGC increment arrays'
          !
          IF ( ( kt >= nitiaustr_r ).AND.( kt <= nitiaufin_r ) ) THEN
             !
-            it = kt - nit000 + 1
+!            it = kt - nit000 + 1
+            it = kt - nit000 + 1 - nitiaustr_r + 1
             zincwgt = wgtiau(it)      ! IAU weight for the current time step 
             ! note this is not a tendency so should not be divided by rdt (as with the tracer and other increments)
             !
@@ -1276,6 +1294,7 @@ if (lwp)write (numout,*) 'Allocate BGC increment arrays'
    !!======================================================================
 #if defined key_top && defined key_asminc 
  SUBROUTINE trc_asm_inc( kt )
+use mod_parallel_pdaf, only: mype_ens
       !!----------------------------------------------------------------------
       !!                    ***  ROUTINE trc_asm_inc  ***
       !!          
@@ -1286,12 +1305,15 @@ if (lwp)write (numout,*) 'Allocate BGC increment arrays'
       !! ** Action  : 
       !!----------------------------------------------------------------------
    !!======================================================================
+   IMPLICIT NONE
+
    INTEGER, INTENT(IN) :: kt                               ! ocean time-step index
    !
    INTEGER  :: ji, jj, jk
    INTEGER  :: it
    REAL(wp) :: zincwgt  ! IAU weight for current time step
    INTEGER  :: i, ibgc
+
 
     !!----------------------------------------------------------------------
       !
@@ -1308,12 +1330,15 @@ if (lwp)write (numout,*) 'Allocate BGC increment arrays'
             WRITE(numout,*) '~~~~~~~~~~~~'
          ENDIF
 #if defined key_USE_PDAF
-         IF (lwp) WRITE(*,*) 'NEMO-ASMINC BGC Increment is added at timestep', kt
+         IF (lwp) WRITE(*,*) 'NEMO-ASMINC Add BGC increment at timestep', kt
 
          DO ibgc = 1, n_update_bgc
             i = ids_update_bgc(ibgc) ! index in bgc_bgkinc
             tra(:,:,:,i) = tra(:,:,:,i)  + BGC_bkginc(:,:,:,ibgc)
          END DO
+         if (mype_ens==12) write (*,*) 'min/max TRA2', minval(tra(:,:,1,6)),maxval(tra(:,:,1,6))
+         if (mype_ens==12) write (*,*) 'min/max TRA2', minval(tra(:,:,1,6)),maxval(tra(:,:,1,6))
+         if (mype_ens==12) write (*,*) 'TRA2', tra(1:20,1:2,1,6)
 #else
          IF (ln_oxyinc)   tra(:,:,:,idx_oxy) = tra(:,:,:,idx_oxy)  + oxy_bkginc(:,:,:) * oxyfac
          IF (ln_no3inc)   tra(:,:,:,idx_nit) = tra(:,:,:,idx_nit)  + no3_bkginc(:,:,:) * no3fac 
