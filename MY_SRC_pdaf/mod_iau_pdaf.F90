@@ -1,9 +1,10 @@
-!>##Using the Incremental Analysis Method
-!>The material in this module is **heavily** based on a similar
-!>implementation for the NEMOVAR data assimilation system. Please
-!>refer to the `ASM` subdirectory in the `OCE` source code for
-!>precise details.
-!>
+!> Module for using NEMO's ASMINC module with PDAF
+!!
+!! This module provides the interfacing with NEMO's
+!! ASMINC module. Settings of ASMINC are set on the
+!! basis of DA settings for PDAF. both the direct
+!! initialization and IAU of ASMINC can be used.
+!!
 module mod_iau_pdaf
 
   use mod_kind_pdaf
@@ -538,64 +539,7 @@ contains
    end subroutine div_damping_filter
 
 !-------------------------------------------------------------------------------
-
-   subroutine bgc3d_asm_inc( kt )
-!       use dom_oce, only: rdt
-!       use lib_mpp, only: ctl_stop
-!       USE trc, ONLY:           & ! passive tracer variables
-!       & trn,                &
-!       & trb
-      !!----------------------------------------------------------------------
-      !!                    ***  ROUTINE dyn_asm_inc  ***
-      !!
-      !! ** Purpose : Apply generic 3D biogeochemistry assimilation increments.
-      !!
-      !! ** Action  :
-      !!----------------------------------------------------------------------
-      integer,  intent(IN) :: kt      ! Current time step
-      !
-      integer   :: it              ! Index
-      integer   :: jptrc
-      integer   :: j, id_var
-      real(pwp) :: zincwgt         ! IAU weight for current time step
-      !!----------------------------------------------------------------------
-
-      !--------------------------------------------------------------------
-      ! Incremental Analysis Updating
-      !--------------------------------------------------------------------
-
-!       IF (kt <= nitiaufin  .AND. kt >= nitiaustr) THEN
-! 
-!          it = kt - nitiaustr + 1
-!          zincwgt = wgtiau(it)   ! IAU weight for the current time step
-!          ! note this is not a tendency so should not be divided by rdt
-! 
-!          ! Update the 3D BGC variables
-!          ! Add directly to trn and trb, rather than to tra, because tra gets
-!          ! reset to zero at the start of trc_stp, called after this routine
-!          ! Don't apply increments if they'll take concentrations negative
-! 
-! #if defined key_top
-!          do j = 1, jptra
-!            if (sv_bgc1(j)) then
-!             id_var = id%bgc1(j)
-!             jptrc = sfields(id_var)%jptrc
-!             WHERE( bgc_iau_pdaf(:,:,:,j) > 0.0_pwp .OR. &
-!                  & trn(:,:,:,jptrc) + bgc_iau_pdaf(:,:,:,j) * zincwgt > 0.0_pwp )
-!                trn(:,:,:,jptrc) = trn(:,:,:,jptrc) + bgc_iau_pdaf(:,:,:,j) * zincwgt
-!                trb(:,:,:,jptrc) = trb(:,:,:,jptrc) + bgc_iau_pdaf(:,:,:,j) * zincwgt
-!             END WHERE
-!           end if
-!          end do
-! #else
-!          CALL ctl_stop ( ' bgc3d_asm_inc: no compatible BGC model defined' )
-! #endif
-! 
-!       ENDIF
-      !
-   end subroutine bgc3d_asm_inc
-
-!> Routine to deallocate for BGC increment array
+!> Routine to deallocate the BGC increment array
 !!
    subroutine asm_inc_deallocate_pdaf
 
