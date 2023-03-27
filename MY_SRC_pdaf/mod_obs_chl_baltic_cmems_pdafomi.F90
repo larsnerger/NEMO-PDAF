@@ -403,7 +403,7 @@ contains
        elseif (ido_w>dim_olon) then
           iderr = 1
        endif
-       if (observation_mode==0) then
+       if (observation_mode==0 .and. iderr==0) then
           idm_w = ceiling((lon_obs(ido_w) - wlonM) / dlonM) + 1
        end if
 
@@ -415,7 +415,7 @@ contains
        elseif (ido_e<1) then
           iderr = 2
        endif
-       if (observation_mode==0) then
+       if (observation_mode==0 .and. iderr==0) then
           idm_e = floor((lon_obs(ido_e) - wlonM) / dlonM) + 1
        end if
 
@@ -428,7 +428,7 @@ contains
           elseif (ido_n<1) then
              iderr = 3
           end if
-          if (observation_mode==0) then
+          if (observation_mode==0 .and. iderr==0) then
              if (sgn_mlat > 0) then
                 idm_n = floor(abs(lat_obs(ido_n) - slatM) / dlatM) + 1
              else
@@ -448,7 +448,7 @@ contains
           elseif (ido_s>dim_olat) then
              iderr = 4
           end if
-          if (observation_mode==0) then
+          if (observation_mode==0 .and. iderr==0) then
              if (sgn_mlat > 0) then
                 idm_s = ceiling(abs(lat_obs(ido_s) - slatM) / dlatM) + 1
              else
@@ -464,7 +464,7 @@ contains
           elseif (ido_n>dim_olat) then
              iderr = 5
           endif
-          if (observation_mode==0) then
+          if (observation_mode==0 .and. iderr==0) then
              if (sgn_mlat > 0) then
                 idm_n = floor((lat_obs(ido_n) - slatM) / dlatM) + 1
              else
@@ -480,7 +480,7 @@ contains
           elseif (ido_s<1) then
              iderr = 6
           endif
-          if (observation_mode==0) then
+          if (observation_mode==0 .and. iderr==0) then
              if (sgn_mlat > 0) then
                 idm_s = ceiling(abs(lat_obs(ido_s) - slatM) / dlatM)
              else

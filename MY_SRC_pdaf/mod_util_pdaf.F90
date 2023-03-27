@@ -170,7 +170,7 @@ contains
          update_oxy, update_other, update_diag
     use mod_iau_pdaf, &
          only: do_asmiau, do_bgciau, steps_asmiau, steps_bgciau, &
-         shape_asmiau, shape_bgciau
+         shape_asmiau, shape_bgciau, iter_divdmp
     use mod_obs_ssh_mgrid_pdafomi, &
          only: assim_ssh_mgrid, rms_ssh_mgrid, file_ssh_mgrid, &
          lradius_ssh_mgrid, sradius_ssh_mgrid, varname_ssh_mgrid
@@ -204,7 +204,7 @@ contains
          update_phys, update_phyto, update_zoo, update_det, update_nut, &
          update_oxy, update_other, update_diag, &
          do_asmiau, do_bgciau, steps_asmiau, steps_bgciau, &
-         shape_asmiau, shape_bgciau
+         shape_asmiau, shape_bgciau, iter_divdmp
 
     namelist /obs_ssh_mgrid_nml/ &
          assim_ssh_mgrid, rms_ssh_mgrid, file_ssh_mgrid, &

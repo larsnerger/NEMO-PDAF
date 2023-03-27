@@ -47,6 +47,7 @@ module mod_iau_pdaf
    integer :: steps_bgciau = 1         ! Number of steps for BGC IAU
    integer :: shape_asmiau = 0         ! Shape of physics IAU function: (0) constant; (1) hat (NEMO: niaufn)
    integer :: shape_bgciau = 0         ! Shape of BGC IAU function: (0) constant; (1) hat (NEMO: niaufnbgc)
+   integer :: iter_divdmp = 0          ! Number of iterations of divergence damping operator
 
 ! *** Local variables ***
    integer, private :: next_inc = 0
@@ -102,12 +103,12 @@ contains
      end if
      nitbkg     = 0         !  Timestep of background in [0,nitend-nit000-1]
      nitdin     = delt_obs  !  Timestep of background for DI in [0,nitend-nit000-1]
-     nitiaustr = delt_obs                !  Timestep of start of BGC IAU interval
-     nitiaufin = delt_obs+steps_asmiau   !  Timestep of end of BGC IAU interval
-     niaufn     = shape_asmiau           !  Type of IAU weighting function
-     ln_salfix  = .false.   !  Logical switch for ensuring that the sa > salfixmin
-     salfixmin  = -9999     !  Minimum salinity after applying the increments
-     nn_divdmp  = 0         !  Number of iterations of divergence damping operator
+     nitiaustr = delt_obs               !  Timestep of start of BGC IAU interval
+     nitiaufin = delt_obs+steps_asmiau  !  Timestep of end of BGC IAU interval
+     niaufn     = shape_asmiau          !  Type of IAU weighting function
+     ln_salfix  = .false.               !  Logical switch for ensuring that the sa > salfixmin
+     salfixmin  = -9999                 !  Minimum salinity after applying the increments
+     nn_divdmp  = iter_divdmp           !  Number of iterations of divergence damping operator
 
 
 #if defined key_top
@@ -186,6 +187,8 @@ contains
              write (*,'(a,8x,a)') 'NEMO-PDAF', '--- Use IAU for NEMO fields'
              write (*,'(a,8x,a,i9)') 'NEMO-PDAF', '--- Number of IAU steps', steps_asmiau
           end if
+          if (nn_divdmp>0) &
+               write (*,'(a,8x,a,i9)') 'NEMO-PDAF', '--- Apply divergence damping, iterations', nn_divdmp
        else
           write (*,'(a,4x,a)') 'NEMO-PDAF', '--- No increment for NEMO physics'
        end if
