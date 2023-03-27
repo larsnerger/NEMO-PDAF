@@ -29,7 +29,7 @@ subroutine distribute_state_init_pdaf(dim_p, state_p)
        only: trb, trn
 #endif
   use mod_assimilation_pdaf, &
-       only: ens_restart, assim_flag
+       only: ens_restart
   use mod_aux_pdaf, &
        only: state2field, transform_field_mv
 
@@ -148,7 +148,6 @@ subroutine distribute_state_init_pdaf(dim_p, state_p)
 
      ! Set Euler step
      neuler = 0
-     assim_flag = 1
 
   else coldstart
 
@@ -156,10 +155,6 @@ subroutine distribute_state_init_pdaf(dim_p, state_p)
 
      if (verbose==1) &
           write (*,'(a,4x,a)') 'NEMO-PDAF', 'Ensemble restart - distribute_state inactive'
-
-     ! Set Euler step
-!     neuler = 0
-!     assim_flag = 1
 
   end if coldstart
 
