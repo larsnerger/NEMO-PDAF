@@ -174,10 +174,6 @@ subroutine distribute_state_init_pdaf(dim_p, state_p)
 
      if (mype==0) write (*,'(a,4x,a)') 'NEMO-PDAF', 'Ensemble restart - distribute_state inactive'
 
-     ! Set Euler step
-     neuler = 0
-     assim_flag = 1
-
   end if coldstart
 
 end subroutine distribute_state_init_pdaf
