@@ -228,7 +228,7 @@ CONTAINS
                 tra(ji,jj,:,:)           = ts(1:,1:)   
                 seda(ji,jj,:)            = benthos(1,:) * Nnorm 
                 xlight(ji,jj,:)          = light(1:)
-                xnetpp(ji,jj,:)          = netpp(1:) * rfc2n * mweig_C
+                xnetpp(ji,jj,:)          = netpp(1:) * Nnorm * rfc2n * mweig_C
 
                 len_kpar = SIZE(kpar(1:))
 
