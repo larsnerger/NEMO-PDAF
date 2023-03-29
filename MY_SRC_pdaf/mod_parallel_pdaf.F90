@@ -85,7 +85,8 @@ CONTAINS
 
       INTEGER :: screen=1
 
-      call timeit(2,'ini')
+      call timeit(5,'ini')
+      call timeit(5,'new')
       call timeit(1,'new')
 
       ! Number of ensemble members, supplied by PDAF namelist

@@ -49,14 +49,15 @@ contains
 
     use mod_kind_pdaf
     use mod_parallel_pdaf, &
-         only: n_modeltasks, task_id, COMM_model, COMM_filter, &
+         only: n_modeltasks, task_id, COMM_model, COMM_filter, MPIerr, &
          COMM_couple, COMM_ensemble, mype_ens, filterpe, abort_parallel
     use mod_assimilation_pdaf, &
          only: dim_state, dim_state_p, screen, filtertype, subtype, dim_ens, &
          incremental, type_forget, forget, rank_analysis_enkf, &
          type_trans, type_sqrt, delt_obs, locweight, type_ens_init, &
          type_central_state, perturb_params, stddev_params, &
-         type_hyb, hyb_gamma, hyb_kappa, n_sweeps, type_sweep
+         type_hyb, hyb_gamma, hyb_kappa, n_sweeps, type_sweep, &
+         cda_phy, cda_bio
     use mod_iau_pdaf, &
          only: asm_inc_init_pdaf
     use mod_nemo_pdaf, &
@@ -88,6 +89,7 @@ contains
     integer :: status_pdaf       ! PDAF status flag
     integer :: doexit, steps     ! Not used in this implementation
     real(pwp) :: timenow         ! Not used in this implementation
+    character(len=6) :: cdaval   ! Flag whether strongly-coupled DA is done
       
     external :: init_ens_pdaf         ! Ensemble initialization
     external :: next_observation_pdaf ! Determine how long until next observation
@@ -95,11 +97,12 @@ contains
     external :: prepoststep_ens_pdaf  ! User supplied pre/poststep routine
 
 
-    call timeit(2,'old')
-
 ! ***************************
 ! ***   Initialize PDAF   ***
 ! ***************************
+
+    call timeit(2,'old')
+    call timeit(3,'new')
 
     ! Output into NEMO's ocean.output file
     IF(lwp) THEN
@@ -286,7 +289,12 @@ contains
        write (*, '(a,4x,a,i5)') 'NEMO-PDAF', 'Number of local analysis sweeps', n_sweeps
        write (*, '(a,4x,a)') 'NEMO-PDAF','Type of sweeps:'
        do i = 1, n_sweeps
-          write (*, '(a,14x,a,i5,a,a)') 'NEMO-PDAF','sweep', i, ' type: ', trim(type_sweep(i))
+          if (trim(type_sweep(i))=='phy') then
+             cdaval = cda_phy
+          else
+             cdaval = cda_bio
+          end if
+          write (*, '(a,14x,a,i5,a,a)') 'NEMO-PDAF', 'sweep', i, ' type: ', trim(type_sweep(i)), 'SCDA: ', cdaval
        end do
     end if
 
@@ -384,6 +392,9 @@ contains
 ! **************************************
 
     call asm_inc_init_pdaf(delt_obs)
+
+    call timeit(3,'old')
+    call timeit(4,'new')
 
   end subroutine init_pdaf
 

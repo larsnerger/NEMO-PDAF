@@ -377,16 +377,8 @@ contains
     use mod_iau_pdaf, &
          only: asm_inc_deallocate_pdaf
     use timer, &
-         only: time_tot
-    use mod_nemo_pdaf, &
-         only: lwp, numout
+         only: timeit, time_tot
 
-    ! Output into NEMO's ocean.output file
-    IF(lwp) THEN
-       WRITE(numout,*) 
-       WRITE(numout,*) 'finalize_pdaf : PDAF deallocates and information output'
-       WRITE(numout,*) '~~~~~~~~~~~'
-    ENDIF
 
     ! Show allocated memory for PDAF
     if (mype_ens==0) call PDAF_print_info(10)
@@ -401,11 +393,17 @@ contains
     ! Deallocate ASMINC arrays
     call asm_inc_deallocate_pdaf()
 
+    call timeit(4,'old')
+    call timeit(5,'old')
+
     if (mype_ens==0) then
-       WRITE (*, '(24x, a, F11.3, 1x, a)') 'NEMO-PDAF: initialize MPI:', time_tot(1), 's'
+       WRITE (*, '(19x, a, F11.3, 1x, a)') 'NEMO-PDAF: initialize MPI  :', time_tot(1), 's'
     end if
-    if (mype_model==0) then
+    if (mype_ens==0) then
        WRITE (*, '(19x, a, F11.3, 1x, a)') 'NEMO-PDAF: initialize model:', time_tot(2), 's'
+       WRITE (*, '(19x, a, F11.3, 1x, a)') 'NEMO-PDAF: initialize PDAF :', time_tot(3), 's'
+       WRITE (*, '(19x, a, F11.3, 1x, a)') 'NEMO-PDAF: main part       :', time_tot(4), 's'
+       WRITE (*, '(19x, a, F11.3, 1x, a)') 'NEMO-PDAF: total:       ', time_tot(5), 's'
     end if
 
     call mpi_barrier(comm_ensemble, mpierr)
