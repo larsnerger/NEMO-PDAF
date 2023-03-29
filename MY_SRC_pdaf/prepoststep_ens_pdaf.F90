@@ -41,7 +41,7 @@ subroutine prepoststep_ens_pdaf(step, dim_p, dim_ens, dim_ens_p, dim_obs_p, &
         write_field_mv, write_field_sngl
   use mod_nemo_pdaf, &
        only: ndastp
-  
+
   implicit none
 
 ! *** Arguments ***
@@ -69,15 +69,15 @@ subroutine prepoststep_ens_pdaf(step, dim_p, dim_ens, dim_ens_p, dim_obs_p, &
   integer :: nsteps                    ! Number of steps written into file
   character(len=3) :: forana           ! String indicating forecast or analysis
   character(len=3) :: ensstr           ! Ensemble ID as string
-  character(len=8) :: ndastp_str       ! String for model date 
+  character(len=12) :: ndastp_str      ! String for model date 
   character(len=200) :: titleState, titleVar   ! Strings for file titles
   integer, allocatable :: dimfield_p(:) ! Local field dimensions
   integer, allocatable :: dimfield(:)  ! Global field dimensions
   real, allocatable :: rmse_est_p(:)   ! PE-local estimated RMS errors (ensemble standard deviations)
   real, allocatable :: rmse_est(:)     ! Global estimated RMS errors (ensemble standard deviations)
   logical :: inirestart                ! Whether prepoststep is called first time with ensemble restart
-  real :: dimfield_inv
-
+  real :: dimfield_inv                 ! Inverse of a field dimension
+  
   
 ! **********************
 ! *** INITIALIZATION ***
@@ -98,7 +98,6 @@ subroutine prepoststep_ens_pdaf(step, dim_p, dim_ens, dim_ens_p, dim_obs_p, &
 
   ! Allocate fields
   allocate(state_tmp(dim_p))
-!  if (firsttime) call memcount(3,'r',dim_p)
 
   ! Initialize numbers
   invdim_ens    = 1.0_8 / real(dim_ens,8)  
@@ -209,11 +208,11 @@ subroutine prepoststep_ens_pdaf(step, dim_p, dim_ens, dim_ens_p, dim_obs_p, &
      if (writestep_var==1) then
 
         if (mype == 0 .and. .not. inirestart) then
-           if (forana=='for') then
+           if (forana=='for' .and. (trim(save_var)=='fcst' .or. trim(save_var)=='both')) then
               write (*,'(a,5x,a)') 'NEMO-PDAF', '--- Write variance before analysis step'
-           elseif (forana=='ana') then
+           elseif (forana=='ana' .and. (trim(save_var)=='ana' .or. trim(save_var)=='both')) then
               if (mype == 0) write (*,'(a,5x,a)') 'NEMO-PDAF', '--- Write variance after analysis'
-           else if (.not. (ens_restart)) then
+           else if (forana=='ini' .and. (.not.ens_restart)) then
               if (mype == 0) write (*,'(a,5x,a)') 'NEMO-PDAF', '--- Write initial variance file'
            end if
         end if
@@ -227,8 +226,11 @@ subroutine prepoststep_ens_pdaf(step, dim_p, dim_ens, dim_ens_p, dim_obs_p, &
         titleVar='Ensemble variance'
 
         if (forana/='ini') then
-           call write_field_mv(state_tmp, trim(file_PDAF_variance)//'_'//trim(ndastp_str)//'.nc', &
-                titleVar, 1.0, nsteps, writestep_var, 0)
+           if (trim(save_var)=='both' .or. (trim(save_var)=='fcst' .and. forana=='for') &
+                .or. (trim(save_var)=='ana' .and. forana=='ana')) then
+              call write_field_mv(state_tmp, trim(file_PDAF_variance)//'_'//trim(ndastp_str)//'.nc', &
+                   titleVar, 1.0, nsteps, writestep_var, 0)
+           end if
         else if (.not. (ens_restart)) then
            call write_field_mv(state_tmp, trim(file_PDAF_variance)//'_'//trim(ndastp_str)//'_ini.nc', &
                 titleVar, 1.0, nsteps, writestep_var, 0)
