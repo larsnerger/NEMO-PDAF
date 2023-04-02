@@ -52,6 +52,7 @@ module mod_obs_chl_baltic_cmems_pdafomi
 ! *** Variables used inside the module
   integer, private :: observation_mode              !< Observation mode (alias for mode_chl_baltic_cmems)
   character(len=3) :: dist_obs                      !< Type of distance computation (alias for dist_chl_baltic_cmems)
+  real(pwp), allocatable :: ivar_obs_save(:)        !< Vector to store observation errors for CDA
   character(lc) :: obsname = 'OBS_CHL_BALTIC_CMEMS' !< Observation name string
 
 ! Declare instances of observation data types used here
@@ -104,7 +105,7 @@ contains
     use PDAFomi, &
          only: PDAFomi_gather_obs, PDAFomi_get_interp_coeff_lin
     use mod_assimilation_pdaf, &
-         only: filtertype, screen
+         only: filtertype, screen, n_sweeps
     use mod_statevector_pdaf, &
          only: id, sfields, id_chl
     use mod_parallel_pdaf, only: mype_filter, npes_filter
@@ -876,6 +877,19 @@ contains
          thisobs%ncoord, lradius_chl_baltic_cmems, dim_obs)
 
 
+! ********************************************************************
+! *** Store observation errors in case of coupled DA (double loop) ***
+! ********************************************************************
+
+    if (n_sweeps>1) then
+
+       if (allocated(ivar_obs_save)) deallocate(ivar_obs_save)
+       allocate(ivar_obs_save(thisobs%dim_obs_f))
+       ivar_obs_save = thisobs%ivar_obs_f
+
+    end if
+
+
 ! *********************************************************
 ! *** For twin experiment: Read synthetic observations  ***
 ! *********************************************************
@@ -970,9 +984,9 @@ contains
     use PDAFomi, &
          only: PDAFomi_init_dim_obs_l
     use mod_nemo_pdaf, &
-         only: wet_pts
+         only: wet_pts, nwet
     use mod_assimilation_pdaf, &
-         only: domain_coords, locweight
+         only: domain_coords, locweight, n_sweeps, isweep
 
     implicit none
 
@@ -984,6 +998,21 @@ contains
 
 ! *** Local variables ***
     real(pwp) :: coords(2)
+
+
+! ************************************************************
+! *** Adapt observation error for coupled DA (double loop) ***
+! ************************************************************
+
+    if (n_sweeps>1) then
+       if (domain_p==1) then
+          ! Physics loop - set inverse observation error to small value
+          thisobs%ivar_obs_f = 1.0e-12
+       elseif (domain_p==nwet+1) then
+          !Bio loop
+          thisobs%ivar_obs_f(:) = ivar_obs_save
+       end if
+    end if
 
 
 ! **********************************************
