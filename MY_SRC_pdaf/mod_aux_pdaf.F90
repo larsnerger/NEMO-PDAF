@@ -1228,7 +1228,7 @@ contains
     integer,   intent(in)    :: verbose  !< (1) to write screen output
 
 ! *** Local variables ***
-    integer           :: i, j, cnt  ! Counters
+    integer           :: i, j, cnt, cnt1  ! Counters
     integer           :: dim        ! dimension of field in state vector
     integer           :: off        ! Offset of field in state vector
     character(len=10) :: var        ! Name of variable
@@ -1254,6 +1254,7 @@ contains
        ! *** Apply Limits
 
        cnt = 0
+       cnt1 = 0
        if (dolimit == 1) then
 
           if (verbose>0) write(*,'(a, 4x, a, es12.3, 1x, a, 1x, a)') &
@@ -1273,7 +1274,7 @@ contains
        elseif (dolimit == 2) then
 
           if (verbose>0) write(*,'(a, 4x, a, es12.3, 1x, a, 1x, a)') &
-               'NEMO-PDAF', '--- apply max. limit',min_limit,'to ', trim(var)
+               'NEMO-PDAF', '--- apply max. limit',max_limit,'to ', trim(var)
 
           ! Apply maximum limit
           do j = off+1, off+dim
@@ -1288,22 +1289,22 @@ contains
 
        elseif (dolimit == 3) then
 
-          if (verbose>0) write(*,'(a, 4x, a, 2es12.3, es12.3, 1x, a, 1x, a)') &
+          if (verbose>0) write(*,'(a, 4x, a, 2es12.3, 1x, a, 1x, a)') &
                'NEMO-PDAF', '--- apply min/max limits of',min_limit,max_limit, 'to ', trim(var)
 
           ! Apply minimum and maximum limits
           do j = off+1, off+dim
              if (state(j) < min_limit) then
                 state(j) = min_limit
-                cnt = cnt + 1
+                cnt1 = cnt1 + 1
              elseif (state(j) > max_limit) then
                 state(j) = max_limit
                 cnt = cnt + 1
              end if
           end do
 
-          if (cnt>0 .and. verbose>0) &
-               write(*,'(a, 8x, a, i)') 'NEMO-PDAF', '--- number of affected values', cnt
+          if ((cnt>0 .or. cnt1>0) .and. verbose>0) &
+               write(*,'(a, 8x, a, 2i8)') 'NEMO-PDAF', '--- number of affected values', cnt1, cnt
        else
 
           if (verbose>0) write(*,'(a, 4x, a, 1x, a)') &
