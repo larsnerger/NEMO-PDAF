@@ -294,7 +294,8 @@ contains
           else
              cdaval = cda_bio
           end if
-          write (*, '(a,14x,a,i5,a,a)') 'NEMO-PDAF', 'sweep', i, ' type: ', trim(type_sweep(i)), 'SCDA: ', cdaval
+          write (*, '(a,8x,a,i3,3x,a,a,3x,a,a)') &
+               'NEMO-PDAF', 'sweep', i, ' type: ', trim(type_sweep(i)), 'CDA: ', trim(cdaval)
        end do
     end if
 
