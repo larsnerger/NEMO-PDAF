@@ -15,7 +15,7 @@ module mod_iau_pdaf
   use mod_nemo_pdaf, &
        only: nitend, nit000
   use mod_statevector_pdaf, &
-       only: update_phys
+       only: update_ssh, update_temp, update_salt, update_vel
   use asminc, &
        only: ln_bkgwri, ln_trainc, ln_dyninc, ln_sshinc, &
        ln_asmdin, ln_asmiau, nitbkg, nitdin, nitiaustr, nitiaufin, &
@@ -83,16 +83,28 @@ contains
      ! Set switches and parameters for ASMINC - physics
 
      ln_bkgwri  = .false.   !  Logical switch for writing out background state
-     if (.not. update_phys) then
+     if (.not. (update_ssh .or. update_temp .or. update_salt .or. update_vel)) then
         ln_trainc  = .false.   !  Logical switch for applying tracer increments
         ln_dyninc  = .false.   !  Logical switch for applying velocity increments
         ln_sshinc  = .false.   !  Logical switch for applying SSH increments
         ln_asmdin  = .false.      !  Logical switch for Direct Initialization (DI)
         ln_asmiau  = .false.   !  Logical switch for Incremental Analysis Updating (IAU)
      else
-        ln_trainc  = .true.    !  Logical switch for applying tracer increments
-        ln_dyninc  = .true.    !  Logical switch for applying velocity increments
-        ln_sshinc  = .true.    !  Logical switch for applying SSH increments
+        if (update_temp .or. update_salt) then
+           ln_trainc  = .true.    !  Logical switch for applying tracer increments
+        else
+           ln_trainc  = .false.   !  Logical switch for applying tracer increments
+        end if
+        if (update_vel) then
+           ln_dyninc  = .true.    !  Logical switch for applying velocity increments
+        else
+           ln_dyninc  = .false.   !  Logical switch for applying velocity increments
+        end if
+        if (update_ssh) then
+           ln_sshinc  = .true.    !  Logical switch for applying SSH increments
+        else
+           ln_sshinc  = .false.   !  Logical switch for applying SSH increments
+        end if
         if (do_asmiau) then
            ln_asmiau  = .true.    !  Logical switch for Incremental Analysis Updating (IAU)
            ln_asmdin  = .false.      !  Logical switch for Direct Initialization (DI)
@@ -180,8 +192,12 @@ contains
 
     if (mype_ens==0) then
        write (*,'(/a,4x,a)') 'NEMO-PDAF', '******** Setup for NEMO ASM ********'
-       if (update_phys) then 
+       if (update_temp .or. update_salt .or. update_ssh .or. update_vel) then 
           write (*,'(a,4x,a)') 'NEMO-PDAF', '--- Apply increment for NEMO physics'
+          if (update_temp) write (*,'(a,9x,a)') 'NEMO-PDAF', '--- update temperature'
+          if (update_salt) write (*,'(a,9x,a)') 'NEMO-PDAF', '--- update salinity'
+          if (update_ssh) write (*,'(a,9x,a)') 'NEMO-PDAF', '--- update SSH'
+          if (update_vel) write (*,'(a,9x,a)') 'NEMO-PDAF', '--- update velocities'
           if (ln_asmdin) write (*,'(a,9x,a)') 'NEMO-PDAF', '--- Use DIN for NEMO fields'
           if (ln_asmiau) then
              write (*,'(a,8x,a)') 'NEMO-PDAF', '--- Use IAU for NEMO fields'
@@ -336,7 +352,7 @@ contains
 ! *** Prepare increment arrays for NEMO physics ***
 ! *************************************************
 
-     physics: if (update_phys) then
+     physics: if (update_temp .or. update_salt .or. update_ssh .or. update_vel) then
 
         ! Ensure that the increment arrays are allocated and set to zero
         if (.not. allocated(ssh_bkginc)) allocate(ssh_bkginc(jpi,jpj))
@@ -351,7 +367,7 @@ contains
         v_bkginc = 0.0_pwp
 
         ! SSH
-        if (id%ssh > 0) then
+        if (id%ssh > 0 .and. update_ssh) then
            call state2field_inc(state_p, sshn(1+i0:ni_p+i0, 1+j0:nj_p+j0), &
                 ssh_bkginc(1+i0:ni_p+i0, 1+j0:nj_p+j0), sfields(id%ssh)%off, sfields(id%ssh)%ndims)
 
@@ -360,7 +376,7 @@ contains
         end if
 
         ! T
-        if (id%temp > 0) then
+        if (id%temp > 0 .and. update_temp) then
            call state2field_inc(state_p, &
                 tsn(1+i0:ni_p+i0, 1+j0:nj_p+j0, 1:nk_p, jp_tem), &
                 t_bkginc(1+i0:ni_p+i0, 1+j0:nj_p+j0, 1:nk_p), &
@@ -368,7 +384,7 @@ contains
         end if
 
         ! S
-        if (id%salt > 0) then
+        if (id%salt > 0 .and. update_salt) then
            call state2field_inc(state_p, &
              tsn(1+i0:ni_p+i0, 1+j0:nj_p+j0, 1:nk_p, jp_sal), &
              s_bkginc(1+i0:ni_p+i0, 1+j0:nj_p+j0, 1:nk_p), &
@@ -382,7 +398,7 @@ contains
         end if
 
         ! U
-        if (id%uvel > 0) then
+        if (id%uvel > 0 .and. update_vel) then
            call state2field_inc(state_p, &
                 un(1+i0:ni_p+i0, 1+j0:nj_p+j0, 1:nk_p), &
                 u_bkginc(1+i0:ni_p+i0, 1+j0:nj_p+j0, 1:nk_p), &
@@ -390,7 +406,7 @@ contains
         end if
 
         ! V
-        if (id%vvel > 0) then
+        if (id%vvel > 0 .and. update_vel) then
            call state2field_inc(state_p, &
                 vn(1+i0:ni_p+i0, 1+j0:nj_p+j0, 1:nk_p), &
                 v_bkginc(1+i0:ni_p+i0, 1+j0:nj_p+j0, 1:nk_p), &

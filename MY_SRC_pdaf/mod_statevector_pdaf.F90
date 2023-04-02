@@ -118,7 +118,10 @@ module mod_statevector_pdaf
   integer :: n_fields          !< number of fields in state vector
   integer :: n_fields_covar=0  !< number of fields to read from covariance matrix file
 
-  logical :: update_phys  = .false.     !< Whether to update NEMO physics after analysis step
+  logical :: update_temp  = .false.     !< Whether to update NEMO physics after analysis step
+  logical :: update_salt  = .false.     !< Whether to update NEMO physics after analysis step
+  logical :: update_vel   = .false.     !< Whether to update NEMO physics after analysis step
+  logical :: update_ssh   = .false.     !< Whether to update NEMO physics after analysis step
   logical :: update_phyto = .false.     !< Whether to update phytoplankton variables of ERGOM (DIA, FLA, CYA)
   logical :: update_zoo   = .false.     !< Whether to update zooplankton variables of ERGOM (MIZ, MEZ)
   logical :: update_det   = .false.     !< Whether to update detritus variables of ERGOM (DET, DETs)
@@ -267,7 +270,7 @@ contains
        sfields(id_var)%transform = 0
        sfields(id_var)%trafo_shift = 0.0
        sfields(id_var)%limit = 0
-       if (update_phys) sfields(id_var)%update = .true.
+       if (update_ssh) sfields(id_var)%update = .true.
     endif
 
     ! Temperature
@@ -285,7 +288,7 @@ contains
        sfields(id_var)%type = 'phy'
        sfields(id_var)%transform = 0
        sfields(id_var)%trafo_shift = 0.0
-       if (update_phys) sfields(id_var)%update = .true.
+       if (update_temp) sfields(id_var)%update = .true.
     endif
 
     ! Salinity
@@ -303,7 +306,10 @@ contains
        sfields(id_var)%type = 'phy'
        sfields(id_var)%transform = 0
        sfields(id_var)%trafo_shift = 0.0
-       if (update_phys) sfields(id_var)%update = .true.
+       sfields(id_var)%limit = 3
+       sfields(id_var)%min_limit = 0.000001
+       sfields(id_var)%max_limit = 36.0
+       if (update_salt) sfields(id_var)%update = .true.
     endif
 
     ! U-velocity
@@ -321,7 +327,7 @@ contains
        sfields(id_var)%type = 'phy'
        sfields(id_var)%transform = 0
        sfields(id_var)%trafo_shift = 0.0
-       if (update_phys) sfields(id_var)%update = .true.
+       if (update_vel) sfields(id_var)%update = .true.
     endif
 
     ! V-velocity
@@ -339,7 +345,7 @@ contains
        sfields(id_var)%type = 'phy'
        sfields(id_var)%transform = 0
        sfields(id_var)%trafo_shift = 0.0
-       if (update_phys) sfields(id_var)%update = .true.
+       if (update_vel) sfields(id_var)%update = .true.
     endif
 
 #if defined key_top

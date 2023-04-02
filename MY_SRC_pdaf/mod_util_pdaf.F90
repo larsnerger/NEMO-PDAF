@@ -166,7 +166,8 @@ contains
          sgldbl_io, coupling_nemo, save_var, save_state, save_ens_sngl, &
          add_slash
     use mod_statevector_pdaf, &
-         only: update_phys, update_phyto, update_zoo, update_det, update_nut, &
+         only: update_ssh, update_temp, update_salt, update_vel, &
+         update_phyto, update_zoo, update_det, update_nut, &
          update_oxy, update_other, update_diag
     use mod_iau_pdaf, &
          only: do_asmiau, do_bgciau, steps_asmiau, steps_bgciau, &
@@ -201,7 +202,8 @@ contains
          path_inistate, path_ens, file_ens, file_covar, coupling_nemo
 
     namelist /update_nml/ &
-         update_phys, update_phyto, update_zoo, update_det, update_nut, &
+         update_ssh, update_temp, update_salt, update_vel, &
+         update_phyto, update_zoo, update_det, update_nut, &
          update_oxy, update_other, update_diag, &
          do_asmiau, do_bgciau, steps_asmiau, steps_bgciau, &
          shape_asmiau, shape_bgciau, iter_divdmp, &
@@ -294,7 +296,10 @@ contains
        write (*, '(a,5x,a,5x,f10.2)') 'NEMO-PDAF','ensscale     ', ensscale
        write (*, *) ''
        write (*, '(a,3x,a)') 'NEMO-PDAF','[update_nml]:'
-       write (*, '(a,5x,a,l)') 'NEMO-PDAF','update_phys     ', update_phys
+       write (*, '(a,5x,a,l)') 'NEMO-PDAF','update_ssh      ', update_ssh
+       write (*, '(a,5x,a,l)') 'NEMO-PDAF','update_temp     ', update_temp
+       write (*, '(a,5x,a,l)') 'NEMO-PDAF','update_salt     ', update_salt
+       write (*, '(a,5x,a,l)') 'NEMO-PDAF','update_vel      ', update_vel
        write (*, '(a,5x,a,l)') 'NEMO-PDAF','update_phyto    ', update_phyto
        write (*, '(a,5x,a,l)') 'NEMO-PDAF','update_zoo      ', update_zoo
        write (*, '(a,5x,a,l)') 'NEMO-PDAF','update_det      ', update_det
