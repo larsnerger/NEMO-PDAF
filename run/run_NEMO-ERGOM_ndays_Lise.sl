@@ -44,10 +44,10 @@ NENS=4      # Ensemble size
 restart_dis=1
 
 # Whether NEMO or ERGOM should write the single outputs
-nemooutput1=1       # (1) Let NEMO write for ensemble member 1
-nemooutput_ens=1    # (1) Let NEMO write for ensemble members 2-N
-ergomoutput1=1      # (1) Let ERGOM write for ensemble member 1
-ergomoutput_ens=1   # (1) Let ERGOM write for ensemble members 2-N
+nemooutput1=0       # (1) Let NEMO write for ensemble member 1
+nemooutput_ens=0    # (1) Let NEMO write for ensemble members 2-N
+ergomoutput1=0      # (1) Let ERGOM write for ensemble member 1
+ergomoutput_ens=0   # (1) Let ERGOM write for ensemble members 2-N
 
 # Whether the script prepares the run directories, runs the experiment, does posptprocessing
 prepare=1
