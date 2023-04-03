@@ -17,6 +17,8 @@
 # set $prepare=1, $dorun=0, $postproc=0 
 # and run interactively in the shell
 
+#set -xv #debugging
+
 module load intel/18.0.6
 module load openmpi/intel/4.1.4
 
@@ -36,10 +38,16 @@ np_nemo=186  #number of PE's for nemo
 np_xios=6    #number of PE's for xios
 np=$np_nemo
 
-NENS=4  # Ensemble size
+NENS=4      # Ensemble size
 
 # Whether we initialize with distributed restart files: 1=true, 0=global restart files
 restart_dis=1
+
+# Whether NEMO or ERGOM should write the single outputs
+nemooutput1=1       # (1) Let NEMO write for ensemble member 1
+nemooutput_ens=1    # (1) Let NEMO write for ensemble members 2-N
+ergomoutput1=1      # (1) Let ERGOM write for ensemble member 1
+ergomoutput_ens=1   # (1) Let ERGOM write for ensemble members 2-N
 
 # Whether the script prepares the run directories, runs the experiment, does posptprocessing
 prepare=1
@@ -53,12 +61,8 @@ postproc=1
 initial_date=20150101
 
 # ---------------------------------------------------------------------------------------------------
-
-#set -xv #debugging
-
-# ---------------------------------------------------------------------------------------------------
 # Name of experiment and output directory
-EXP='exp.free_N30_new'
+EXP='test.DA_N30'
 OUTDIR="."
 # ---------------------------------------------------------------------------------------------------
 
@@ -67,10 +71,8 @@ xios_exe_dir='/home/hzfblner/SEAMLESS/xios-2.0_par_intel22/bin'
 #rebuild='/home_ad/bm1405/balmfc_git/nemo4_dev/tools/REBUILD_NEMO/'
 restart_out='output/restarts'
 archive='/scratch/usr/hzfblner/SEAMLESS/forcing_ergom_allEuler'
-archive_ln='/scratch/usr/hzfblner/SEAMLESS/forcings'
+forcing_dir='/scratch/usr/hzfblner/SEAMLESS/forcings'
 inputs_nc='/scratch/usr/hzfblner/SEAMLESS/run/inputs_allEuler_nc4'
-#setup_store='/scratch/usr/hbkycsun/data/setup_store'
-#setup_store='/scratch/usr/hbknerge/SEAMLESS/run/config_ERGOM_allEuler_Smago'
 setup_store='/scratch/usr/hbknerge/SEAMLESS/run/config_ERGOM_allEuler'
 initialdir='/scratch/usr/hzfblner/SEAMLESS/restart'
 disrestartdir='/scratch/usr/hzfblner/SEAMLESS/run/restart_dist_20150101'
@@ -340,11 +342,11 @@ if [ $prepare -eq 1 ]; then
 		  echo 'Use existing file ' EHYPE_$date_nemo.nc
 	      fi
 	  else
-  	     if [ -f $archive_ln/EHYPE_$date_nemo'+024H.nc' ]; then
- 	       ln -s $archive_ln/EHYPE_$date_nemo'+024H.nc' $wdir/forcing/EHYPE_$date_nemo.nc || { echo '1. failed' ; exit 1; }
+  	     if [ -f $forcing_dir/EHYPE_$date_nemo'+024H.nc' ]; then
+ 	       ln -s $forcing_dir/EHYPE_$date_nemo'+024H.nc' $wdir/forcing/EHYPE_$date_nemo.nc || { echo '1. failed' ; exit 1; }
 	     else
 		 if [ $i -eq 1 ]; then
-		     echo 'Non-existing forcing file ' $archive_ln/EHYPE_$date_nemo'+024H.nc'
+		     echo 'Non-existing forcing file ' $forcing_dir/EHYPE_$date_nemo'+024H.nc'
 		 fi
 	     fi
 	  fi
@@ -355,11 +357,11 @@ if [ $prepare -eq 1 ]; then
 		  echo 'Use existing file ' FORCE_$date_nemo.nc
 	      fi
 	  else
-  	     if [ -f $archive_ln/FORCE_$tstrhere'+24.nc' ]; then
-  	        ln -s $archive_ln/FORCE_$tstrhere'+24.nc' $wdir/forcing/FORCE_$date_nemo.nc  || { echo '2. failed' ; exit 1; }
+  	     if [ -f $forcing_dir/FORCE_$tstrhere'+24.nc' ]; then
+  	        ln -s $forcing_dir/FORCE_$tstrhere'+24.nc' $wdir/forcing/FORCE_$date_nemo.nc  || { echo '2. failed' ; exit 1; }
 	     else
 		 if [ $i -eq 1 ]; then
-		     echo 'Non-existing forcing file ' $archive_ln/FORCE_$tstrhere'+24.nc'
+		     echo 'Non-existing forcing file ' $forcing_dir/FORCE_$tstrhere'+24.nc'
 		 fi
 	     fi
 	  fi
@@ -370,11 +372,11 @@ if [ $prepare -eq 1 ]; then
 		  echo 'Use existing file ' bdy_uvh_$date_nemo.nc
 	      fi
 	  else
-  	     if [ -f $archive_ln/bdy_uvh_$tstrhere.nc ]; then
-		 ln -s $archive_ln/bdy_uvh_$tstrhere.nc  $wdir/forcing/bdy_uvh_$date_nemo.nc || { echo '3. failed' ; exit 1; }
+  	     if [ -f $forcing_dir/bdy_uvh_$tstrhere.nc ]; then
+		 ln -s $forcing_dir/bdy_uvh_$tstrhere.nc  $wdir/forcing/bdy_uvh_$date_nemo.nc || { echo '3. failed' ; exit 1; }
 	     else
 		 if [ $i -eq 1 ]; then
-		     echo 'Non-existing forcing file ' $archive_ln/bdy_uvh_$tstrhere.nc
+		     echo 'Non-existing forcing file ' $forcing_dir/bdy_uvh_$tstrhere.nc
 		 fi
 	     fi
 	  fi
@@ -385,11 +387,11 @@ if [ $prepare -eq 1 ]; then
 		  echo 'Use existing file ' bdy_ts_$date_nemo.nc
 	      fi
 	  else
-  	     if [ -f $archive_ln/bdy_ts_$tstrhere.nc ]; then
-	        ln -s $archive_ln/bdy_ts_$tstrhere.nc  $wdir/forcing/bdy_ts_$date_nemo.nc || { echo '4. failed' ; exit 1; }
+  	     if [ -f $forcing_dir/bdy_ts_$tstrhere.nc ]; then
+	        ln -s $forcing_dir/bdy_ts_$tstrhere.nc  $wdir/forcing/bdy_ts_$date_nemo.nc || { echo '4. failed' ; exit 1; }
 	     else
 		 if [ $i -eq 1 ]; then
-		     echo 'Non-existing forcing file ' $archive_ln/bdy_ys_$tstrhere.nc
+		     echo 'Non-existing forcing file ' $forcing_dir/bdy_ys_$tstrhere.nc
 		 fi
 	     fi
 	  fi
@@ -490,31 +492,49 @@ if [ $prepare -eq 1 ]; then
 	ln_tsd_init=.true.
     fi
 
-   #define NEMO_001 output
-    FILE101flag=.true. #oce SURF_grid_T
-    FILE201flag=.true. #oce grid_T
-    FILE301flag=.true. #oce grid_U
-    FILE401flag=.true. #oce grid_V
-    FILE501flag=.true. #oce grid_W
-    FILE601flag=.true. #ice ice_grid_T
-    FILE701flag=.true. #ergom _ERGOM_T
-#    FILE101flag=.false. #oce SURF_grid_T
-#    FILE201flag=.false. #.true. #oce grid_T
-#    FILE301flag=.false. #.true. #oce grid_U
-#    FILE401flag=.false. #.true. #oce grid_V
-#    FILE501flag=.false. #.true. #oce grid_W
-#    FILE601flag=.false. #.true. #ice ice_grid_T
-#    FILE701flag=.false. #.true. #ergom _ERGOM_T
+    #define NEMO_001 output - ensemble member 1
+    if [ $nemooutput1 -eq 1 ]; then
+	FILE101flag=.true. #oce SURF_grid_T
+	FILE201flag=.true. #oce grid_T
+	FILE301flag=.true. #oce grid_U
+	FILE401flag=.true. #oce grid_V
+	FILE501flag=.true. #oce grid_W
+	FILE601flag=.true. #ice ice_grid_T
+    else
+	FILE101flag=.false. #oce SURF_grid_T
+	FILE201flag=.false. #.true. #oce grid_T
+	FILE301flag=.false. #.true. #oce grid_U
+	FILE401flag=.false. #.true. #oce grid_V
+	FILE501flag=.false. #.true. #oce grid_W
+	FILE601flag=.false. #.true. #ice ice_grid_T
+    fi
+    if [ $ergomoutput1 -eq 1 ]; then
+	FILE701flag=.true. #ergom _ERGOM_T
+    else
+	FILE701flag=.false. #.true. #ergom _ERGOM_T
+    fi
 
-   #define NEMO_00X output
-    FILE10Xflag=.false. #oce SURF_grid_T
-    FILE20Xflag=.false. #oce grid_T
-    FILE30Xflag=.false. #oce grid_U
-    FILE40Xflag=.false. #oce grid_V
-    FILE50Xflag=.false. #oce grid_W
-    FILE60Xflag=.false. #ice ice_grid_T
-    FILE70Xflag=.true. #ergom _ERGOM_T
-#    FILE70Xflag=.false. #ergom _ERGOM_T
+    #define NEMO_00X output - ALL ENSEMBLE MEMBERS 2-n
+    if [ $nemooutput_ens -eq 1 ]; then
+	FILE10Xflag=.true. #oce SURF_grid_T
+	FILE20Xflag=.true. #oce grid_T
+	FILE30Xflag=.true. #oce grid_U
+	FILE40Xflag=.true. #oce grid_V
+	FILE50Xflag=.true. #oce grid_W
+	FILE60Xflag=.true. #ice ice_grid_T
+    else
+	FILE10Xflag=.false. #oce SURF_grid_T
+	FILE20Xflag=.false. #oce grid_T
+	FILE30Xflag=.false. #oce grid_U
+	FILE40Xflag=.false. #oce grid_V
+	FILE50Xflag=.false. #oce grid_W
+	FILE60Xflag=.false. #ice ice_grid_T
+    fi
+    if [ $ergomoutput_ens -eq 1 ]; then
+	FILE70Xflag=.true. #ergom _ERGOM_T
+    else
+	FILE70Xflag=.false. #ergom _ERGOM_T
+    fi
 
     for((i=1;i<=$NENS;i++))
       do
