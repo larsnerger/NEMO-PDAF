@@ -323,7 +323,7 @@ contains
      use mod_nemo_pdaf, &
           only: ni_p, nj_p, nk_p, i0, j0, &
           jp_tem, jp_sal, lbc_lnk, lbc_lnk_multi, &
-          sshn, tsn, un, vn, tmask
+          sshn, tsn, un, vn, tmask, umask, vmask
      use asminc, &
           only: ssh_bkginc, t_bkginc, s_bkginc, u_bkginc, v_bkginc, &
           ssh_bkg, t_bkg, s_bkg, u_bkg, v_bkg
@@ -371,6 +371,8 @@ contains
            call state2field_inc(state_p, sshn(1+i0:ni_p+i0, 1+j0:nj_p+j0), &
                 ssh_bkginc(1+i0:ni_p+i0, 1+j0:nj_p+j0), sfields(id%ssh)%off, sfields(id%ssh)%ndims)
 
+            ssh_bkginc(:,:) = ssh_bkginc(:,:) * tmask(:,:,1)
+
            ! Fill halo regions
            call lbc_lnk('distribute_state_pdaf', ssh_bkginc, 'T', 1.)
         end if
@@ -382,6 +384,7 @@ contains
                 t_bkginc(1+i0:ni_p+i0, 1+j0:nj_p+j0, 1:nk_p), &
                 sfields(id%temp)%off, sfields(id%temp)%ndims)
         end if
+        t_bkginc(:,:,:) = t_bkginc(:,:,:) * tmask(:,:,:)
 
         ! S
         if (id%salt > 0 .and. update_salt) then
@@ -390,6 +393,7 @@ contains
              s_bkginc(1+i0:ni_p+i0, 1+j0:nj_p+j0, 1:nk_p), &
              sfields(id%salt)%off, sfields(id%salt)%ndims)
         end if
+        s_bkginc(:,:,:) = s_bkginc(:,:,:) * tmask(:,:,:)
 
         if (id%temp>0 .or. id%salt>0) then
            ! Fill halo regions
@@ -403,6 +407,7 @@ contains
                 un(1+i0:ni_p+i0, 1+j0:nj_p+j0, 1:nk_p), &
                 u_bkginc(1+i0:ni_p+i0, 1+j0:nj_p+j0, 1:nk_p), &
                 sfields(id%uvel)%off, sfields(id%uvel)%ndims)
+           u_bkginc(:,:,:) = u_bkginc(:,:,:) * umask(:,:,:)
         end if
 
         ! V
@@ -411,6 +416,7 @@ contains
                 vn(1+i0:ni_p+i0, 1+j0:nj_p+j0, 1:nk_p), &
                 v_bkginc(1+i0:ni_p+i0, 1+j0:nj_p+j0, 1:nk_p), &
                 sfields(id%vvel)%off, sfields(id%vvel)%ndims)
+            v_bkginc(:,:,:) = v_bkginc(:,:,:) * vmask(:,:,:)
         end if
 
         if (id%uvel>0 .or. id%vvel>0) then
@@ -440,6 +446,11 @@ contains
            s_bkg = tsn(:,:,:,jp_sal)
            u_bkg = un
            v_bkg = vn
+           ssh_bkg(:,:) = ssh_bkg(:,:) * tmask(:,:,1)
+           t_bkg(:,:,:) = t_bkg(:,:,:) * tmask(:,:,:)
+           s_bkg(:,:,:) = s_bkg(:,:,:) * tmask(:,:,:)
+           u_bkg(:,:,:) = u_bkg(:,:,:) * umask(:,:,:)
+           v_bkg(:,:,:) = v_bkg(:,:,:) * vmask(:,:,:)
            
            if (mype_ens==0) &
                 write (*,'(a,4x,a)') 'NEMO-PDAF', '--- Apply full increment in ASMINC'
@@ -511,7 +522,7 @@ contains
      implicit none
 
 ! *** Local variables ***
-     integer :: ji, jj, jt, jk                       ! Counters
+     integer :: ji, jj, jt, jk                ! Counters
      real(pwp), allocatable ::   zhdiv(:,:)   ! 2D workspace
 
    !! * Substitutions
@@ -522,6 +533,9 @@ contains
 ! ***************************************
 
      divdmp: if ( ln_dyninc .and. nn_divdmp > 0 ) then    ! Apply divergence damping filter
+
+        if (mype_ens==0) &
+             write (*,'(a,4x,a,i)') 'NEMO-PDAF', '--- apply divergence damping: nn_divdmp', nn_divdmp
 
         allocate( zhdiv(jpi,jpj) ) 
 

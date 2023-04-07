@@ -9,7 +9,8 @@ module mod_nemo_pdaf
        jp_tem, jp_sal
   use dom_oce, &
        only: nldi, nldj, nlei, nlej, glamt, gphit, &
-       nimpp, njmpp, tmask, gdept_1d, ndastp, neuler
+       nimpp, njmpp, gdept_1d, ndastp, neuler, &
+       tmask, umask, vmask
   use trc, &
        only: trb, trn
   use oce, &
