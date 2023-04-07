@@ -1007,9 +1007,15 @@ contains
     if (n_sweeps>1) then
        if (domain_p==1) then
           ! Physics loop - set inverse observation error to small value
+          if (mype_filter==0) &
+               write (6,'(a,4x,a)') 'NEMO-PDAF', '--- PHY sweep: set ivar_obs_f for CHL to 1.0e-12'
+
           thisobs%ivar_obs_f = 1.0e-12
        elseif (domain_p==nwet+1) then
-          !Bio loop
+          !Bio loop 
+          if (mype_filter==0) &
+               write (6,'(a,4x,a)') 'NEMO-PDAF', '--- BIO sweep: set ivar_obs_f for CHL to normal'
+
           thisobs%ivar_obs_f(:) = ivar_obs_save
        end if
     end if
