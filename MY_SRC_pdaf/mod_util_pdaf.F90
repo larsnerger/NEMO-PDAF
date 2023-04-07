@@ -164,7 +164,7 @@ contains
     use mod_io_pdaf, &
          only: verbose_io, path_inistate, path_ens, file_ens, file_covar, &
          sgldbl_io, coupling_nemo, save_var, save_state, save_ens_sngl, &
-         add_slash
+         ids_write, add_slash
     use mod_statevector_pdaf, &
          only: update_ssh, update_temp, update_salt, update_vel, &
          update_phyto, update_zoo, update_det, update_nut, &
@@ -193,8 +193,8 @@ contains
 
     namelist /pdaf_nml/ &
          screen, filtertype, subtype, type_trans, type_sqrt, &
-         type_forget, forget, locweight, delt_obs, &
-         save_var, save_state, save_ens_sngl, verbose_io, sgldbl_io, &
+         type_forget, forget, locweight, delt_obs, save_var, &
+         save_state, save_ens_sngl, ids_write, verbose_io, sgldbl_io, &
          perturb_params, stddev_params, type_hyb, hyb_gamma, hyb_kappa
 
     namelist /init_nml/ &
@@ -232,6 +232,9 @@ contains
     ! ****************************************************
     ! ***   Initialize PDAF parameters from namelist   ***
     ! ****************************************************
+
+    ! Initialize array of singel field IDs for which ensemble could be written
+    ids_write = 0
 
     nmlfile = 'namelist_cfg.pdaf'
 
@@ -300,6 +303,7 @@ contains
        write (*, '(a,5x,a,l)') 'NEMO-PDAF','update_temp     ', update_temp
        write (*, '(a,5x,a,l)') 'NEMO-PDAF','update_salt     ', update_salt
        write (*, '(a,5x,a,l)') 'NEMO-PDAF','update_vel      ', update_vel
+#if defined key_top
        write (*, '(a,5x,a,l)') 'NEMO-PDAF','update_phyto    ', update_phyto
        write (*, '(a,5x,a,l)') 'NEMO-PDAF','update_zoo      ', update_zoo
        write (*, '(a,5x,a,l)') 'NEMO-PDAF','update_det      ', update_det
@@ -309,6 +313,7 @@ contains
        write (*, '(a,5x,a,l)') 'NEMO-PDAF','update_diag     ', update_diag
        write (*, '(a,5x,a,6x,a)')'NEMO-PDAF','cda_phy         ', trim(cda_phy)
        write (*, '(a,5x,a,6x,a)')'NEMO-PDAF','cda_bio         ', trim(cda_bio)
+#endif
        write (*, *) ''
        write (*, '(a,3x,a)') 'NEMO-PDAF','[obs_ssh_mgrid_nml]:'
        write (*, '(a,5x,a,5x,l)') 'NEMO-PDAF','assim_ssh_mgrid      ', assim_ssh_mgrid

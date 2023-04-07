@@ -79,7 +79,6 @@ module mod_statevector_pdaf
   logical :: sv_uvel = .false. !< Whether to include u-velocity in state vector
   logical :: sv_vvel = .false. !< Whether to include v-velocity in state vector
 
-#if defined key_top
   ! Variables for biogeochemistry
   integer :: n_trc = 0                     !< number of tracer fields
   integer :: n_bgc1 = 0                    !< number of prognostic tracer fields
@@ -96,7 +95,6 @@ module mod_statevector_pdaf
   integer :: id_fla=0          !< Index of flagellate field in state vector
   integer :: id_cya=0          !< Index of cyanobacteria field in state vector
   integer :: id_netpp=0        !< Index of net primary production in state vector
-#endif
 
   !---- The next variables usually do not need editing -----
 
@@ -306,7 +304,7 @@ contains
        sfields(id_var)%type = 'phy'
        sfields(id_var)%transform = 0
        sfields(id_var)%trafo_shift = 0.0
-       sfields(id_var)%limit = 3
+       sfields(id_var)%limit = 0
        sfields(id_var)%min_limit = 0.000001
        sfields(id_var)%max_limit = 36.0
        if (update_salt) sfields(id_var)%update = .true.

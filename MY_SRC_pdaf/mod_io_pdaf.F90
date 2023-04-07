@@ -53,6 +53,7 @@ module mod_io_pdaf
   character(len=200) :: path_restart       ! Path of restart file
   character(len=80)  :: file_restart       ! file name of restart dile
 
+  integer :: ids_write(25)
 
    ! Temporary - from offline code
   real(pwp) :: startEnsTime=1.0_pwp, endEnsTime=1.0_pwp, incrTime=1.0_pwp
@@ -547,6 +548,7 @@ end subroutine gen_ens_mv
          WRITE(*, '(a,1x,a,a)') 'NEMO-PDAF', '--- Reading covariance information from ', TRIM(filename_cov)
 
     call check( NF90_OPEN(TRIM(filename_cov), NF90_NOWRITE, ncid) )
+!    call check( NF90_OPEN_PARopen_par(trim(filename_cov), NF90_NOWRITE, comm_filter, MPI_INFO_NULL, ncid) )
 
     ! Read rank stored in file
     call check( NF90_INQ_DIMID(ncid, 'rank', dimid) )

@@ -227,12 +227,14 @@ contains
          only: PDAFomi_assimilate_local, PDAF_get_localfilter
     use mod_parallel_pdaf, &
          only: mype_ens, abort_parallel, COMM_ensemble, MPIerr, task_id
+#if defined key_top
     use mod_statevector_pdaf, &
          only: id_netpp
     use mod_nemo_pdaf, &
-         only: jpi, jpj, jpk, calc_date, lwp, numout
-    use sms_ergom, &
          only: xnetpp
+#endif
+    use mod_nemo_pdaf, &
+         only: jpi, jpj, jpk, calc_date, lwp, numout
     use mod_iau_pdaf, &
          only: update_asm_step_pdaf
 
@@ -275,6 +277,7 @@ contains
     ! *** Accumulate netpp ***
     ! ************************
 
+#if defined key_top
     if (id_netpp>0) then
 
        ! This is required since in the model only the increment of
@@ -303,6 +306,7 @@ contains
        netppsum = netppsum + xnetpp
 
     end if
+#endif
 
 
     ! *********************************
