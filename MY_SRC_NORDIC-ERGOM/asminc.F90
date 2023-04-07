@@ -114,9 +114,9 @@ MODULE asminc
    REAL(wp), PUBLIC, DIMENSION(:,:,:)  , ALLOCATABLE ::   dia_bkginc
    REAL(wp), PUBLIC, DIMENSION(:,:,:)  , ALLOCATABLE ::   cya_bkginc
 
+#endif
    INTEGER , PUBLIC ::   niaufnbgc   !: Type of BGC IAU weighing function: = 0   Constant weighting
    !                                 !: = 1   Linear hat-like, centred in middle of IAU interval 
-#endif
    !                                !!! time steps relative to the cycle interval [0,nitend-nit000-1]
    INTEGER , PUBLIC ::   nitbkg      !: Time step of the background state used in the Jb term
    INTEGER , PUBLIC ::   nitdin      !: Time step of the background state for direct initialization
@@ -1294,7 +1294,7 @@ if (lwp)write (numout,*) 'Allocate BGC increment arrays'
    !!======================================================================
 #if defined key_top && defined key_asminc 
  SUBROUTINE trc_asm_inc( kt )
-use mod_parallel_pdaf, only: mype_ens
+
       !!----------------------------------------------------------------------
       !!                    ***  ROUTINE trc_asm_inc  ***
       !!          
@@ -1336,9 +1336,6 @@ use mod_parallel_pdaf, only: mype_ens
             i = ids_update_bgc(ibgc) ! index in bgc_bgkinc
             tra(:,:,:,i) = tra(:,:,:,i)  + BGC_bkginc(:,:,:,ibgc)
          END DO
-         if (mype_ens==12) write (*,*) 'min/max TRA2', minval(tra(:,:,1,6)),maxval(tra(:,:,1,6))
-         if (mype_ens==12) write (*,*) 'min/max TRA2', minval(tra(:,:,1,6)),maxval(tra(:,:,1,6))
-         if (mype_ens==12) write (*,*) 'TRA2', tra(1:20,1:2,1,6)
 #else
          IF (ln_oxyinc)   tra(:,:,:,idx_oxy) = tra(:,:,:,idx_oxy)  + oxy_bkginc(:,:,:) * oxyfac
          IF (ln_no3inc)   tra(:,:,:,idx_nit) = tra(:,:,:,idx_nit)  + no3_bkginc(:,:,:) * no3fac 
