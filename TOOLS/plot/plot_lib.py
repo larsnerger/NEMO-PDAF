@@ -838,7 +838,11 @@ def read_station_idx(varnum, grid_area, year, time_stamp, depth, DA_switch, coup
     else:
         station, station_coords, _ = station_info(istation, 'mod')
 
-    month = '01'
+    if months[0]<10:
+      month = '0'+str(months[0])
+    else:
+      month = months[0]
+   
     day = 1
     _, mod_keys = read_model(varstr, grid_area, year, month, day, time_stamp, depth, DA_switch, coupled, z_mean, z_integral, z1, z2)
 
@@ -938,7 +942,7 @@ def read_station_series(varnum, grid_area, year, time_stamp, depth, DA_switch, c
     alldays = DoY
 
     for imonth in range(len(months)):
-        
+
       _, _, _, ndays = month_names(months[imonth])
 
       if months[imonth]<10:
