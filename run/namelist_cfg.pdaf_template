@@ -52,32 +52,32 @@
   sv_salt=.true.
   sv_uvel=.true.
   sv_vvel=.true.
-  ! sv_bgc1 contains the prognostic variables in ERGOM
+  ! sv_bgc_prog contains the prognostic variables in ERGOM
   !  1:NH4  2:NO3  3:PO4   4:SIL  5:DIA   6:FLA  7:CYA  8:MEZ  
   !  9:MIZ 10:DET 10:DETs 12:FE  13:LDON 14:DIC 15:ALK 16:OXY
-  sv_bgc1(1)=.true.
-  sv_bgc1(2)=.true.
-  sv_bgc1(3)=.true.
-  sv_bgc1(4)=.true.
-  sv_bgc1(5)=.true.
-  sv_bgc1(6)=.true.
-  sv_bgc1(7)=.true.
-  sv_bgc1(8)=.true.
-  sv_bgc1(9)=.true.
-  sv_bgc1(10)=.true.
-  sv_bgc1(11)=.true.
-  sv_bgc1(12)=.true.
-  sv_bgc1(13)=.true.
-  sv_bgc1(14)=.true.
-  sv_bgc1(15)=.true.
-  sv_bgc1(16)=.true.
+  sv_bgc_prog(1)=.true.
+  sv_bgc_prog(2)=.true.
+  sv_bgc_prog(3)=.true.
+  sv_bgc_prog(4)=.true.
+  sv_bgc_prog(5)=.true.
+  sv_bgc_prog(6)=.true.
+  sv_bgc_prog(7)=.true.
+  sv_bgc_prog(8)=.true.
+  sv_bgc_prog(9)=.true.
+  sv_bgc_prog(10)=.true.
+  sv_bgc_prog(11)=.true.
+  sv_bgc_prog(12)=.true.
+  sv_bgc_prog(13)=.true.
+  sv_bgc_prog(14)=.true.
+  sv_bgc_prog(15)=.true.
+  sv_bgc_prog(16)=.true.
 
-  !  sv_bgc2 contains the diagnostic variables in ERGOM
+  !  sv_bgc_diag contains the diagnostic variables in ERGOM
   !  1:pCO2  2:PH   3:CHL   4:PP
-  sv_bgc2(1)=.true.
-  sv_bgc2(2)=.true.
-  sv_bgc2(3)=.true.
-  sv_bgc2(4)=.true.
+  sv_bgc_diag(1)=.true.
+  sv_bgc_diag(2)=.true.
+  sv_bgc_diag(3)=.true.
+  sv_bgc_diag(4)=.true.
 /
 
 &sfields_nml

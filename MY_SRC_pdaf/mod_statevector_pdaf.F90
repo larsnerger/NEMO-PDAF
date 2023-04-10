@@ -9,16 +9,17 @@
 !! - **setup_statevector** - generic routine controlling the initialization
 !!
 !! The declarations of **id** and **sfields** as well as the
-!! routines ~~init_id** and **init_sfields** usually need to be
+!! routines **init_id** and **init_sfields** usually need to be
 !! adapted to a particular modeling case.
 !!
 module mod_statevector_pdaf
 
   use mod_kind_pdaf
 #if defined key_top
-  use par_trc, &
+  use mod_nemo_pdaf, &
        only: jptra
 #endif
+
   implicit none
   save
 
@@ -35,59 +36,60 @@ module mod_statevector_pdaf
      integer :: vvel = 0
 #if defined key_top
      ! Biogeochemistry
-     integer, allocatable  :: bgc1(:)
-     integer, allocatable  :: bgc2(:)
+     integer, allocatable  :: bgc_prog(:)
+     integer, allocatable  :: bgc_diag(:)
 #endif
   end type field_ids
 
-  ! Declare Fortran type holding the definitions for model fields
+  !< Declare Fortran type holding the definitions for model fields
   type state_field
-     integer :: ndims = 0                  ! Number of field dimensions (2 or 3)
-     integer :: dim = 0                    ! Dimension of the field
-     integer :: off = 0                    ! Offset of field in state vector
-     integer :: jptrc = 0                  ! index of the tracer in nemo tracer variable
-     logical :: update = .false.           ! Whether to update this variable in the analysis step
-     character(len=3) :: type = ''         ! Type of field (phy/bio)
-     character(len=10) :: variable = ''    ! Name of field
-     character(len=20) :: name_incr = ''   ! Name of field in increment file
-     character(len=20) :: name_rest_n = '' ! Name of field in restart file (n-field)
-     character(len=20) :: name_rest_b = '' ! Name of field in restart file (b-field)
-     character(len=50) :: file = ''        ! File name stub to read field from
-     character(len=50) :: file_state = ''  ! File name to read model state
-     character(len=30) :: rst_file = ''    ! Name of restart file
-     character(len=20) :: unit = ''        ! Unit of variable
-     integer :: transform = 0              ! Type of variable transformation
-     real(pwp) :: trafo_shift = 0.0_pwp    ! Constant to shift value in transformation
-     integer :: limit = 0                  ! Whether to limit the value of the variable
-                     ! 0: no limits, 1: lower limit, 2: upper limit, 3: both limits
-     real(pwp) :: max_limit = 0.0_pwp      ! Upper limit of variable
-     real(pwp) :: min_limit = 0.0_pwp      ! Lower limit of variable
-     real(pwp) :: ensscale = 1.0           ! Scale factor for initial ensemble perturbations
+     integer :: ndims = 0                  !< Number of field dimensions (2 or 3)
+     integer :: dim = 0                    !< Dimension of the field
+     integer :: off = 0                    !< Offset of field in state vector
+     integer :: jptrc = 0                  !< index of the tracer in nemo tracer variable
+     logical :: update = .false.           !< Whether to update this variable in the analysis step
+     character(len=3) :: type = ''         !< Type of field (phy/bio)
+     character(len=10) :: variable = ''    !< Name of field
+     character(len=20) :: name_incr = ''   !< Name of field in increment file
+     character(len=20) :: name_rest_n = '' !< Name of field in restart file (n-field)
+     character(len=20) :: name_rest_b = '' !< Name of field in restart file (b-field)
+     character(len=50) :: file = ''        !< File name stub to read field from
+     character(len=50) :: file_state = ''  !< File name to read model state
+     character(len=30) :: rst_file = ''    !< Name of restart file
+     character(len=20) :: unit = ''        !< Unit of variable
+     integer :: transform = 0              !< Type of variable transformation
+     real(pwp) :: trafo_shift = 0.0_pwp    !< Constant to shift value in transformation
+     integer :: limit = 0                  !< Whether to limit the value of the variable
+                     !< 0: no limits, 1: lower limit, 2: upper limit, 3: both limits
+     real(pwp) :: max_limit = 0.0_pwp      !< Upper limit of variable
+     real(pwp) :: min_limit = 0.0_pwp      !< Lower limit of variable
+     real(pwp) :: ensscale = 1.0           !< Scale factor for initial ensemble perturbations
   end type state_field
 
   ! Declare Fortran type holding the definitions for local model fields
   ! This is separate from state_field to support OpenMP
   type state_field_l
-     integer :: dim = 0                    ! Dimension of the field
-     integer :: off = 0                    ! Offset of field in state vector
+     integer :: dim = 0                    !< Dimension of the field
+     integer :: off = 0                    !< Offset of field in state vector
   end type state_field_l
 
   ! Variables to activate a field from the namelist
-  logical :: sv_temp = .false. !< Whether to include temperature in state vector
-  logical :: sv_salt = .false. !< Whether to include salinity in state vector
-  logical :: sv_ssh = .false.  !< Whether to include SSH in state vector
-  logical :: sv_uvel = .false. !< Whether to include u-velocity in state vector
-  logical :: sv_vvel = .false. !< Whether to include v-velocity in state vector
+  logical :: sv_temp = .false.             !< Whether to include temperature in state vector
+  logical :: sv_salt = .false.             !< Whether to include salinity in state vector
+  logical :: sv_ssh  = .false.             !< Whether to include SSH in state vector
+  logical :: sv_uvel = .false.             !< Whether to include u-velocity in state vector
+  logical :: sv_vvel = .false.             !< Whether to include v-velocity in state vector
 
   ! Variables for biogeochemistry
   integer :: n_trc = 0                     !< number of tracer fields
-  integer :: n_bgc1 = 0                    !< number of prognostic tracer fields
-  integer :: n_bgc2 = 0                    !< number of diagnostic tracer fields
-  integer, parameter :: jptra2 = 4         !< number of total diagnostic tracer fields
+  integer :: n_bgc_prog = 0                !< number of active prognostic tracer fields
+  integer :: n_bgc_diag = 0                !< number of active diagnostic tracer fields
+  integer :: jpbgc_prog = 0                !< number of total prognistic tracer fields
+  integer :: jpbgc_diag = 4                !< number of total diagnostic tracer fields
 
   ! Variables to activate a field from the namelist
-  logical, allocatable :: sv_bgc1(:) !< Whether to include BGC in state vector
-  logical, allocatable :: sv_bgc2(:) !< Whether to include diagnostic BGC variables
+  logical, allocatable :: sv_bgc_prog(:) !< Whether to include BGC in state vector
+  logical, allocatable :: sv_bgc_diag(:) !< Whether to include diagnostic BGC variables
 
   ! Helper variables to point to particular fields
   integer :: id_chl=0          !< Index of chlorophyll field in state vector
@@ -141,40 +143,48 @@ contains
 
 ! *** Local variables ***
     integer :: cnt               ! Counter
+    integer :: id_bgc_prog       ! Counter for prognostic BGC variables
+    integer :: id_bgc_diag       ! Counter for diagnostic BGC variables
+
+
+! **********************
+! *** Initialization ***
+! **********************
+
 #if defined key_top
-    integer :: id_bgc1           ! Counter
-    integer :: id_bgc2           ! Counter
+    ! Set total number of prognostic and diagnostic BGC fields
+    jpbgc_prog = jptra           ! Number of prognostic BGC fields
+    jpbgc_diag = 4               ! Number of diagnostic BGC fields
 
-    allocate(id%bgc1(jptra))
-    allocate(id%bgc2(jptra2))
-    id%bgc1(:)=0
-    id%bgc2(:)=0
+    ! Prepare arrays for indices and switches for BGC fields
+    allocate(id%bgc_prog(jpbgc_prog))
+    allocate(id%bgc_diag(jpbgc_diag))
+    id%bgc_prog(:)=0
+    id%bgc_diag(:)=0
 
-    allocate(sv_bgc1(jptra))
-    allocate(sv_bgc2(jptra2))
-    sv_bgc1(:) = .false.
-    sv_bgc2(:) = .false.
+    allocate(sv_bgc_prog(jpbgc_prog))
+    allocate(sv_bgc_diag(jpbgc_diag))
+    sv_bgc_prog(:) = .false.
+    sv_bgc_diag(:) = .false.
 #endif
 
     ! Namelist to define active parts of state vector
 #if defined key_top
     namelist /state_vector/ screen, n_fields_covar, &
          sv_temp, sv_salt, sv_ssh, sv_uvel, sv_vvel, &
-         sv_bgc1, sv_bgc2
+         sv_bgc_prog, sv_bgc_diag
 #else
     namelist /state_vector/ screen, n_fields_covar, &
          sv_temp, sv_salt, sv_ssh, sv_uvel, sv_vvel
 #endif
 
-! **********************
-! *** Initialization ***
-! **********************
 
 ! *** Read namelist file for state vector setup
 
     open (500,file='namelist_cfg.pdaf')
     read (500,NML=state_vector)
     close (500)
+
 
 ! *** Now setup field indices in state vector
 
@@ -205,28 +215,29 @@ contains
     end if
 
 #if defined key_top
-    do id_bgc1 = 1, jptra
-       if (sv_bgc1(id_bgc1)) then
+    do id_bgc_prog = 1, jpbgc_prog
+       if (sv_bgc_prog(id_bgc_prog)) then
           cnt = cnt + 1
-          id%bgc1(id_bgc1) = cnt
-          n_bgc1=n_bgc1+1
+          id%bgc_prog(id_bgc_prog) = cnt
+          n_bgc_prog=n_bgc_prog+1
        end if
     end do
 
-    do id_bgc2 = 1, jptra2
-       if (sv_bgc2(id_bgc2)) then
+    do id_bgc_diag = 1, jpbgc_diag
+       if (sv_bgc_diag(id_bgc_diag)) then
           cnt = cnt + 1
-          id%bgc2(id_bgc2) = cnt
-          n_bgc2=n_bgc2+1
+          id%bgc_diag(id_bgc_diag) = cnt
+          n_bgc_diag=n_bgc_diag+1
        end if
     end do
+
+    ! Set number of BGC fields in state vector
+    n_trc=n_bgc_prog+n_bgc_diag
 #endif
 
-    ! Set number of fields in state vector
+    ! Set total number of fields in state vector
     nfields = cnt
-#if defined key_top
-    n_trc=n_bgc1+n_bgc2
-#endif
+
   end subroutine init_id
 ! ===================================================================================
 
@@ -234,6 +245,7 @@ contains
 !!
 !! This routine initializes the sfields array with specifications
 !! of the fields in the state vector.
+!!
   subroutine init_sfields()
 
     use mod_kind_pdaf
@@ -245,8 +257,8 @@ contains
 ! *** Local variables ***
     integer :: id_var            ! Index of a variable in state vector
 #if defined key_top
-    integer :: id_bgc1           ! Counter
-    integer :: id_bgc2           ! Counter
+    integer :: id_bgc_prog           ! Counter
+    integer :: id_bgc_diag           ! Counter
 #endif
 
     namelist /sfields_nml/ sfields
@@ -348,12 +360,12 @@ contains
 
 #if defined key_top
     ! BGC
-    do id_bgc1 = 1, jptra
-      if (sv_bgc1(id_bgc1)) then
-        id_var=id%bgc1(id_bgc1)
+    do id_bgc_prog = 1, jpbgc_prog
+      if (sv_bgc_prog(id_bgc_prog)) then
+        id_var=id%bgc_prog(id_bgc_prog)
         sfields(id_var)%ndims = 3
         sfields(id_var)%dim = sdim3d
-        sfields(id_var)%jptrc = id_bgc1
+        sfields(id_var)%jptrc = id_bgc_prog
         sfields(id_var)%file = 'NORDIC_1d_ERGOM_T_'
         sfields(id_var)%rst_file = 'restart_trc_in.nc'
         sfields(id_var)%type = 'bio'
@@ -363,14 +375,13 @@ contains
         sfields(id_var)%trafo_shift = 0.0
         sfields(id_var)%ensscale = 0.5
 
-        select case (id_bgc1)
+        select case (id_bgc_prog)
         case (1)
           sfields(id_var)%variable = 'NH4'
           sfields(id_var)%name_incr = ''
           sfields(id_var)%name_rest_n = 'TRNNH4'
           sfields(id_var)%name_rest_b = 'TRBNH4'
           sfields(id_var)%unit = 'mmol m-3'
-!        sfields(id_var)%transform = 2   ! log-transform
           if (update_nut) sfields(id_var)%update = .true.
         case (2)
           sfields(id_var)%variable = 'NO3'
@@ -400,7 +411,6 @@ contains
           sfields(id_var)%name_rest_b = 'TRBDIA'
           sfields(id_var)%unit = 'mmol m-3'
           id_dia = id_var
-!          sfields(id_var)%limit = 1
           if (update_phyto) sfields(id_var)%update = .true.
         case (6)
           sfields(id_var)%variable = 'FLA'
@@ -488,20 +498,20 @@ contains
     end do
 
     ! Diagnostic BGC fields - not part of restart files
-    do id_bgc2 = 1, jptra2
+    do id_bgc_diag = 1, jpbgc_diag
 
-      if (sv_bgc2(id_bgc2)) then
-        id_var=id%bgc2(id_bgc2)
+      if (sv_bgc_diag(id_bgc_diag)) then
+        id_var=id%bgc_diag(id_bgc_diag)
         sfields(id_var)%ndims = 3
         sfields(id_var)%dim = sdim3d
-        sfields(id_var)%jptrc = id_bgc2
+        sfields(id_var)%jptrc = id_bgc_diag
         sfields(id_var)%file = 'NORDIC_1d_ERGOM_T_'
         sfields(id_var)%type = 'bio'
         sfields(id_var)%transform = 0
         sfields(id_var)%trafo_shift = 0.0
         if (update_diag) sfields(id_var)%update = .true.
 
-        select case (id_bgc2)
+        select case (id_bgc_diag)
         case (1)
            sfields(id_var)%variable = 'PCO2'
            sfields(id_var)%unit = 'micro atm'
@@ -513,7 +523,7 @@ contains
            sfields(id_var)%variable = 'CHL'
            sfields(id_var)%unit = 'mg m-3'
            ! Set log-transform if prognostic chlorophyll are transformed
-           if (sfields(id%bgc1(1))%transform==2) sfields(id_var)%transform = 2   ! log-transform
+           if (sfields(id%bgc_prog(1))%transform==2) sfields(id_var)%transform = 2   ! log-transform
         case (4)
            id_netpp = id_var      ! Store ID of NETPP to be used in observation module
            sfields(id_var)%variable = 'PP'

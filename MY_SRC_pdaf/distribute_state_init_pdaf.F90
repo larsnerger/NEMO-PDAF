@@ -24,7 +24,7 @@ subroutine distribute_state_init_pdaf(dim_p, state_p)
        sshn, tsn, un, vn
 #if defined key_top
   use mod_statevector_pdaf, &
-       only: jptra, sv_bgc1
+       only: jpbgc_prog, sv_bgc_prog
   use mod_nemo_pdaf, &
        only: trb, trn
 #endif
@@ -130,9 +130,9 @@ subroutine distribute_state_init_pdaf(dim_p, state_p)
 
      ! BGC
 #if defined key_top
-     do i = 1, jptra
-        if (sv_bgc1(i)) then
-           id_var=id%bgc1(i)
+     do i = 1, jpbgc_prog
+        if (sv_bgc_prog(i)) then
+           id_var=id%bgc_prog(i)
            call state2field(state_p, &
                 trn(1+i0:ni_p+i0, 1+j0:nj_p+j0, 1:nk_p, sfields(id_var)%jptrc), &
                 sfields(id_var)%off, sfields(id_var)%ndims)

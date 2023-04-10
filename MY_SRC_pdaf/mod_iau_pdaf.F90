@@ -8,23 +8,23 @@
 module mod_iau_pdaf
 
   use mod_kind_pdaf
-  use par_oce, &
-       only: jpi, jpj, jpk, jpkm1, jp_tem, jp_sal
+  use mod_statevector_pdaf, &
+       only: update_ssh, update_temp, update_salt, update_vel, &
+       sfields, id, n_trc, jpbgc_prog, sv_bgc_prog
   use mod_parallel_pdaf, &
        only: mype_ens
-  use mod_nemo_pdaf, &
-       only: nitend, nit000
-  use mod_statevector_pdaf, &
-       only: update_ssh, update_temp, update_salt, update_vel
+  use par_oce, &
+       only: jpi, jpj, jpk, jp_tem, jp_sal
+  use in_out_manager, &
+       only: nit000
   use asminc, &
        only: ln_bkgwri, ln_trainc, ln_dyninc, ln_sshinc, &
-       ln_asmdin, ln_asmiau, nitbkg, nitdin, nitiaustr, nitiaufin, &
-       niaufn, ln_salfix, salfixmin, nn_divdmp, &
+       ln_asmdin, ln_asmiau, nitbkg, nitdin, nitiaustr, &
+       nitiaufin, niaufn, ln_salfix, salfixmin, nn_divdmp, &
        tra_asm_inc, dyn_asm_inc, ssh_asm_inc
   use asmpar, &
        only: nitdin_r, nitiaustr_r, nitiaufin_r
 #if defined key_top
-  use mod_statevector_pdaf, only: n_trc, jptra, sv_bgc1, sfields, id
   use asminc, &
        only: n_update_bgc, ids_update_bgc, bgc_bkginc, &
        nitdinbgc, nitibgcstr, nitibgcfin, niaufnbgc, &
@@ -69,7 +69,7 @@ contains
      integer, intent(in) :: delt_obs
 
 ! *** Local variables
-     integer :: id_bgc1
+     integer :: id_bgc_prog
      integer :: id_var
 
 
@@ -162,16 +162,16 @@ contains
 #if defined key_top
 
     ! Count number of prognostic BGC fields that are updated by the DA
-    allocate(ids_update_bgc(jptra))
-    do id_bgc1 = 1, jptra
+    allocate(ids_update_bgc(jpbgc_prog))
+    do id_bgc_prog = 1, jpbgc_prog
 
-       if (sv_bgc1(id_bgc1)) then
+       if (sv_bgc_prog(id_bgc_prog)) then
 
-          id_var=id%bgc1(id_bgc1)
+          id_var=id%bgc_prog(id_bgc_prog)
 
           if (sfields(id_var)%update) then
              n_update_bgc = n_update_bgc + 1
-             ids_update_bgc(n_update_bgc) = id_bgc1
+             ids_update_bgc(n_update_bgc) = id_bgc_prog
           end if
        end if
     end do
@@ -318,23 +318,23 @@ contains
 !!
    subroutine update_bkginc_pdaf(dim_p, state_p, verbose)
 
-     use mod_statevector_pdaf, &
-          only: sfields, id
      use mod_nemo_pdaf, &
-          only: ni_p, nj_p, nk_p, i0, j0, &
-          jp_tem, jp_sal, lbc_lnk, lbc_lnk_multi, &
-          sshn, tsn, un, vn, tmask, umask, vmask
-     use asminc, &
-          only: ssh_bkginc, t_bkginc, s_bkginc, u_bkginc, v_bkginc, &
-          ssh_bkg, t_bkg, s_bkg, u_bkg, v_bkg
-#if defined key_top
-     use mod_statevector_pdaf, &
-          only: jptra, sv_bgc1
-     use mod_nemo_pdaf, &
-          only: trb, trn
-#endif
+          only: ni_p, nj_p, nk_p, i0, j0
      use mod_aux_pdaf, &
           only: state2field_inc
+     use oce, &
+          only: sshn, tsn, un, vn
+     use dom_oce, &
+          only: tmask, umask, vmask
+     use lbclnk, &
+          only: lbc_lnk, lbc_lnk_multi
+     use asminc, &
+          only: ssh_bkg, t_bkg, s_bkg, u_bkg, v_bkg, &
+          ssh_bkginc, t_bkginc, s_bkginc, u_bkginc, v_bkginc
+#if defined key_top
+     use trc, &
+          only: trb, trn
+#endif
 
      implicit none
 
@@ -478,10 +478,10 @@ contains
         ! Get index in BGC tracer array
         i_trn = ids_update_bgc(i_bgcinc)
 
-        if (sv_bgc1(i_trn)) then
+        if (sv_bgc_prog(i_trn)) then
 
            ! Get field index in state vector
-           id_var=id%bgc1(i_trn)
+           id_var=id%bgc_prog(i_trn)
 
            if (sfields(id_var)%update) then
 
@@ -514,10 +514,13 @@ contains
 
      use asminc, &
           only: u_bkginc, v_bkginc
-     use par_oce, only: jpkm1, jpjm1, jpim1
-     use dom_oce, only: e1v, e3v_n, e2u, e3u_n, e3t_n, &
+     use par_oce, &
+          only: jpkm1, jpjm1, jpim1
+     use dom_oce, &
+          only: e1v, e3v_n, e2u, e3u_n, e3t_n, &
           r1_e1u, r1_e2v, umask, vmask
-     use lbclnk, only: lbc_lnk
+     use lbclnk, &
+          only: lbc_lnk
 
      implicit none
 

@@ -22,8 +22,8 @@ subroutine collect_state_pdaf(dim_p, state_p)
        jp_tem, jp_sal, sshn, tsn, un, vn
 #if defined key_top
   use mod_statevector_pdaf, &
-       only: n_trc, n_bgc1, n_bgc2, &
-       jptra, jptra2, sv_bgc1, sv_bgc2
+       only: n_trc, n_bgc_prog, n_bgc_diag, &
+       jpbgc_prog, jpbgc_diag, sv_bgc_prog, sv_bgc_diag
   use mod_nemo_pdaf, &
        only: trn, xph, xpco2, xchl
   use mod_assimilation_pdaf, &
@@ -91,34 +91,34 @@ subroutine collect_state_pdaf(dim_p, state_p)
 
 #if defined key_top
   ! BGC
-  do i = 1, jptra
-     if (sv_bgc1(i)) then
-        call field2state(trn(1+i0:ni_p+i0, 1+j0:nj_p+j0, 1:nk_p, sfields(id%bgc1(i))%jptrc), &
+  do i = 1, jpbgc_prog
+     if (sv_bgc_prog(i)) then
+        call field2state(trn(1+i0:ni_p+i0, 1+j0:nj_p+j0, 1:nk_p, sfields(id%bgc_prog(i))%jptrc), &
              state_p, &
-             sfields(id%bgc1(i))%off, sfields(id%bgc1(i))%ndims)
+             sfields(id%bgc_prog(i))%off, sfields(id%bgc_prog(i))%ndims)
      end if
   end do
 
-  do i = 1, jptra2
-     if (sv_bgc2(i)) then
+  do i = 1, jpbgc_diag
+     if (sv_bgc_diag(i)) then
         select case (i)
         case (1)
            call field2state(xpco2(1+i0:ni_p+i0, 1+j0:nj_p+j0, 1:nk_p), &
                 state_p, &
-                sfields(id%bgc2(i))%off, sfields(id%bgc2(i))%ndims)
+                sfields(id%bgc_diag(i))%off, sfields(id%bgc_diag(i))%ndims)
         case (2)
            call field2state(xph(1+i0:ni_p+i0, 1+j0:nj_p+j0, 1:nk_p), &
                 state_p, &
-                sfields(id%bgc2(i))%off, sfields(id%bgc2(i))%ndims)
+                sfields(id%bgc_diag(i))%off, sfields(id%bgc_diag(i))%ndims)
         case (3)
            call field2state(xchl(1+i0:ni_p+i0, 1+j0:nj_p+j0, 1:nk_p), &
                 state_p, &
-                sfields(id%bgc2(i))%off, sfields(id%bgc2(i))%ndims)
+                sfields(id%bgc_diag(i))%off, sfields(id%bgc_diag(i))%ndims)
         case (4)
            ! For netpp we use the daily sum computed in assimilate_pdaf
            call field2state(netppsum(1+i0:ni_p+i0, 1+j0:nj_p+j0, 1:nk_p), &
                 state_p, &
-                sfields(id%bgc2(i))%off, sfields(id%bgc2(i))%ndims)
+                sfields(id%bgc_diag(i))%off, sfields(id%bgc_diag(i))%ndims)
         end select
      end if
   end do

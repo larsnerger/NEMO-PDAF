@@ -28,7 +28,7 @@ subroutine distribute_state_pdaf(dim_p, state_p)
        sshn, tsn, un, vn
 #if defined key_top
   use mod_statevector_pdaf, &
-       only: jptra, jptra2, sv_bgc1, sv_bgc2
+       only: jpbgc_prog, jpbgc_diag, sv_bgc_prog, sv_bgc_diag
   use mod_nemo_pdaf, &
        only: trb, trn, xph, xpco2, xchl, xnetpp
 #endif
@@ -136,10 +136,10 @@ subroutine distribute_state_pdaf(dim_p, state_p)
 
      ! BGC
 #if defined key_top
-     do i = 1, jptra
-        if (sv_bgc1(i)) then
+     do i = 1, jpbgc_prog
+        if (sv_bgc_prog(i)) then
 
-           id_var=id%bgc1(i)
+           id_var=id%bgc_prog(i)
 
            ! Update prognostic BGC variables
            call state2field(state_p, &
@@ -154,9 +154,9 @@ subroutine distribute_state_pdaf(dim_p, state_p)
         end if
      end do
 
-     do i = 1, jptra2
-        if (sv_bgc2(i)) then
-           id_var=id%bgc2(i)
+     do i = 1, jpbgc_diag
+        if (sv_bgc_diag(i)) then
+           id_var=id%bgc_diag(i)
            select case (i)
            case (1)
               call state2field(state_p, &

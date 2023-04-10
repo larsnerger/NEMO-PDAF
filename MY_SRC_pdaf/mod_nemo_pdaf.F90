@@ -25,6 +25,8 @@ module mod_nemo_pdaf
 #if defined key_top
   use sms_ergom, &
        only: xph, xpco2, xchl, xnetpp
+  use par_trc, &
+       only: jptra
 #endif
 
   ! *** NEMO model variables
