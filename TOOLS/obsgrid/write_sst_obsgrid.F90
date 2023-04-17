@@ -48,57 +48,63 @@ program obsgrid
   character(len=50) :: exp, mfile, varname_m, ofile, file_o_stub, varname_o
   character(len=2) :: mstr, dstr
   character(len=4) :: ystr
+  character(len=3) :: obstype
 
   logical :: first = .true.
 
-! Variables particular for CHL observations
-  logical :: apply_minchl   ! Whether to set too low, but valid model values to minimum
-  integer :: cntmin
-  real(8) :: minchl         ! Minimum CHL limit for model state
+! Variables particular for SST observations
+  integer, allocatable :: ifield_o(:,:)         ! Integer value read from observation file
 
 
 ! *********************
 ! *** Configuration ***
 ! *********************
 
-  ! Allowed minimum Chlorophyll value
-  minchl = 0.00001
-  apply_minchl = .false.
-
   ! First and last month of experiment
-  firstmonth = 2
-  lastmonth = 5
+  firstmonth = 1
+  lastmonth = 12
 
 
   ! *** Model settings
 
   ! Name of experiment
   exp = 'free_N30'
-  exp = 'sst-chl_Tonly_N30'
+!  exp = 'sst-chl_Tonly_N30'
 
   ! Path to data assimilation output files
-  path_m = '/scratch/projects/hbk00095/exp/exp.'//trim(exp)
-  path_m = '/scratch/usr/hbknerge/SEAMLESS/run/DA-SST-CHL/exp.'//trim(exp)//'/DA'
+  path_m = '/scratch/projects/hbk00095/exp/exp.'//trim(exp)//'/DA'
+!  path_m = '/scratch/usr/hbknerge/SEAMLESS/run/DA-SST-CHL/exp.'//trim(exp)//'/DA'
   
   ! Name model variable
-  varname_m = 'CHL'
+  varname_m = 'votemper'
+
+
+
+  ! *** Observation settings
+
+  ! Choose observation type: L4 or L3S
+  obstype = 'L4'
+
+  ! Path to and name stub of observation files, and name of variable
+  if (trim(obstype)=='L4') then
+     path_o = '/scratch/usr/hzfblner/SEAMLESS/observations/SST_2015'
+     file_o_stub = 'sst_REP_L4_'
+     varname_o = 'analysed_sst'
+  else
+     path_o = '/scratch/usr/hzfblner/SEAMLESS/observations/SST_L3S_2015'
+     file_o_stub = 'sst_L3S_'
+     varname_o = 'sea_surface_temperature'
+  end if
+
+  ! Set missing value for observations
+  missing_value_obs = -10.0
 
 
   ! *** Output settings
 
   ! Name stub of file holding observed model state in observation grid
   path_mobs = '.'
-  file_mobs = 'chl_ba_mobs'
-
-
-  ! *** Observation settings
-
-  ! Path to and name stub of observation files
-  path_o = '/scratch/usr/hzfblner/SEAMLESS/observations/CHL_BA_2015'
-  file_o_stub = 'chl_ba_MY_'
-
-  ! Name of observation variable
-  varname_o = 'CHL'
+  file_mobs = 'sst_'//trim(obstype)//'_mobs'
 
 
   ! *** Specification of mask file
@@ -124,9 +130,9 @@ program obsgrid
   ! set first timer
   call timeit(1,'new')
 
-  write (*,'(10x,a)') '*******************************************************************'
-  write (*,'(10x,a)') '* Generate surface CHL on observation grid of CMEMS CHL Baltic    *'
-  write (*,'(10x,a)') '*******************************************************************'
+  write (*,'(10x,a)') '************************************************************'
+  write (*,'(10x,a)') '* Generate surface CHL on observation grid of CMEMS SST    *'
+  write (*,'(10x,a)') '************************************************************'
 
   write (*,'(5x,a,1x,a)') 'write mapped field into file ', trim(file_mobs)//'_'//trim(exp)
 
@@ -206,6 +212,7 @@ program obsgrid
 
         ! Allocate arrays
         allocate(field_o(dim_olon, dim_olat))
+        allocate(ifield_o(dim_olon, dim_olat))
         allocate(field_m_obsgrid(dim_olon, dim_olat, 2))
         allocate(lon_o(dim_olon), lat_o(dim_olat))
 
@@ -222,7 +229,6 @@ program obsgrid
 
      ! Get variable IDs
      call check( nf90_inq_varid(oncid, trim(varname_o), varid_o) )
-     call check( nf90_get_att(oncid, varid_o, 'missing_value', missing_value_obs) )
      fillval = REAL(missing_value_obs,4)
 
 
@@ -242,11 +248,11 @@ program obsgrid
      call check( NF90_def_var_deflate(wfileid, latid_mobs, 0, 1, 1) )
      call check( NF90_DEF_VAR(wfileid,'lon',NF90_FLOAT,wdimids(1),lonid_mobs) )
      call check( NF90_def_var_deflate(wfileid, lonid_mobs, 0, 1, 1) )
-     call check( NF90_DEF_VAR(wfileid,'CHL_f',NF90_FLOAT,wdimids(1:3),id_mobs_f) )
+     call check( NF90_DEF_VAR(wfileid,'SST_f',NF90_FLOAT,wdimids(1:3),id_mobs_f) )
      call check( NF90_def_var_deflate(wfileid, id_mobs_f, 0, 1, 1) )
      call check( nf90_put_att(wfileid, id_mobs_f, "_FillValue", fillval) )
      call check( nf90_put_att(wfileid, id_mobs_f, "missing_value", fillval) )
-     call check( NF90_DEF_VAR(wfileid,'CHL_a',NF90_FLOAT,wdimids(1:3),id_mobs_a) )
+     call check( NF90_DEF_VAR(wfileid,'SST_a',NF90_FLOAT,wdimids(1:3),id_mobs_a) )
      call check( NF90_def_var_deflate(wfileid, id_mobs_a, 0, 1, 1) )
      call check( nf90_put_att(wfileid, id_mobs_a, "_FillValue", fillval) )
      call check( nf90_put_att(wfileid, id_mobs_a, "missing_value", fillval) )
@@ -272,13 +278,21 @@ program obsgrid
         ! *** Read observations ***
 
         ! Read observed field
+        ! SSTs are in deg C but have to be scaled by sst_scale (1/100).
         startv3(1) = 1 ! lon
         startv3(2) = 1 ! lat
         startv3(3) = day ! time
         countv3(1) = dim_olon
         countv3(2) = dim_olat
         countv3(3) = 1
-        call check( nf90_get_var(oncid, varid_o, field_o, start=startv3, count=countv3) )
+        call check( nf90_get_var(oncid, varid_o, ifield_o, start=startv3, count=countv3) )
+
+        ! Scale SST and store as real
+        do j = 1, dim_olat
+           do i = 1, dim_olon
+              field_o(i,j) = real(ifield_o(i, j), 8) * 0.01_8
+           end do
+        end do
 
         ! *** Read model ***
 
@@ -360,20 +374,6 @@ program obsgrid
            countv(3) = 1
            countv(4) = 1
            call check( nf90_get_var(ncid, varid_m, field_m, start=startv, count=countv) )
-
-           ! Reset chl values below the limit
-           if (apply_minchl) then
-              cntmin = 0
-              do j = 1, dim_mlat
-                 do i = 1, dim_mlon
-                    if (abs(field_m(i,j)-missing_value)>0.1 .and. field_m(i,j)<minchl) then
-                       field_m(i,j)=minchl
-                       cntmin=cntmin+1
-                    endif
-                 end do
-              end do
-              write (*,*) 'number of corrected CHL values', cntmin
-           end if
 
            ! Project model field onto observation grid
 

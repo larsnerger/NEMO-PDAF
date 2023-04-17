@@ -88,14 +88,14 @@ program obsgrid
 
   ! Name stub of file holding observed model state in observation grid
   path_mobs = '.'
-  file_mobs = 'chl_ba_mobs'
+  file_mobs = 'chl_no_mobs'
 
 
   ! *** Observation settings
 
   ! Path to and name stub of observation files
-  path_o = '/scratch/usr/hzfblner/SEAMLESS/observations/CHL_BA_2015'
-  file_o_stub = 'chl_ba_MY_'
+  path_o = '/scratch/usr/hzfblner/SEAMLESS/observations/CHL_NO_2015'
+  file_o_stub = 'chl_no_MY_'
 
   ! Name of observation variable
   varname_o = 'CHL'
@@ -124,9 +124,9 @@ program obsgrid
   ! set first timer
   call timeit(1,'new')
 
-  write (*,'(10x,a)') '*******************************************************************'
-  write (*,'(10x,a)') '* Generate surface CHL on observation grid of CMEMS CHL Baltic    *'
-  write (*,'(10x,a)') '*******************************************************************'
+  write (*,'(10x,a)') '**********************************************************************'
+  write (*,'(10x,a)') '* Generate surface CHL on observation grid of CMEMS CHL North Sea    *'
+  write (*,'(10x,a)') '**********************************************************************'
 
   write (*,'(5x,a,1x,a)') 'write mapped field into file ', trim(file_mobs)//'_'//trim(exp)
 
@@ -199,9 +199,9 @@ program obsgrid
 
      if (first) then
         ! Read dimensions of observation grid
-        call check( nf90_inq_dimid(oncid, "lat", dimid) )
+        call check( nf90_inq_dimid(oncid, "latitude", dimid) )
         call check( nf90_Inquire_dimension(oncid, dimid, len=dim_olat) )
-        call check( nf90_inq_dimid(oncid, "lon", dimid) )
+        call check( nf90_inq_dimid(oncid, "longitude", dimid) )
         call check( nf90_Inquire_dimension(oncid, dimid, len=dim_olon) )
 
         ! Allocate arrays
@@ -210,14 +210,14 @@ program obsgrid
         allocate(lon_o(dim_olon), lat_o(dim_olat))
 
         ! Read coordinates
-        call check( nf90_inq_varid(oncid, "lon", lonid) )
-        call check( nf90_inq_varid(oncid, "lat", latid) )
+        call check( nf90_inq_varid(oncid, "longitude", lonid) )
+        call check( nf90_inq_varid(oncid, "latitude", latid) )
 
         call check( nf90_get_var(oncid, lonid, lon_o) )
         call check( nf90_get_var(oncid, latid, lat_o) )
 
         write (*,'(a,2i8)') 'Size of observation grid (lat, lon)', dim_olat, dim_olon
-        write (*,'(a,4f10.2)') 'Limits of observation grid (lat, lon)', lat_o(1), lat_o(dim_olat), lon_o(1), lon_o(dim_olon)
+        write (*,'(a,4f10.2)') 'Limits of observation grid (lat, lon)', lat_o(dim_olat), lat_o(1), lon_o(1), lon_o(dim_olon)
      end if
 
      ! Get variable IDs
