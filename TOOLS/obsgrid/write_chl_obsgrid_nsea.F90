@@ -73,12 +73,12 @@ program obsgrid
   ! *** Model settings
 
   ! Name of experiment
-  exp = 'free_N30'
-  exp = 'sst-chl_Tonly_N30'
+  exp = 'exp.free_N30'
+  exp = 'exp.sst-chl_Tonly_N30'
 
   ! Path to data assimilation output files
-  path_m = '/scratch/projects/hbk00095/exp/exp.'//trim(exp)
-  path_m = '/scratch/usr/hbknerge/SEAMLESS/run/DA-SST-CHL/exp.'//trim(exp)//'/DA'
+  path_m = '/scratch/projects/hbk00095/exp/'//trim(exp)//'/DA'
+  path_m = '/scratch/usr/hbknerge/SEAMLESS/run/DA-SST-CHL/'//trim(exp)//'/DA'
   
   ! Name model variable
   varname_m = 'CHL'

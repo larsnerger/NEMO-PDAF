@@ -62,6 +62,8 @@ $(EXE_CHL_NSEA):	 	$(OBJECTS_CHL_NSEA)
 		$(LINK) -g -o $(EXE_CHL_NSEA) \
 		$(LDFLAGS) $(OBJECTS_CHL_NSEA) $(MODULES) -L$(NCLIB) -lnetcdff $(LINK_LIBS)
 
+all: $(EXE_SST) $(EXE_SST_BAL) $(EXE_CHL_NSEA) $(EXE_CHL_BAL)
+
 .F90.o:
 		$(FC) $< \
 		$(FCFLAGS) -c -I$(NCINC) -fpp
@@ -77,4 +79,4 @@ $(EXE_CHL_NSEA):	 	$(OBJECTS_CHL_NSEA)
 new:		clean make
 
 clean:
-	rm -f *.o $(EXE) $(EXE_SST) $(EXE_SST_BAL) $(EXE_CHL_NSEA) $(EXE_CHL_BAL) *.mod
+	rm -f *.o $(EXE_SST) $(EXE_SST_BAL) $(EXE_CHL_NSEA) $(EXE_CHL_BAL) *.mod

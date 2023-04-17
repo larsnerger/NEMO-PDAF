@@ -43,21 +43,23 @@ LINK_LIBS = #-L/usr/lib/lapack -llapack -L/usr/lib/libblas -lblas
 
 #--------------------------------------------------
 
-write_chl_obsgrid_baltic: $(OBJECTS_CHL_Bal_obsgrid)
+$(EXE_CHL_Bal_obsgrid): $(OBJECTS_CHL_Bal_obsgrid)
 		$(LINK) -g -o $(EXE_CHL_Bal_obsgrid) \
 		$(LDFLAGS) $(OBJECTS_CHL_Bal_obsgrid) $(MODULES) -L$(NCLIB) -lnetcdff $(LINK_LIBS)
 
-write_chl_obsgrid_nsea: $(OBJECTS_CHL_No_obsgrid)
+$(EXE_CHL_No_obsgrid): $(OBJECTS_CHL_No_obsgrid)
 		$(LINK) -g -o $(EXE_CHL_No_obsgrid) \
 		$(LDFLAGS) $(OBJECTS_CHL_No_obsgrid) $(MODULES) -L$(NCLIB) -lnetcdff $(LINK_LIBS)
 
-write_sst_obsgrid: $(OBJECTS_SST_obsgrid)
+$(EXE_SST_obsgrid): $(OBJECTS_SST_obsgrid)
 		$(LINK) -g -o $(EXE_SST_obsgrid) \
 		$(LDFLAGS) $(OBJECTS_SST_obsgrid) $(MODULES) -L$(NCLIB) -lnetcdff $(LINK_LIBS)
 
-write_chl_obsgrid_baltic_ens:	 	$(OBJECTS_CHL_Bal_obsgrid_ens)
+$(EXE_CHL_Bal_obsgrid_ens): $(OBJECTS_CHL_Bal_obsgrid_ens)
 		$(LINK) -g -o $(EXE_CHL_Bal_obsgrid_ens) \
 		$(LDFLAGS) $(OBJECTS_CHL_Bal_obsgrid_ens) $(MODULES) -L$(NCLIB) -lnetcdff $(LINK_LIBS)
+
+all: $(EXE_CHL_Bal_obsgrid) $(EXE_CHL_No_obsgrid) $(EXE_SST_obsgrid)
 
 .F90.o:
 		$(FC) $< \
@@ -76,4 +78,4 @@ new:		clean make
 all: write_chl_obsgrid_baltic write_chl_obsgrid_baltic_ens
 
 clean:
-	rm -f *.o $(EXE) $(EXE_CHL_Bal) *.mod
+	rm -f *.o *.mod $(EXE_CHL_Bal_obsgrid) $(EXE_CHL_No_obsgrid) $(EXE_SST_obsgrid) $(EXE_CHL_Bal_obsgrid_ens)
