@@ -27,13 +27,14 @@ def get_exp_path(coupled, year, month, day, ampm, asml):
         #path = data_loc+'/ens_ERGOM_ndays/output_N4_bio/DA/'
         #path = data_loc+'/ens_ERGOM_ndays/001/' #output/DA/'
         #path = data_loc+'/ens_ERGOM_ndays/output_N30_log_chl30k/DA/'
-        path = data_loc+'/LESTKF/DA/'
+        data_loc = '/scratch/usr/hzfblner/SEAMLESS/run/ERGOM_DA_lestkf_phyto'
+        path = data_loc+'/exp.LESTKF_N30_chl_phyto/DA/'
         #path = data_loc+'/Hybrid/DA/'
     else:
-#        data_loc = '/scratch/usr/hbkycsun/data'
+        data_loc = '/scratch/usr/hbknerge/SEAMLESS/run/ERGOM-DA_free'
         # path to free running experiment
 #        path = data_loc+'/FreeRun/Post_DA/'
-        path = data_loc+'/free_N30/DA/'
+        path = data_loc+'/free_N30/DA_nc4/'
 #        path = data_loc+'/Spinup/DA/'
 
     return path

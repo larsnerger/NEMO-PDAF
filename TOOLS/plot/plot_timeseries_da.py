@@ -30,7 +30,7 @@ if __name__ == "__main__":
     firstday = 1        # Initial day 
     ndays  = 31          # Number of days to process
     dist = 10           # Grid point distance to check around central location 
-    station = 'FINO1WR' # Set station name according to the XLSX file
+    station = 'ArkonaWR' # Set station name according to the XLSX file
     istation = 0        # (0) use 'station', (1) Arkona, (2) Baltic Proper, (3) Bothnian Sea
     exp = 'LESTKF'
     #exp = 'Hybrid'
@@ -40,7 +40,7 @@ if __name__ == "__main__":
     months_free = [1, 2, 3] #, 2, 3, 4, 5]
     #months_obs = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
     months_obs = [1, 2, 3] #, 3] #, 4, 5]
-    months_da = [1, 2, 3] #3, 4, 5]
+    months_da = [2, 3] #3, 4, 5]
     
     z_mean=0     #0(no vertical mean)
     z_integral=0 #(0 for no vertical integral; 1 for vertical integral)
@@ -90,7 +90,7 @@ if __name__ == "__main__":
 
     #### Plotting
 
-    # Determine tick localizations and labels
+    # Determine tick locations and labels
     tickloc = []
     tickloc_min = []
     loc = freeday[0]

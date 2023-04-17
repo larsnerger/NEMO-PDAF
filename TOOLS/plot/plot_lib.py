@@ -614,14 +614,14 @@ def get_mobs_cmems_chl(year, month, day, forana, path, datatype, log, ens):
 
     if ens==0:
 #       print path+'/chl_mobs_'+datatype+'_'+str(year)+str(month)+'.nc'
-       ncid   = NetCDFFile(path+'/chl_mobs_'+datatype+'_'+str(year)+str(month)+'.nc')
+       ncid   = NetCDFFile(path+'/chl_ba_mobs_'+datatype+'_'+str(year)+str(month)+'.nc')
     else:
       if ens < 10:
         ensstr = '00'+str(ens)
       else: 
         ensstr = '0'+str(ens)
 #        print path+'/'+ensstr+'_chl_mobs_'+datatype+'_'+str(year)+str(month)+'.nc'
-      ncid   = NetCDFFile(path+'/chl_mobs_'+datatype+'_'+str(year)+str(month)+'_'+ensstr+'.nc')
+      ncid   = NetCDFFile(path+'/chl_ba_mobs_'+datatype+'_'+str(year)+str(month)+'_'+ensstr+'.nc')
 
     chl = ncid.variables['CHL_'+forana][int(day)-1,:,:]
     if datatype=='no_multi':
@@ -638,7 +638,7 @@ def get_mobs_cmems_chl(year, month, day, forana, path, datatype, log, ens):
 
 
 
-def get_cmems_sst(year, month, day, time, datatype):
+def get_cmems_sst(year, month, day, time, datatype, ssttype):
 
     basedir = base_dir()
 
@@ -651,11 +651,17 @@ def get_cmems_sst(year, month, day, time, datatype):
         time_aux = "12"
 
     if day < 10:
-        day = '0'+str(day) 
-    print '/scratch/usr/hzfblner/SEAMLESS/observations/SST_2015/sst_'+datatype+'_'+str(year)+str(month)+'.nc'
-    ncid   = NetCDFFile('/scratch/usr/hzfblner/SEAMLESS/observations/SST_2015/sst_'+datatype+'_'+str(year)+str(month)+'.nc')
+        day = '0'+str(day)
 
-    sst_coarse = ncid.variables['analysed_sst'][int(day)-1,:,:]
+    if ssttype=='L3S':
+        print '/scratch/usr/hzfblner/SEAMLESS/observations/SST_L3S_2015/sst_'+datatype+'_'+str(year)+str(month)+'.nc'
+        ncid   = NetCDFFile('/scratch/usr/hzfblner/SEAMLESS/observations/SST_L3S_2015/sst_'+datatype+'_'+str(year)+str(month)+'.nc')
+        sst_coarse = ncid.variables['sea_surface_temperature'][int(day)-1,:,:]
+    else:
+        print '/scratch/usr/hzfblner/SEAMLESS/observations/SST_2015/sst_'+datatype+'_'+str(year)+str(month)+'.nc'
+        ncid   = NetCDFFile('/scratch/usr/hzfblner/SEAMLESS/observations/SST_2015/sst_'+datatype+'_'+str(year)+str(month)+'.nc')
+        sst_coarse = ncid.variables['analysed_sst'][int(day)-1,:,:]
+
     lat = ncid.variables['lat'][:]
     lon = ncid.variables['lon'][:]
 
@@ -664,6 +670,51 @@ def get_cmems_sst(year, month, day, time, datatype):
 
     return sst_coarse, lat, lon
 
+
+
+
+def get_mobs_cmems_sst(year, month, day, forana, path, datatype, ens, ssttype):
+
+    basedir = base_dir()
+
+#    if day==1:
+#        print 'Read CMEMS satellite SST, day ', day
+
+#    if time == "am":
+#        time_aux = "00"
+#    elif time == "pm":
+#        time_aux = "12"
+
+    if day < 10:
+        day = '0'+str(day)
+
+    if ens==0:
+        if ssttype=='L3S':
+            print path+'/sst_L3S_mobs_'+datatype+'_'+str(year)+str(month)+'.nc'
+            ncid   = NetCDFFile(path+'/sst_L3S_mobs_'+datatype+'_'+str(year)+str(month)+'.nc')
+        else:
+            print path+'/sst_mobs_'+datatype+'_'+str(year)+str(month)+'.nc'
+            ncid   = NetCDFFile(path+'/sst_mobs_'+datatype+'_'+str(year)+str(month)+'.nc')
+    else:
+      if ens < 10:
+        ensstr = '00'+str(ens)
+      else: 
+        ensstr = '0'+str(ens)
+      ncid   = NetCDFFile(path+'/sst_mobs_'+datatype+'_'+str(year)+str(month)+'_'+ensstr+'.nc')
+
+#    if day < 10:
+#        day = '0'+str(day) 
+#    print '/scratch/usr/hzfblner/SEAMLESS/observations/SST_2015/sst_'+datatype+'_'+str(year)+str(month)+'.nc'
+#    ncid   = NetCDFFile('/scratch/usr/hzfblner/SEAMLESS/observations/SST_2015/sst_'+datatype+'_'+str(year)+str(month)+'.nc')
+
+    sst = ncid.variables['CHL_'+forana][int(day)-1,:,:]
+    lat = ncid.variables['lat'][:]
+    lon = ncid.variables['lon'][:]
+
+    # Convert to degree Celsius
+    sst = sst
+
+    return sst, lat, lon
 
 
 
