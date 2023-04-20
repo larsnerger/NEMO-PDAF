@@ -565,11 +565,6 @@ def get_cmems_chl(year, month, day, time, datatype, log):
 
     if day==1:
         print 'Read CMEMS satellite CHL, day ', day
-
-#    if time == "am":
-#        time_aux = "00"
-#    elif time == "pm":
-#        time_aux = "12"
         
     if day < 10:
         day = '0'+str(day)
@@ -602,7 +597,7 @@ def get_cmems_chl(year, month, day, time, datatype, log):
     return chl, lat, lon
 
 
-def get_mobs_cmems_chl(year, month, day, forana, path, datatype, log, ens):
+def get_mobs_cmems_chl(year, month, day, forana, path, datatype, chltype, log, ens):
 
     basedir = base_dir()
 
@@ -613,15 +608,15 @@ def get_mobs_cmems_chl(year, month, day, forana, path, datatype, log, ens):
         day = '0'+str(day)
 
     if ens==0:
-#       print path+'/chl_mobs_'+datatype+'_'+str(year)+str(month)+'.nc'
-       ncid   = NetCDFFile(path+'/chl_ba_mobs_'+datatype+'_'+str(year)+str(month)+'.nc')
+       print path+'/chl_'+chltype+'_mobs_'+datatype+'_'+str(year)+str(month)+'.nc'
+       ncid   = NetCDFFile(path+'/chl_'+chltype+'_mobs_'+datatype+'_'+str(year)+str(month)+'.nc')
     else:
-      if ens < 10:
-        ensstr = '00'+str(ens)
-      else: 
-        ensstr = '0'+str(ens)
-#        print path+'/'+ensstr+'_chl_mobs_'+datatype+'_'+str(year)+str(month)+'.nc'
-      ncid   = NetCDFFile(path+'/chl_ba_mobs_'+datatype+'_'+str(year)+str(month)+'_'+ensstr+'.nc')
+        if ens < 10:
+            ensstr = '00'+str(ens)
+        else: 
+            ensstr = '0'+str(ens)
+        print path+'/chl_'+chltype+'_mobs_'+datatype+'_'+str(year)+str(month)+'.nc'
+        ncid   = NetCDFFile(path+'/chl_'+chltype+'_mobs_'+datatype+'_'+str(year)+str(month)+'_'+ensstr+'.nc')
 
     chl = ncid.variables['CHL_'+forana][int(day)-1,:,:]
     if datatype=='no_multi':
@@ -694,7 +689,7 @@ def get_mobs_cmems_sst(year, month, day, forana, path, datatype, ens, ssttype):
             ncid   = NetCDFFile(path+'/sst_L3S_mobs_'+datatype+'_'+str(year)+str(month)+'.nc')
         else:
             print path+'/sst_mobs_'+datatype+'_'+str(year)+str(month)+'.nc'
-            ncid   = NetCDFFile(path+'/sst_mobs_'+datatype+'_'+str(year)+str(month)+'.nc')
+            ncid   = NetCDFFile(path+'/sst_L4_mobs_'+datatype+'_'+str(year)+str(month)+'.nc')
     else:
       if ens < 10:
         ensstr = '00'+str(ens)
@@ -707,7 +702,7 @@ def get_mobs_cmems_sst(year, month, day, forana, path, datatype, ens, ssttype):
 #    print '/scratch/usr/hzfblner/SEAMLESS/observations/SST_2015/sst_'+datatype+'_'+str(year)+str(month)+'.nc'
 #    ncid   = NetCDFFile('/scratch/usr/hzfblner/SEAMLESS/observations/SST_2015/sst_'+datatype+'_'+str(year)+str(month)+'.nc')
 
-    sst = ncid.variables['CHL_'+forana][int(day)-1,:,:]
+    sst = ncid.variables['SST_'+forana][int(day)-1,:,:]
     lat = ncid.variables['lat'][:]
     lon = ncid.variables['lon'][:]
 

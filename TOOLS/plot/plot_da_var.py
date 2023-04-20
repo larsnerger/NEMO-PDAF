@@ -36,19 +36,13 @@ if __name__ == "__main__":
     domain = 'ba'       # Domain to plot: 'no' for both domains or 'ba' for Baltic, 'Ar' for Arkona
     exp = 'lestkf'
     plotcb = 1          # Whether to show the colorbar
-#    minmax = [ 0 ,  0]      # max/max plotted values - set min=max for automatic
-#    minmax = [ 7 ,  8.2]      # PH
-#    minmax = [ 0 ,  80000]      # PP
-#    minmax = [ 0 ,  0.8]      # POC (DET)
-#    minmax = [260.0,450.0]      # max/max plotted values - set min=max for automatic
-    #minmax = [5.0,18.0]      # max/max plotted values - set min=max for automatic
     z_mean=0     #0(no vertical mean)
     z_integral=0 #(0 for no vertical integral; 1 for vertical integral)
     z1=0         # upper Z boundary (for z_mean and z_integral)
     z2=5         # lower Z boundary (for z_mean and z_integral)
-    save = 1
+    save = 0
 
-    plot_stddev = 1
+    plot_stddev = 1     # (1) plot standard deviation, (0) plot variance
     varnum = 24	 	# Variable number from the var_names routine.
                         # Quick ref: 1=z, 2=TEM, 3=SAL, 4=uvel, 5=vvel, 6=NH4, 7=NO3, 8=PO4, 
                         #            9=SIL, 10=DIA, 11=FLA, 12=CYA, 13=MEZ, 14=MIZ, 15=DET,
@@ -141,16 +135,19 @@ if __name__ == "__main__":
     # Set plot title
     if plot_stddev==1:
         var_or_std = 'STDDEV - '
+        varstr = 'var'
     else:
         var_or_std = 'Variance of '
+        varstr = 'stddev'
+        
     title=var_or_std+str(Variable)+' - '+assimstr+' on '+str(year)+'-'+str(month)+'-'+str(day)
 
     # Set file name
     if assim=='Free':
-        fname= 'std_'+str(MAT_VAR)+'_'+str(assim)+'_'+domain+'_'+\
+        fname= varstr+'_'+str(MAT_VAR)+'_'+str(assim)+'_'+domain+'_'+\
                str(year)+str(month)+str(day)+'.png'
     else:
-        fname= 'std_'+str(MAT_VAR)+'_'+exp+'_'+str(assim)+'_'+domain+'_'+\
+        fname= varstr+'_'+str(MAT_VAR)+'_'+exp+'_'+str(assim)+'_'+domain+'_'+\
                str(year)+str(month)+str(day)+'.png'
     print 'filename', fname
     

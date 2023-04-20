@@ -7,21 +7,19 @@ from plot_lib import *
 # Select variable to plot
 var = 'chl_ba'
 var = 'chl_no'
-var = 'sst'
+var = 'sst_L4'
 
 
 experiment = 'sst-chl_Tonly_N30'
 
-path_free = '/scratch/projects/hbk00095/exp/exp.free_N30/rmse'
-path_da = '/scratch/projects/hbk00095/exp/exp.'+experiment+'/rmse'
+path_free = '/scratch/projects/hbk00095/exp/free_N30/rmse'
+path_da = '/scratch/projects/hbk00095/exp/'+experiment+'/rmse'
 
 file_free = 'rms_'+var+'_free_N30.nc';
 file_da = 'rms_'+var+'_'+experiment+'.nc';
 
 print 'Free: ', file_free 
 print 'DA:   ', file_da
-
-operational=0 # 1 for operational, 0 otherwise
 
 save = 0
 
@@ -55,14 +53,9 @@ for i in range(len(days_free)):
 # Plotting
 
 fig, ax=plt.subplots(figsize=(8,5))
-if operational==1:
-   plt.plot(doy_free[:], rmse_free[0,:], 'k', label='Free')
-   plt.plot(doy_da[:], rmse_da[1,:], 'b', label='Forecast')
-   plt.plot(doy_da[:], rmse_da[0,:], 'r', label='Analysis')
-else:
-   plt.plot(doy_free[:], rmse_free[0,:], 'k', label='Free')
-   plt.plot(doy_da[:], rmse_da[0,:], 'b', label='Forecast')
-   plt.plot(doy_da[:], rmse_da[1,:], 'r', label='Analysis')
+plt.plot(doy_free[:], rmse_free[0,:], 'k', label='Free')
+plt.plot(doy_da[:], rmse_da[0,:], 'b', label='Forecast')
+plt.plot(doy_da[:], rmse_da[1,:], 'r', label='Analysis')
 
 plt.title(file_da, fontsize=16)
 if var=='sst' or var=='sst_L3S':

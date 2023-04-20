@@ -27,34 +27,31 @@ if __name__ == "__main__":
 #    coupled = 'fine'	# Coupled: Weak/Strong
     depth  = '0'	# Depth
     year   = 2015       # Year
-    month  = '04'       # Month has to be string and two digits i.e '05' and '10'
-    day    = '01'	# Day has to be double digits
+    month  = '03'       # Month has to be string and two digits i.e '05' and '10'
+    day    = '10'	# Day has to be double digits
     ampm   = '00'	# am or pm (string)
     assim  = 'Free'     # Free (freerun), Fcst (background/forecast), Ana (analysis)
-    assim  = 'Fcst'     # Free (freerun), Fcst (background/forecast), Ana (analysis)
+#    assim  = 'Fcst'     # Free (freerun), Fcst (background/forecast), Ana (analysis)
     #assim  = 'Ana'      # Free (freerun), Fcst (background/forecast), Ana (analysis)
-    domain = 'ba'       # Domain to plot: 'no' for both domains or 'ba' for Baltic, 'Ar' for Arkona
+    domain = 'no'       # Domain to plot: 'no' for both domains or 'ba' for Baltic, 'Ar' for Arkona
     exp = 'lestkf'
     plotcb = 1          # Whether to show the colorbar
-#    minmax = [ 0 ,  0]      # max/max plotted values - set min=max for automatic
-#    minmax = [ 7 ,  8.2]      # PH
-#    minmax = [ 0 ,  80000]      # PP
-#    minmax = [ 0 ,  0.8]      # POC (DET)
-#    minmax = [260.0,450.0]      # max/max plotted values - set min=max for automatic
-    #minmax = [5.0,18.0]      # max/max plotted values - set min=max for automatic
     z_mean=0     #0(no vertical mean)
     z_integral=0 #(0 for no vertical integral; 1 for vertical integral)
     z1=0         # upper Z boundary (for z_mean and z_integral)
     z2=5         # lower Z boundary (for z_mean and z_integral)
     save = 0
 
-    varnum = 21	 	# Variable number from the var_names routine.
+    varnum = 2	 	# Variable number from the var_names routine.
                         # Quick ref: 1=z, 2=TEM, 3=SAL, 4=uvel, 5=vvel, 6=NH4, 7=NO3, 8=PO4, 
                         #            9=SIL, 10=DIA, 11=FLA, 12=CYA, 13=MEZ, 14=MIZ, 15=DET,
                         #            16=DETs, 17=FE, 18=LDON, 19=DIC, 20=ALK, 21=OXY, 22=pCO2, 
                         #            23=PH, 24=CHL, 25=TE, 26=PFT, 27=PP
 
-    if varnum==10:
+    if varnum==2:
+        minmax = [0.0, 10.0]      # TEM
+        plotlog = 0        
+    elif varnum==10:
         minmax = [0.1, 10.0]      # DIA
         plotlog = 1
     elif varnum==11:
@@ -151,7 +148,9 @@ if __name__ == "__main__":
 #    strcmap = 'viridis'
     #strcmap = 'gist_earth'
 #    strcmap = 'gist_ncar_r'
-    if varnum==10:
+    if varnum==2:     # Chlorophyll
+        strcmap = 'coolwarm' #cmocean.cm.thermal
+    elif varnum==10:
         strcmap = 'viridis'
     elif varnum==11:
         strcmap = 'inferno'
@@ -162,7 +161,8 @@ if __name__ == "__main__":
     elif varnum==23:     # pH
         strcmap = 'gist_ncar_r'
     elif varnum==24:     # Chlorophyll
-        strcmap = cmocean.cm.thermal
+        strcmap = 'viridis'
+#        strcmap = cmocean.cm.thermal
     elif varnum==25:   # TE
         strcmap = cmocean.cm.dense
     elif varnum==26:   # PFT

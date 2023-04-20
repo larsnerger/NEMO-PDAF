@@ -16,9 +16,9 @@ experiment2 = 'sst-chl_Tonly_N30'
 
 fname = 'rmse_'+var1+'_'+var2+'_'+experiment1+'_'+experiment1
 
-path_free = '/scratch/projects/hbk00095/exp/exp.free_N30/rmse'
-path_da1 = '/scratch/projects/hbk00095/exp/exp.'+experiment1+'/rmse'
-path_da2 = '/scratch/projects/hbk00095/exp/exp.'+experiment1+'/rmse'
+path_free = '/scratch/projects/hbk00095/exp/free_N30/rmse'
+path_da1 = '/scratch/projects/hbk00095/exp/'+experiment1+'/rmse'
+path_da2 = '/scratch/projects/hbk00095/exp/'+experiment1+'/rmse'
 
 file_free = 'rms_'+var2+'_free_N30.nc';
 file_da1 = 'rms_'+var1+'_'+experiment1+'.nc';
@@ -28,9 +28,8 @@ print 'Free: ', file_free
 print 'DA1:  ', file_da1
 print 'DA2:  ', file_da2
 
-operational=0 # 1 for operational, 0 otherwise
 
-save = 1
+save = 0
 
 
 ##########################
