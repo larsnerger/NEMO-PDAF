@@ -74,12 +74,10 @@ program rmse
   ! *** Model settings
 
   ! Name of experiment
-  exp = 'exp.free_N30'
-!  exp = 'exp.sst-chl_Tonly_N30'
+  exp = 'free_N30'
 
   ! Path to data assimilation output files
   path_m = '/scratch/projects/hbk00095/exp/'//trim(exp)//'/DA'
-!  path_m = '/scratch/usr/hbknerge/SEAMLESS/run/DA-SST-CHL/'//trim(exp)//'/DA'
   
   ! Name model variable
   varname_m = 'CHL'
@@ -88,7 +86,7 @@ program rmse
   ! *** Output settings
 
   ! Name of output file
-  file_rms = 'rms_chl_ba_'//trim(exp)//'_12m.nc'
+  file_rms = 'rms_chl_ba_'//trim(exp)//'.nc'
 
 
   ! *** Observation settings
