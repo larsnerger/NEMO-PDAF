@@ -27,15 +27,10 @@ if __name__ == "__main__":
     month  = '03'       # Month has to be string and two digits i.e '05' and '10'
     day    = '03'	# Day has to be double digits
     ampm   = '00'	# am or pm (string)
-    firstday = 1        # Initial day 
-    ndays  = 31          # Number of days to process
     dist = 10           # Grid point distance to check around central location 
     station = 'ArkonaWR' # Set station name according to the XLSX file
     istation = 0        # (0) use 'station', (1) Arkona, (2) Baltic Proper, (3) Bothnian Sea
     exp = 'LESTKF'
-    #exp = 'Hybrid'
-    plotlog = 0
-    plotcb = 1          # Whether to show the colorbar
 
     months_free = [1, 2, 3] #, 2, 3, 4, 5]
     #months_obs = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
@@ -49,7 +44,7 @@ if __name__ == "__main__":
     save = 0
 
 
-    varnum = 24	 	# Variable number from the var_names routine.
+    varnum = 2	 	# Variable number from the var_names routine.
                         # Quick ref: 1=z, 2=TEM, 3=SAL, 4=uvel, 5=vvel, 6=NH4, 7=NO3, 8=PO4, 
                         #            9=SIL, 10=DIA, 11=FLA, 12=CYA, 13=MEZ, 14=MIZ, 15=DET,
                         #            16=DETs, 17=FE, 18=LDON, 19=DIC, 20=ALK, 21=OXY, 22=pCO2, 

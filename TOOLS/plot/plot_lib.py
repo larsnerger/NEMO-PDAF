@@ -944,7 +944,7 @@ def read_station_idx_obs(varnum, year, months, istation, station, dist):
     else:
         # SST
         datatype_obs= 'REP_L4'
-        _, lat_o, lon_o = get_cmems_sst(year, month, day, 'am', datatype_obs)
+        _, lat_o, lon_o = get_cmems_sst(year, month, day, 'am', datatype_obs, noba)
 
 
     latdiff = lat_o - station_coords[0]
@@ -1081,7 +1081,7 @@ def read_station_series_obs(varnum, year, months, istation, strstation, dist):
         else:
             # SST
             datatype_obs= 'REP_L4'
-            data_o, lat_o, lon_o = get_cmems_sst(year, month, day, 'am', datatype_obs)
+            data_o, lat_o, lon_o = get_cmems_sst(year, month, day, 'am', datatype_obs, noba)
 
         if day==1:
             print 'check observations within ', dist, ' grid points around location ', station

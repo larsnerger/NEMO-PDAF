@@ -8,6 +8,7 @@
 # Define path to base directory for HBM experiments
 def base_dir():
 
+#    basedir = '/scratch/usr/hzfblner/SEAMLESS/run'
     basedir = '/scratch/projects/hbk00095/exp'
 
     return basedir
@@ -29,7 +30,6 @@ def get_exp_path(coupled, year, month, day, ampm, asml):
     else:
         # path to free running experiment
         path = data_loc+'/free_N30/DA/'
-        data_loc = '/scratch/usr/hbknerge/SEAMLESS/run/ERGOM-DA_free'
         #path = '/scratch/usr/hbknerge/SEAMLESS/run/DA-SST-CHL/sst-chl_Tonly_N30/DA/'
 
 
