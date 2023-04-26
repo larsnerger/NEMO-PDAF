@@ -50,7 +50,7 @@ if __name__ == "__main__":
                         #            16=DETs, 17=FE, 18=LDON, 19=DIC, 20=ALK, 21=OXY, 22=pCO2, 
                         #            23=PH, 24=CHL, 25=TE, 26=PFT, 27=PP
 
-    if varnum==24 or varnum==10 or varnum==11 or varnum==12:
+    if varnum==2 or varnum==24 or varnum==10 or varnum==11 or varnum==12:
         plotana = 1
     else:
         plotana = 0
