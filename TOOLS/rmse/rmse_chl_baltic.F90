@@ -56,6 +56,8 @@ program rmse
   logical :: apply_minchl   ! Whether to set too low, but valid model values to minimum
   integer :: cntmin
   real(8) :: minchl         ! Minimum CHL limit for model state
+  logical :: log_conc=.false.  ! Whether to compute RMSEs for logarithmic concentrations
+  character(len=4) :: logstr = ''   ! String in file name for log concentrations
 
 
 ! *********************
@@ -68,8 +70,11 @@ program rmse
 
   ! First and last month of experiment
   firstmonth = 1
-  lastmonth = 12
+  lastmonth = 2
 
+
+  ! *** Whether to use log concentrations
+  log_conc = .false.
 
   ! *** Model settings
 
@@ -86,7 +91,8 @@ program rmse
   ! *** Output settings
 
   ! Name of output file
-  file_rms = 'rms_chl_ba_'//trim(exp)//'.nc'
+  if (log_conc) logstr='_log'
+  file_rms = 'rms_chl_ba_'//trim(exp)//trim(logstr)//'.nc'
 
 
   ! *** Observation settings
@@ -127,6 +133,7 @@ program rmse
   write (*,'(10x,a)') '************************************'
 
   write (*,'(5x,a,1x,a)') 'write RMSEs and mean errors into file ', trim(file_rms)
+  if (log_conc) write (*,'(5x,a)') '--- Use LOG10 of concentrations'
 
   ! Definitions for months
   ndays_m = (/31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31/)
@@ -343,38 +350,73 @@ program rmse
            diff_ssum = 0.0
            counter = 0
            cnt0 = 0
+
            ! Loop through observation grid
 
-           do j = 1, dim_olat
+           If (log_conc) then
+              do j = 1, dim_olat
            
-              if (lat_o(j) <= nlat .and. lat_o(j) >= slat) then
+                 if (lat_o(j) <= nlat .and. lat_o(j) >= slat) then
 
-                 j_index = floor((lat_o(j) - slat) / dlat) + 1
-                 if (j_index > dim_mlat) j_index = dim_mlat
+                    j_index = floor((lat_o(j) - slat) / dlat) + 1
+                    if (j_index > dim_mlat) j_index = dim_mlat
 
-                 do i = 1, dim_olon
+                    do i = 1, dim_olon
 
-                    if (lon_o(i) >= wlon .and. lon_o(i) <= elon) then
+                       if (lon_o(i) >= wlon .and. lon_o(i) <= elon) then
 
-                       i_index = floor((lon_o(i) - wlon) / dlon) + 1
-                       if (i_index > dim_mlon) i_index = dim_mlon
+                          i_index = floor((lon_o(i) - wlon) / dlon) + 1
+                          if (i_index > dim_mlon) i_index = dim_mlon
 
-                       cnt0 = cnt0+1
-                       if (abs(tmask(i_index, j_index, 1, 1) - missing_value) > 0.1 &
-                            .and. field_o(i, j) > missing_value_obs) then
+                          cnt0 = cnt0+1
+                          if (abs(tmask(i_index, j_index, 1, 1) - missing_value) > 0.1 &
+                               .and. field_o(i, j) > missing_value_obs) then
 
-                          diff = field_o(i,j) - field_m(i_index, j_index)
-                          diff_squared = diff * diff
-                          ssum = ssum + diff_squared
-                          diff_ssum = diff_ssum + diff
-                          counter = counter+1
+                             diff = log10(field_o(i,j))- log10(field_m(i_index, j_index))
+                             diff_squared = diff * diff
+                             ssum = ssum + diff_squared
+                             diff_ssum = diff_ssum + diff
+                             counter = counter+1
+
+                          end if
 
                        end if
+                    end do ! i
+                 end if
+              end do ! j
 
-                    end if
-                 end do ! i
-              end if
-           end do ! j
+           else
+              do j = 1, dim_olat
+           
+                 if (lat_o(j) <= nlat .and. lat_o(j) >= slat) then
+
+                    j_index = floor((lat_o(j) - slat) / dlat) + 1
+                    if (j_index > dim_mlat) j_index = dim_mlat
+
+                    do i = 1, dim_olon
+
+                       if (lon_o(i) >= wlon .and. lon_o(i) <= elon) then
+
+                          i_index = floor((lon_o(i) - wlon) / dlon) + 1
+                          if (i_index > dim_mlon) i_index = dim_mlon
+
+                          cnt0 = cnt0+1
+                          if (abs(tmask(i_index, j_index, 1, 1) - missing_value) > 0.1 &
+                               .and. field_o(i, j) > missing_value_obs) then
+
+                             diff = field_o(i,j) - field_m(i_index, j_index)
+                             diff_squared = diff * diff
+                             ssum = ssum + diff_squared
+                             diff_ssum = diff_ssum + diff
+                             counter = counter+1
+
+                          end if
+
+                       end if
+                    end do ! i
+                 end if
+              end do ! j
+           end if
 
            if (counter > 0) then
               mean_of_difference_squared = ssum / real(counter, 8)
