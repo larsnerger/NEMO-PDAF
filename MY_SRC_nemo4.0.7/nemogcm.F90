@@ -163,11 +163,6 @@ CONTAINS
       !                            !-----------------------!
       istp = nit000
       !
-#if defined key_USE_PDAF
-      ! PDAF initialization
-      CALL init_pdaf()
-#endif
-
 #if defined key_c1d
       DO WHILE ( istp <= nitend .AND. nstop == 0 )    !==  C1D time-stepping  ==!
          CALL stp_c1d( istp )
@@ -507,6 +502,10 @@ CONTAINS
                            CALL dia_harm_init   ! tidal harmonics outputs
      IF( ln_diaobs    )    CALL dia_obs( nit000-1 )   ! Observation operator for restart
 
+#if defined key_USE_PDAF
+      ! PDAF initialization
+      CALL init_pdaf()
+#endif
       !                                      ! Assimilation increments
       IF( lk_asminc    )   CALL asm_inc_init    ! Initialize assimilation increments
       !
