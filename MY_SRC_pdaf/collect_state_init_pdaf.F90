@@ -1,20 +1,21 @@
-!> Collecting the state vector variables fro model fields
+!> Collecting the state vector variables for ensemble initialization
 !!
 !! The routine has to initialize the state vector of PDAF
-!! from the fields of the model.
+!! from the fields of the model. This variant is used
+!! to initialize the ensemble central state. In contrast 
+!! to collect_state_pdaf it does no contain a call to 
+!! transform_field_mv.
 !!
 !! The routine is executed by each process that is
 !! participating in the model integrations.
 !!
 !! **Calling Sequence**
 !!
-!!  - Called from:* `PDAFomi_assimilate_local`/`mod_assimilation_pdaf` (as U_coll_state)
+!!  - Called from:* `init_ens_pdaf`
 !!
-subroutine collect_state_pdaf(dim_p, state_p)
+subroutine collect_state_init_pdaf(dim_p, state_p)
 
   use mod_kind_pdaf
-  use mod_parallel_pdaf, &
-       only: mype_model, task_id
   use mod_statevector_pdaf, &
        only: sfields, id
   use mod_nemo_pdaf, &
@@ -27,7 +28,7 @@ subroutine collect_state_pdaf(dim_p, state_p)
        only: jptra, trn
 #endif
   use mod_aux_pdaf, &
-       only: field2state, transform_field_mv
+       only: field2state
 
   implicit none
 
@@ -37,7 +38,6 @@ subroutine collect_state_pdaf(dim_p, state_p)
 
 ! *** Local variables ***
   integer :: i                ! Counter
-  integer :: verbose          ! Control verbosity
 
 
   ! *********************************
@@ -97,13 +97,4 @@ subroutine collect_state_pdaf(dim_p, state_p)
   end do
 #endif
 
-  ! Aply field transformations
-  if (mype_model==0 .and. task_id==1) then
-     verbose = 1
-  else
-     verbose = 0
-  end if
-
-  call transform_field_mv(1, state_p, 0, verbose)
-
-end subroutine collect_state_pdaf
+end subroutine collect_state_init_pdaf

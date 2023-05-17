@@ -20,8 +20,15 @@ subroutine next_observation_pdaf(stepnow, nsteps, doexit, time)
        only: delt_obs
   use mod_parallel_pdaf, &
        only: mype_ens
-  use in_out_manager, &
-       only: nitend
+  use mod_nemo_pdaf, &
+       only: nitend, nit000
+  use mod_iau_pdaf, &
+       only: do_asmiau, steps_asmiau, &
+       store_asm_step_pdaf, update_asm_step_pdaf
+#if defined key_top
+  use mod_iau_pdaf, &
+       only: do_bgciau, steps_bgciau
+#endif
 
   implicit none
 
@@ -38,23 +45,57 @@ subroutine next_observation_pdaf(stepnow, nsteps, doexit, time)
 
   ! Not used in this implementation
   time = 0.0
-  doexit = 0 
+  doexit = 0
 
   if (stepnow + delt_obs <= nitend) then
      ! *** During the assimilation process ***
+     
+     if (stepnow == nit000 - 1) then
+        ! First analysis step 
 
-     nsteps = delt_obs   ! This assumes a constant time step interval
+        ! Apply IAU
+#if defined key_top
+        if (do_asmiau .or. do_bgciau) then
+           if (steps_asmiau>= steps_bgciau) then
+              nsteps = delt_obs - steps_asmiau
+           else
+              nsteps = delt_obs - steps_bgciau
+           end if
+#else
+        if (do_asmiau) then
+           nsteps = delt_obs - steps_asmiau
+#endif
+        else
+           ! Direct initialization with increments
+           nsteps = delt_obs-1     ! Analysis step one step before end of day
+        endif
+     else
+        nsteps = delt_obs       ! Follow-up analysis steps daily
+     end if
 
      if (mype_ens == 0) write (*, '(a, i7, 3x, a, i7)') &
           'NEMO-PDAF', stepnow, 'Next observation at time step', stepnow + nsteps
+
+     ! Update analysis step information for NEMO-ASM
+     if (stepnow == nit000 - 1) then
+        ! At initial time - apply increments after first analysis step
+        call store_asm_step_pdaf(stepnow+nsteps, 0)
+     else
+        ! analysis step - apply increments after current analysis step
+        call store_asm_step_pdaf(stepnow, 1)
+     end if
+
   else
      ! *** End of assimilation process ***
 
      ! Set nsteps so stepnow+delt_bs>nitend to ensure that PDAF calls distribute_state
-     nsteps = delt_obs   ! This assumes a constant time step interval
+     nsteps = delt_obs        
 
      if (mype_ens == 0) write (*, '(a, i7, 3x, a)') &
           'NEMO-PDAF', stepnow, 'No more observations - end assimilation and complete forecast'
+
+     ! Update analysis step information for NEMO-ASM
+     call store_asm_step_pdaf(stepnow, 1)
   end if
 
 end subroutine next_observation_pdaf

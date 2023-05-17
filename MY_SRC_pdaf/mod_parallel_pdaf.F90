@@ -67,6 +67,7 @@ CONTAINS
    SUBROUTINE init_parallel_pdaf(mpi_comm)
 
      use in_out_manager, only: cxios_context
+     use timer, only: timeit
 
       !> Communicator after XIOS splitting
       INTEGER, INTENT(inout) :: mpi_comm
@@ -84,6 +85,9 @@ CONTAINS
 
       INTEGER :: screen=1
 
+      call timeit(5,'ini')
+      call timeit(5,'new')
+      call timeit(1,'new')
 
       ! Number of ensemble members, supplied by PDAF namelist
       NAMELIST /tasks_nml/ tasks, screen
@@ -218,6 +222,8 @@ CONTAINS
       WRITE(task_str,'(I3.3)') task_id
       cxios_context = TRIM(cxios_context)//'_'//TRIM(task_str)
 
+      call timeit(1,'old')
+      call timeit(2,'new')
 
    END SUBROUTINE init_parallel_pdaf
 

@@ -165,29 +165,29 @@ module mod_assimilation_pdaf
   integer :: mcols_cvec_ens = 1 !< Multiplication factor for number of columns for ensemble control vector
   real(pwp) :: beta_3dvar = 0.5 !< Hybrid weight for hybrid 3D-Var
 !    ! NETF/LNETF
-  integer :: type_winf     ! Set weights inflation: (1) activate
-  real(pwp)    :: limit_winf  ! Limit for weights inflation: N_eff/N>limit_winf
+  integer :: type_winf          !< Set weights inflation: (1) activate
+  real(pwp)    :: limit_winf    !< Limit for weights inflation: N_eff/N>limit_winf
+!    ! hybrid LKNETF
+  integer :: type_hyb      !< Type of hybrid weight: (2) adaptive from N_eff/N
+  real    :: hyb_gamma     !< Hybrid filter weight for state (1.0: LETKF, 0.0 LNETF)
+  real    :: hyb_kappa     !< Hybrid norm for using skewness and kurtosis
 !    ! Particle filter
-  integer :: pf_res_type   ! Resampling type for PF
-                           ! (1) probabilistic resampling
-                           ! (2) stochastic universal resampling
-                           ! (3) residual resampling        
-  integer :: pf_noise_type    ! Resampling type for PF
-                           ! (0) no perturbations, (1) constant stddev, 
-                           ! (2) amplitude of stddev relative of ensemble variance
-  real(pwp) :: pf_noise_amp ! Noise amplitude (>=0.0, only used if pf_noise_type>0)
+  integer :: pf_res_type   !< Resampling type for PF
+                           !< (1) probabilistic resampling
+                           !< (2) stochastic universal resampling
+                           !< (3) residual resampling        
+  integer :: pf_noise_type    !< Resampling type for PF
+                           !< (0) no perturbations, (1) constant stddev, 
+                           !< (2) amplitude of stddev relative of ensemble variance
+  real(pwp) :: pf_noise_amp !< Noise amplitude (>=0.0, only used if pf_noise_type>0)
 
 !    ! Other variables - _NOT_ available as command line options!
   real(pwp) :: time        !< model time
 
-  integer, allocatable :: id_lstate_in_pstate(:) ! Indices of local state vector in global vector
-  real(pwp) :: domain_coords(2) !> Coordinates of local analysis domain
+  integer, allocatable :: id_lstate_in_pstate(:) !< Indices of local state vector in global vector
+  real(pwp) :: domain_coords(2)       !< Coordinates of local analysis domain
 
-  integer :: assim_flag = 0   ! Flag whether assimilation step was just done
-
-! Constants for coordinate calculations
-  real(8), parameter  :: pi     = 3.14159265358979323846_pwp
-  real :: deg2rad = pi / 180.0_pwp      ! Conversion from degrees to radian
+  integer :: assim_flag = 0   !< Flag whether assimilation step was just done
 
 !$OMP THREADPRIVATE(domain_coords, id_lstate_in_pstate)
 
@@ -205,15 +205,25 @@ contains
   !! 
   !!  - Calls: `PDAFomi_assimilate_local`
   !! 
-  subroutine assimilate_pdaf()
+  subroutine assimilate_pdaf(kt)
 
     use pdaf_interfaces_module, &
          only: PDAFomi_assimilate_local, PDAF_get_localfilter
     use mod_parallel_pdaf, &
          only: mype_ens, abort_parallel, COMM_ensemble, MPIerr
+    use mod_nemo_pdaf, &
+         only: lwp, numout
+    use mod_iau_pdaf, &
+         only: update_asm_step_pdaf
 
-    integer :: status_pdaf  ! PDAF status flag
-    integer :: localfilter  ! Flag for domain-localized filter (1=true)
+    implicit none
+
+! *** Arguments ***
+    integer, intent(in) :: kt  ! time step
+
+! *** Local variables ***
+    integer :: status_pdaf         ! PDAF status flag
+    integer :: localfilter         ! Flag for domain-localized filter (1=true)
 
     !! External subroutines 
     !!  (subroutine names are passed over to PDAF in the calls to 
@@ -254,17 +264,24 @@ contains
             prepoststep_ens_pdaf, init_n_domains_pdaf, init_dim_l_pdaf, &
             init_dim_obs_l_pdafomi, g2l_state_pdaf, l2g_state_pdaf, &
             next_observation_pdaf, status_pdaf)
-    else
-       write (*, '(a)') 'ERROR - global filter not implemented, stopping.'
-       call abort_parallel()
+    elseif (localfilter == 0) then
+       ! All global filters, except LEnKF
+       call PDAFomi_assimilate_global(collect_state_pdaf, &
+            distribute_state_pdaf, init_dim_obs_pdafomi, obs_op_pdafomi, &
+            prepoststep_ens_pdaf, &
+            next_observation_pdaf, status_pdaf)
     end if
 
 ! *** Query whether analysis step was performed
 ! *** This is also used to trigger the Euler time step for nemo_coupling='odir'
     call PDAF_get_assim_flag(assim_flag)
 
-! This Barrier is temporary to avoid that model tasks > 1 continue with model integrations
-! Remove when distribute state is coded!
+    ! Output into NEMO's ocean.output file
+    if(assim_flag==1 .and. lwp) then
+       write(numout,*) 
+       write(numout,*) 'assimilate_pdaf : PDAF data assimilation was applied at step ', kt
+       write(numout,*) '~~~~~~~~~~~'
+    endif
 
     if (assim_flag==1) call MPI_Barrier(COMM_ensemble, MPIerr)
 

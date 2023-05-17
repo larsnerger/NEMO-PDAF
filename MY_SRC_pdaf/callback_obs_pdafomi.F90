@@ -39,8 +39,8 @@ subroutine init_dim_obs_pdafomi(step, dim_obs)
   integer, intent(out) :: dim_obs  !< Dimension of full observation vector
 
 ! *** Local variables ***
-  integer :: dim_obs_ssh_mgrid     ! Observation dimension
-  integer :: dim_obs_sst_cmems     ! Observation dimension
+  integer :: dim_obs_ssh_mgrid         ! Observation dimension
+  integer :: dim_obs_sst_cmems         ! Observation dimension
 
 
 ! *********************************************
