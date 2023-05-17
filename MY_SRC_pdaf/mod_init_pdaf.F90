@@ -4,6 +4,14 @@
 !! `init_pdaf`. Here the ensemble is initialized and distributed
 !! and the statevector and state variable information are computed.
 !! 
+!! Contributors:
+!! The coupling and PDAF user codes for NEMO contains code parts
+!! from different contributors. Namely
+!! - Wibke Duesterhoeft-Wriggers, BSH, Germany
+!! - Nicholas Byrne, NCEO and University of Reading, UK
+!! - Yumeng Chen, NCEO and University of Reading, UK
+!! - Lars Nerger, AWI, Germany
+!!
 module mod_init_pdaf
 
    implicit none

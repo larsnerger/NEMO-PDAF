@@ -1,5 +1,9 @@
 !> Module holding IO operations for NEMO-PDAF
 !!
+!! This code bases in wide parts on the implementation
+!! by Wibke Duesterhoeft-Wriggers, BSH, Germany for the
+!! CMEMS Baltic Monitoring and forecasting center
+!!
 module mod_io_pdaf
 
   use mod_kind_pdaf
