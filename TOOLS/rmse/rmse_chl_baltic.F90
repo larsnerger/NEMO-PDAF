@@ -372,11 +372,13 @@ program rmse
                           if (abs(tmask(i_index, j_index, 1, 1) - missing_value) > 0.1 &
                                .and. field_o(i, j) > missing_value_obs) then
 
-                             diff = log10(field_o(i,j))- log10(field_m(i_index, j_index))
-                             diff_squared = diff * diff
-                             ssum = ssum + diff_squared
-                             diff_ssum = diff_ssum + diff
-                             counter = counter+1
+                             if (field_o(i,j)>0.0 .and. field_m(i_index, j_index)>0.0) then
+                                diff = log10(field_o(i,j))- log10(field_m(i_index, j_index))
+                                diff_squared = diff * diff
+                                ssum = ssum + diff_squared
+                                diff_ssum = diff_ssum + diff
+                                counter = counter+1
+                             end if
 
                           end if
 
@@ -404,11 +406,13 @@ program rmse
                           if (abs(tmask(i_index, j_index, 1, 1) - missing_value) > 0.1 &
                                .and. field_o(i, j) > missing_value_obs) then
 
-                             diff = field_o(i,j) - field_m(i_index, j_index)
-                             diff_squared = diff * diff
-                             ssum = ssum + diff_squared
-                             diff_ssum = diff_ssum + diff
-                             counter = counter+1
+                             if (field_o(i,j)>0.0 .and. field_m(i_index, j_index)>0.0) then
+                                diff = field_o(i,j) - field_m(i_index, j_index)
+                                diff_squared = diff * diff
+                                ssum = ssum + diff_squared
+                                diff_ssum = diff_ssum + diff
+                                counter = counter+1
+                             end if
 
                           end if
 
