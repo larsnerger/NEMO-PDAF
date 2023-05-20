@@ -202,8 +202,8 @@ real :: rdate
   ! Set time string
   WRITE(ndastp_str,'(I8.8)') ndastp
   call calc_date(ABS(step), rdate)
-if (mype==0) write (*,*) 'RDATE', step, rdate
-  write(ndastp_str,'(F12.3)') rdate
+!if (mype==0) write (*,*) 'RDATE', step, rdate
+!  write(ndastp_str,'(F12.3)') rdate
 
   ! *** Write variance into nc file ***
 
