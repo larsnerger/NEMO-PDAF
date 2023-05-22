@@ -22,8 +22,8 @@
 ! Settings for NEMO's ASMINC module
   do_asmiau = .true.
   steps_asmiau = 10
-  shape_asmiau = 0
-!  iter_divdmp = 50
+  shape_asmiau = 1
+  iter_divdmp = 5
 /
 
 &init_nml
