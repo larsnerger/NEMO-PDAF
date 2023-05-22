@@ -7,7 +7,7 @@
 !! The initialization of communicators for execution with PDAF is
 !! performed in `init_parallel_pdaf`.
 !! 
-MODULE mod_parallel_pdaf
+MODULE parallel_pdaf
 
   USE mod_kind_pdaf
 
@@ -227,4 +227,4 @@ CONTAINS
 
    END SUBROUTINE init_parallel_pdaf
 
-END MODULE mod_parallel_pdaf
+END MODULE parallel_pdaf

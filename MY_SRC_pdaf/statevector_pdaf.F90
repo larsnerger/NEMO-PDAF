@@ -13,7 +13,7 @@
 !! adapted to a particular modeling case. However, for most
 !! parts also the configruation using the namelist is possible.
 !!
-module mod_statevector_pdaf
+module statevector_pdaf
 
   use mod_kind_pdaf
 
@@ -120,7 +120,7 @@ contains
   subroutine init_id(nfields)
 
 #if defined key_top
-  use mod_nemo_pdaf, &
+  use nemo_pdaf, &
        only: jptra
 #endif
 
@@ -218,10 +218,10 @@ contains
   subroutine init_sfields()
 
     use mod_kind_pdaf
-    use mod_nemo_pdaf, &
+    use nemo_pdaf, &
          only: sdim2d, sdim3d
 #if defined key_top
-    use mod_nemo_pdaf, &
+    use nemo_pdaf, &
          only: sn_tracer, jptra
 #endif
 
@@ -364,7 +364,7 @@ contains
   subroutine setup_statevector(dim_state, dim_state_p)
 
     use mod_kind_pdaf
-    use mod_parallel_pdaf, &
+    use parallel_pdaf, &
          only: mype=>mype_ens, npes=>npes_ens, task_id, comm_ensemble, &
          comm_model, MPI_SUM, MPI_INTEGER, MPIerr
 
@@ -438,4 +438,4 @@ contains
 
   end subroutine setup_statevector
 
-end module mod_statevector_pdaf
+end module statevector_pdaf

@@ -29,7 +29,7 @@ MODULE stpctl
    USE lib_fortran     ! Fortran utilities
    USE netcdf          ! NetCDF library
 #if defined key_USE_PDAF
-   USE mod_parallel_pdaf, ONLY : task_str ! Include ensemble task id
+   USE parallel_pdaf, ONLY : task_str ! Include ensemble task id
 #endif
    IMPLICIT NONE
    PRIVATE

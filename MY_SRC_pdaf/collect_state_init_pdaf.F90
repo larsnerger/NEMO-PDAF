@@ -16,18 +16,18 @@
 subroutine collect_state_init_pdaf(dim_p, state_p)
 
   use mod_kind_pdaf
-  use mod_statevector_pdaf, &
+  use statevector_pdaf, &
        only: sfields, id
-  use mod_nemo_pdaf, &
+  use nemo_pdaf, &
        only: ni_p, nj_p, nk_p, i0, j0, &
        jp_tem, jp_sal, sshn, tsn, un, vn
 #if defined key_top
-  use mod_statevector_pdaf, &
+  use statevector_pdaf, &
        only: n_trc, sv_trc
-  use mod_nemo_pdaf, &
+  use nemo_pdaf, &
        only: jptra, trn
 #endif
-  use mod_aux_pdaf, &
+  use transforms_pdaf, &
        only: field2state
 
   implicit none

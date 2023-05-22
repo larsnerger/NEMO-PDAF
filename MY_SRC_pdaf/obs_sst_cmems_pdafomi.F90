@@ -3,26 +3,32 @@
 !!
 !! This module handles operations for one data type (called 'module-type' below).
 !!
-!! Observation type: SST observations from CMEMS
-!! 
+!! Observation type: Regional SST observations from CMEMS
+!!
 !! The subroutines in this module are for the particular handling of
-!! a single observation type.
+!! satellite SST observations in regional configurations that use a
+!! regular lon/lat model grid. This type of the model grid is used for
+!! the efficient computation of the indices of grid points surrounding
+!! an observation location. The observation module can handle the case
+!! that model and observation grid only overlap partially. Both
+!! interpolation to the observation grid and superobbing by averaging
+!! observations on the model grid are supported.
+!!
+!! A particularity of the observation type used here is that it is stored
+!! in short integer form. For this integer values are read from the file
+!! and converted into real.
 !!
 !! The routines are called by the different call-back routines of PDAF.
-!! Most of the routines are generic so that in practice only 2 routines
-!! need to be adapted for a particular data type. These are the routines
-!! for the initialization of the observation information (`init_dim_obs`)
-!! and for the observation operator (`obs_op`).
 !!
 !! The module uses two derived data type (obs_f and obs_l), which contain
 !! all information about the full and local observations. Only variables
 !! of the type obs_f need to be initialized in this module. The variables
 !! in the type obs_l are initilized by the generic routines from PDAFomi.
 !!
-module mod_obs_sst_cmems_pdafomi
+module obs_sst_cmems_pdafomi
 
   USE mod_kind_pdaf
-  use mod_parallel_pdaf, &
+  use parallel_pdaf, &
        only: mype_filter    ! Rank of filter process
   use PDAFomi, &
        only: obs_f, obs_l   ! Declaration of observation data types
@@ -93,23 +99,21 @@ contains
 !!
 !! Further variables are set when the routine PDAFomi_gather_obs is called.
 !!
-!! **Adapting the template**
-!! In this routine the variables listed above have to be initialized. One
-!! can include modules from the model with 'use', e.g. for mesh information.
-!! Alternatively one could include these as subroutine arguments
-!!
   subroutine init_dim_obs_sst_cmems(step, dim_obs)
 
     use netcdf
     use PDAFomi, &
          only: PDAFomi_gather_obs, PDAFomi_get_interp_coeff_lin
-    use mod_assimilation_pdaf, &
+    use assimilation_pdaf, &
          only: filtertype, screen
-    use mod_statevector_pdaf, &
+    use statevector_pdaf, &
          only: id, sfields
-    use mod_parallel_pdaf, only: mype_filter, npes_filter
-    use mod_io_pdaf, only: check
-    use mod_nemo_pdaf, only: lat1_p, lon1_p, nlats=>nj_p, nlons=>ni_p, &
+    use parallel_pdaf, &
+         only: mype_filter, npes_filter
+    use io_pdaf, &
+         only: check
+    use nemo_pdaf, &
+         only: lat1_p, lon1_p, nlats=>nj_p, nlons=>ni_p, &
          idx_nwet, use_wet_state, nlei, nlej, calc_date, deg2rad
 
     implicit none
@@ -369,7 +373,7 @@ contains
        dlonM = lon_model(2) - lon_model(1)  ! Model grid spacing in longitude
        sgn_mlat = int(sign(1.0,dlatM))      ! Orientation of latitudinal direction (-1: north-to-south)
 
-       ! Observation grid spacing and oriantation
+       ! Observation grid spacing and orientation
        dlatO = lat_obs(2) - lat_obs(1)      ! Observation grid spacing in latitude
        dlonO = lon_obs(2) - lon_obs(1)      ! Observation grid spacing in longitude
        sgn_olat = int(sign(1.0,dlatO))      ! Orientation of latitudinal direction (-1: north-to-south)
@@ -943,9 +947,9 @@ contains
 
     use PDAFomi, &
          only: PDAFomi_init_dim_obs_l
-    use mod_nemo_pdaf, &
+    use nemo_pdaf, &
          only: wet_pts, nwet
-    use mod_assimilation_pdaf, &
+    use assimilation_pdaf, &
          only: domain_coords, locweight
 
     implicit none
@@ -1004,7 +1008,7 @@ contains
     use PDAFomi, only: PDAFomi_localize_covar
 
     ! Include localization radius and local coordinates
-    use mod_assimilation_pdaf, &   
+    use assimilation_pdaf, &   
          only: locweight
 
     implicit none
@@ -1030,4 +1034,4 @@ contains
 
   end subroutine localize_covar_sst_cmems
 
-end module mod_obs_sst_cmems_pdafomi
+end module obs_sst_cmems_pdafomi

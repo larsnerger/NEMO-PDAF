@@ -1,17 +1,18 @@
-module mod_aux_pdaf
+module transforms_pdaf
 
 ! !DESCRIPTION:
-! Auxiliary routines
+! Routines to transform state vector
 ! - mapping between state vector and model field
 ! - state transformations (log, etc.)
+! - apply limits to values to fields in state vector
 
   ! Include dimension information for model grid
   use mod_kind_pdaf
-  use mod_nemo_pdaf, &
+  use nemo_pdaf, &
        only: nlvls=>jpk, nj_p, ni_p, nwet, wet_pts, use_wet_state, i0, j0
-  use mod_statevector_pdaf, &
+  use statevector_pdaf, &
        only: id, sfields, n_fields
-  use mod_parallel_pdaf, &
+  use parallel_pdaf, &
        only: mype=>mype_model, task_id
 
   implicit none
@@ -1315,4 +1316,4 @@ contains
 
   end subroutine var_limits_mv
 
-end module mod_aux_pdaf
+end module transforms_pdaf

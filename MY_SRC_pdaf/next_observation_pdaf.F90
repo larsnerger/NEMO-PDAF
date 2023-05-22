@@ -9,24 +9,22 @@
 !! 
 !! The routine is called by all processes.
 !! 
-!!  **Calling Sequence**
-!! 
 !!  - Called from: `init_pdaf/PDAF_get_state` (as U_next_obs)
 !! 
 subroutine next_observation_pdaf(stepnow, nsteps, doexit, time)
 
   use mod_kind_pdaf
-  use mod_assimilation_pdaf, &
+  use assimilation_pdaf, &
        only: delt_obs
-  use mod_parallel_pdaf, &
+  use parallel_pdaf, &
        only: mype_ens
-  use mod_nemo_pdaf, &
+  use nemo_pdaf, &
        only: nitend, nit000
-  use mod_asm_pdaf, &
+  use asminc_pdaf, &
        only: do_asmiau, steps_asmiau, &
        store_asm_step_pdaf, update_asm_step_pdaf
 #if defined key_top
-  use mod_asm_pdaf, &
+  use asminc_pdaf, &
        only: do_bgciau, steps_bgciau
 #endif
 

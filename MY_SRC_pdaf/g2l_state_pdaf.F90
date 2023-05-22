@@ -10,7 +10,7 @@
 subroutine g2l_state_pdaf(step, domain_p, dim_p, state_p, dim_l, state_l)
 
   use mod_kind_pdaf
-  use mod_assimilation_pdaf, &
+  use assimilation_pdaf, &
        only: id_lstate_in_pstate
 
   implicit none

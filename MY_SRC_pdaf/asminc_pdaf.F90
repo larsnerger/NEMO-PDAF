@@ -5,19 +5,19 @@
 !! basis of DA settings for PDAF. both the direct
 !! initialization and IAU of ASMINC can be used.
 !!
-module mod_asm_pdaf
+module asminc_pdaf
 
   use mod_kind_pdaf
-  use mod_statevector_pdaf, &
+  use statevector_pdaf, &
        only: update_ssh, update_temp, update_salt, update_vel, &
        sfields, id
 #if defined key_top
-  use mod_statevector_pdaf, &
+  use statevector_pdaf, &
        only: n_trc, sv_trc
-  use mod_nemo_pdaf, &
+  use nemo_pdaf, &
        only: jptra
 #endif
-  use mod_parallel_pdaf, &
+  use parallel_pdaf, &
        only: mype_ens
   use par_oce, &
        only: jpi, jpj, jpk, jp_tem, jp_sal
@@ -403,9 +403,9 @@ contains
 !!
   subroutine update_bkginc_pdaf(dim_p, state_p, verbose)
 
-    use mod_nemo_pdaf, &
+    use nemo_pdaf, &
          only: ni_p, nj_p, nk_p, i0, j0
-    use mod_aux_pdaf, &
+    use transforms_pdaf, &
          only: state2field_inc
     use oce, &
          only: sshn, tsn, un, vn
@@ -733,4 +733,4 @@ contains
 
   end subroutine asm_inc_deallocate_pdaf
 
-end module mod_asm_pdaf
+end module asminc_pdaf

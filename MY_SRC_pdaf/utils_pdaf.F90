@@ -5,7 +5,7 @@
 !! information about the PDAF library, and configuration information
 !! about the assimilation parameters.
 !! 
-module mod_util_pdaf
+module utils_pdaf
 
   use mod_kind_pdaf
 
@@ -23,7 +23,7 @@ contains
   !!
   subroutine init_info_pdaf()
 
-    use mod_assimilation_pdaf, & ! Variables for assimilation
+    use assimilation_pdaf, & ! Variables for assimilation
          only: filtertype, subtype, dim_ens, delt_obs, model_error, &
          model_err_amp, forget, rank_analysis_enkf
 
@@ -152,34 +152,34 @@ contains
   !!
   subroutine read_config_pdaf()
 
-    use mod_parallel_pdaf, &
+    use parallel_pdaf, &
          only: mype_ens
-    use mod_assimilation_pdaf, &
+    use assimilation_pdaf, &
          only: filtertype, subtype, type_trans, type_sqrt, &
          locweight, screen, dim_ens, ensscale, delt_obs, &
          type_forget, forget, type_ens_init, type_central_state, &
          ens_restart, type_hyb, hyb_gamma, hyb_kappa
-    use mod_io_pdaf, &
+    use io_pdaf, &
          only: verbose_io, path_inistate, path_ens, file_ens, file_covar, &
          sgldbl_io, coupling_nemo, save_var, save_state, save_ens_sngl, &
          ids_write, add_slash
-    use mod_statevector_pdaf, &
+    use statevector_pdaf, &
          only: update_ssh, update_temp, update_salt, update_vel
 #if defined key_top
-    use mod_statevector_pdaf, &
+    use statevector_pdaf, &
          only: update_trc
 #endif
-    use mod_asm_pdaf, &
+    use asminc_pdaf, &
          only: do_asmiau, steps_asmiau, shape_asmiau, iter_divdmp
-    use mod_obs_ssh_mgrid_pdafomi, &
+    use obs_ssh_mgrid_pdafomi, &
          only: assim_ssh_mgrid, rms_ssh_mgrid, file_ssh_mgrid, &
          lradius_ssh_mgrid, sradius_ssh_mgrid, varname_ssh_mgrid
-    use mod_obs_sst_cmems_pdafomi, &
+    use obs_sst_cmems_pdafomi, &
          only: assim_sst_cmems, path_sst_cmems, file_sst_cmems, rms_obs_sst_cmems, &
          lradius_sst_cmems, sradius_sst_cmems, mode_sst_cmems, dist_sst_cmems, &
          varname_sst_cmems
 #if defined key_top
-    use mod_asm_pdaf, &
+    use asminc_pdaf, &
          only: do_bgciau, steps_bgciau, shape_asmiau, shape_bgciau
 #endif
 
@@ -326,9 +326,9 @@ contains
 !!
   subroutine finalize_pdaf()
 
-    use mod_parallel_pdaf, &
+    use parallel_pdaf, &
          only: mype_ens, comm_ensemble, mpierr, mype_model
-    use mod_asm_pdaf, &
+    use asminc_pdaf, &
          only: asm_inc_deallocate_pdaf
     use timer, &
          only: timeit, time_tot
@@ -364,4 +364,4 @@ contains
 
   end subroutine finalize_pdaf
 
-end module mod_util_pdaf
+end module utils_pdaf

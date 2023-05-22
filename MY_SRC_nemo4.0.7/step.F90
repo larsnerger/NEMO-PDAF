@@ -39,7 +39,7 @@ MODULE step
    !
    USE iom              ! xIOs server
 #if defined key_USE_PDAF
-   USE mod_assimilation_pdaf, &
+   USE assimilation_pdaf, &
         ONLY: assimilate_pdaf
 #endif
 

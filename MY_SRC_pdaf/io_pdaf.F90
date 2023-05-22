@@ -4,32 +4,32 @@
 !! by Wibke Duesterhoeft-Wriggers, BSH, Germany for the
 !! CMEMS Baltic Monitoring and forecasting center
 !!
-module mod_io_pdaf
+module io_pdaf
 
   use mod_kind_pdaf
   use mpi
 
   ! Include dimension information for model grid
-  use mod_nemo_pdaf, &
+  use nemo_pdaf, &
        only: nlvls=>jpk, nlats=>jpjglo, nlons=>jpiglo, &
        depths=>gdept_1d, lons, lats, i0, j0, &
        tmp_4d, ni_p, nj_p, nk_p, istart, jstart, &
        nimpp, njmpp, nlei, nlej, stmp_4d, tmask
 
   ! Include information on state vector
-  use mod_statevector_pdaf, &
+  use statevector_pdaf, &
        only: id, sfields, n_fields, n_fields_covar
 
   ! Include parallelization information
-  use mod_parallel_pdaf, &
+  use parallel_pdaf, &
        only: mype=>mype_ens, npes=>npes_ens, comm_filter, abort_parallel
 
-  ! Include auxiliary routines
-  use mod_aux_pdaf, &
+  ! Include transformation routines
+  use transforms_pdaf, &
        only: field2state, field2state_missval, state2field, transform_field_mv
 
   ! Include coupling flag
-  use mod_assimilation_pdaf, &
+  use assimilation_pdaf, &
        only: coupling_nemo
 
   implicit none
@@ -240,7 +240,7 @@ contains
 
 !!> Read ensemble as state vectors from ensemble file
 !!
-  subroutine read_ens(ensfile_fullname, dim_state, dim_ens, ens)
+  subroutine read_ens_states(ensfile_fullname, dim_state, dim_ens, ens)
 
     use netcdf
 
@@ -326,14 +326,14 @@ contains
 
     call check( nf90_close(ncid) )
 
-  end subroutine read_ens
+  end subroutine read_ens_states
 
 
 !================================================================================
 
-!> Initialie ensemble array from a list of NEMO output files
+!> Initialize ensemble array from a list of NEMO output files
 !!
-  subroutine gen_ens_mv(flate, zeromean, inpath, dim_p, dim_ens, ens)
+  subroutine read_ens_mv_filelist(flate, zeromean, inpath, dim_p, dim_ens, ens)
 
   implicit none
 
@@ -420,7 +420,7 @@ contains
 
   end if
 
-end subroutine gen_ens_mv
+end subroutine read_ens_mv_filelist
 
 
 !===============================================================================
@@ -505,7 +505,7 @@ end subroutine gen_ens_mv
 !!
   subroutine read_eof_cov(filename_cov, dim_state, dim_p, rank, state_p, eofV, svals, readmean)
 
-    use mod_nemo_pdaf, only: dim_2d_p, dim_3d_p
+    use nemo_pdaf, only: dim_2d_p, dim_3d_p
     use netcdf
 
 ! *** Arguments ***
@@ -1527,4 +1527,4 @@ end subroutine gen_ens_mv
 
   end function file_exists
 
-end module mod_io_pdaf
+end module io_pdaf

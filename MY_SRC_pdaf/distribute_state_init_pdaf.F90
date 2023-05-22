@@ -13,23 +13,23 @@
 subroutine distribute_state_init_pdaf(dim_p, state_p)
 
   use mod_kind_pdaf
-  use mod_parallel_pdaf, &
+  use parallel_pdaf, &
        only: mype_ens
-  use mod_statevector_pdaf, &
+  use statevector_pdaf, &
        only: sfields, id
-  use mod_nemo_pdaf, &
+  use nemo_pdaf, &
        only: ni_p, nj_p, nk_p, i0, j0, &
        jp_tem, jp_sal, neuler, lbc_lnk, lbc_lnk_multi, &
        sshb, tsb, ub, vb, &
        sshn, tsn, un, vn
-  use mod_assimilation_pdaf, &
+  use assimilation_pdaf, &
        only: ens_restart
-  use mod_aux_pdaf, &
+  use transforms_pdaf, &
        only: state2field, transform_field_mv
 #if defined key_top
-  use mod_statevector_pdaf, &
+  use statevector_pdaf, &
        only: sv_trc
-  use mod_nemo_pdaf, &
+  use nemo_pdaf, &
        only: jptra, trb, trn
 #endif
 

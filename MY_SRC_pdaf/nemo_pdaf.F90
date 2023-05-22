@@ -1,10 +1,10 @@
-module mod_nemo_pdaf
+module nemo_pdaf
 
   use mod_kind_pdaf
 
   ! Include variables from NEMO
-  ! User routines should only include from mod_nemo_pdaf not from NEMO modules
-  ! The only exception is `mod_asm_pdaf` whic halso directly includes from NEMO
+  ! User routines should only include from `nemo_pdaf` not from NEMO modules
+  ! The only exception is `asminc_pdaf` which also directly includes from NEMO
   use par_oce, &
        only: jpi, jpj, jpk, jpiglo, jpjglo, &
        jp_tem, jp_sal
@@ -88,7 +88,7 @@ contains
   subroutine set_nemo_grid()
 
     use mod_kind_pdaf
-    use mod_parallel_pdaf, &
+    use parallel_pdaf, &
          only: mype_model, task_id
     use PDAFomi, &
          only: PDAFomi_set_domain_limits
@@ -253,4 +253,4 @@ contains
 
   end subroutine set_nemo_grid
 
-end module mod_nemo_pdaf
+end module nemo_pdaf

@@ -30,16 +30,16 @@ subroutine prepoststep_ens_pdaf(step, dim_p, dim_ens, dim_ens_p, dim_obs_p, &
 
   use mpi
   use mod_kind_pdaf
-  use mod_assimilation_pdaf, &
+  use assimilation_pdaf, &
         only: step_null, ens_restart
-  use mod_parallel_pdaf, &
+  use parallel_pdaf, &
        only: mype=>mype_filter, comm_filter, MPIerr
-  use mod_statevector_pdaf, &
+  use statevector_pdaf, &
        only: n_fields, id, sfields
-  use mod_io_pdaf, &
+  use io_pdaf, &
         only: save_state, save_var, save_ens_sngl, file_PDAF_state, file_PDAF_variance, &
         write_field_mv, write_field_sngl, ids_write
-  use mod_nemo_pdaf, &
+  use nemo_pdaf, &
        only: ndastp, calc_date
 
   implicit none

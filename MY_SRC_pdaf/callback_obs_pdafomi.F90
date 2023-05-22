@@ -27,9 +27,9 @@
 !!
 subroutine init_dim_obs_pdafomi(step, dim_obs)
 
-  use mod_obs_ssh_mgrid_pdafomi, &
+  use obs_ssh_mgrid_pdafomi, &
        only: assim_ssh_mgrid, init_dim_obs_ssh_mgrid
-  use mod_obs_sst_cmems_pdafomi, &
+  use obs_sst_cmems_pdafomi, &
        only: assim_sst_cmems, init_dim_obs_sst_cmems
 
   implicit none
@@ -73,9 +73,9 @@ end subroutine init_dim_obs_pdafomi
 subroutine obs_op_pdafomi(step, dim_p, dim_obs, state_p, ostate)
 
   use mod_kind_pdaf
-  use mod_obs_ssh_mgrid_pdafomi, &
+  use obs_ssh_mgrid_pdafomi, &
        only: obs_op_ssh_mgrid
-  use mod_obs_sst_cmems_pdafomi, &
+  use obs_sst_cmems_pdafomi, &
        only: obs_op_sst_cmems
 
   implicit none
@@ -112,11 +112,11 @@ end subroutine obs_op_pdafomi
 subroutine init_dim_obs_l_pdafomi(domain_p, step, dim_obs, dim_obs_l)
 
   use mod_kind_pdaf
-  use mod_nemo_pdaf, &
+  use nemo_pdaf, &
        only: nwet
-  use mod_obs_ssh_mgrid_pdafomi, &
+  use obs_ssh_mgrid_pdafomi, &
        only: assim_ssh_mgrid, init_dim_obs_l_ssh_mgrid
-  use mod_obs_sst_cmems_pdafomi, &
+  use obs_sst_cmems_pdafomi, &
        only: assim_sst_cmems, init_dim_obs_l_sst_cmems
 
   implicit none

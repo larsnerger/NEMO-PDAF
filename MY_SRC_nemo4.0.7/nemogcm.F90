@@ -93,8 +93,8 @@ MODULE nemogcm
    USE agrif_all_update   ! Master Agrif update
 #endif
 #if defined key_USE_PDAF
-   USE mod_init_pdaf, ONLY: init_pdaf
-   USE mod_util_pdaf, ONLY: finalize_pdaf
+   USE initialize_pdaf, ONLY: init_pdaf
+   USE utils_pdaf, ONLY: finalize_pdaf
 #endif
 
    IMPLICIT NONE

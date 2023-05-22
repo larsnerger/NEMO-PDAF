@@ -3,10 +3,10 @@
 !! This module provides variables needed for the
 !! assimilation.
 !! 
-!! See `mod_init_pdaf` for where many of these
+!! See `initialize_pdaf` for where many of these
 !! variables are initialised.
 !! 
-module mod_assimilation_pdaf
+module assimilation_pdaf
 
   use mod_kind_pdaf
 
@@ -209,11 +209,11 @@ contains
 
     use pdaf_interfaces_module, &
          only: PDAFomi_assimilate_local, PDAF_get_localfilter
-    use mod_parallel_pdaf, &
+    use parallel_pdaf, &
          only: mype_ens, abort_parallel, COMM_ensemble, MPIerr
-    use mod_nemo_pdaf, &
+    use nemo_pdaf, &
          only: lwp, numout
-    use mod_asm_pdaf, &
+    use asminc_pdaf, &
          only: update_asm_step_pdaf
 
     implicit none
@@ -297,4 +297,4 @@ contains
 
   end subroutine assimilate_pdaf
 
-end module mod_assimilation_pdaf
+end module assimilation_pdaf

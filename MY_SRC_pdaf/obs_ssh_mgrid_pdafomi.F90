@@ -1,28 +1,29 @@
 !> PDAF-OMI observation module for ssh observations (on model grid)
 !!
+!! Observation type: SSH on model grid
+!!
 !! The subroutines in this module are for the particular handling of
-!! ssh observations available on the *model* grid.
+!! ssh observations available on the model grid. The observation module
+!! also allows to perform a twin experiment in which model output
+!! is read and used as observations after adding noise to the values.
 !! 
 !! The routines are called by the different call-back routines of PDAF.
-!! Most of the routines are generic so that in practice only 2 routines
-!! need to be adapted for a particular data type. These are the routines
-!! for the initialization of the observation information (`init_dim_obs`)
-!! and for the observation operator (`obs_op`).
-!! 
 !! 
 !! The module uses two derived data type (obs_f and obs_l), which contain
 !! all information about the full and local observations. Only variables
 !! of the type obs_f need to be initialized in this module. The variables
 !! in the type obs_l are initialized by the generic routines from `PDAFomi`.
+!!
+!! Author: Nicholas Byrne, NCEO & University of Reading, UK
 !! 
-MODULE mod_obs_ssh_mgrid_pdafomi
+MODULE obs_ssh_mgrid_pdafomi
 
    USE mod_kind_pdaf
-   USE mod_parallel_pdaf, &
+   USE parallel_pdaf, &
       ONLY: mype_filter, abort_parallel
    USE pdafomi, &
       ONLY: obs_f, obs_l
-   USE mod_nemo_pdaf, &
+   USE nemo_pdaf, &
         only: i0, j0, istart, jstart
    USE netcdf
 
@@ -79,39 +80,23 @@ CONTAINS
    !!
    !!
    !! Optional is the use of:
+   !! - **thisobs%icoeff_p**       - Interpolation coefficients for obs. operator (only if interpolation is used)
+   !! - **thisobs%domainsize**     - Size of domain for periodicity for *disttype=1* (<0 for no periodicity)
+   !! - **thisobs%obs_err_type**   - Type of observation errors for particle filter and NETF (default: 0=Gaussian)
+   !! - **thisobs%use_global_obs** - Whether to use global observations or restrict the observations
+   !!                               to the relevant ones (default: *.true.* i.e use global full observations)
    !!
-   !! - **thisobs%icoeff_p** - Interpolation coefficients for obs. operator
-   !! (only if interpolation is used)
-   !! - **thisobs%domainsize** - Size of domain for periodicity for *disttype=1*
-   !! (<0 for no periodicity)
-   !! - **thisobs%obs_err_type** - Type of observation errors for particle filter
-   !! and NETF
-   !! - **thisobs%use_global_obs** - Whether to use global observations or
-   !! restrict the observations to the relevant ones (default: *.true.* i.e use
-   !! global full observations)
-   !!
-   !! The following variables are set in the routine gather_obs:
-   !!
-   !! - **thisobs%dim_obs_p** - PE-local number of ssh observations
-   !! - **thisobs%dim_obs** - full number of ssh observations
-   !! - **thisobs%obs_f** - full vector of ssh observations
-   !! - **thisobs%ocoord_f** - coordinates of observations in OBS_MOD_F
-   !! -  **thisobs%ivar_obs_f** - full vector of inverse obs. error variances of
-   !! module-type
-   !! - **thisobs%dim_obs_g** - Number of global observations (only if
-   !!*use_global_obs=.false*)
-   !! - **thisobs%id_obs_f_lim** - Ids of full observations in global observations
-   !! (if *use_global_obs=.false*)
+   !! Further variables are set when the routine PDAFomi_gather_obs is called.
    !!
    SUBROUTINE init_dim_obs_ssh_mgrid(step, dim_obs)
 
       USE pdafomi, &
          ONLY: PDAFomi_gather_obs
-      USE mod_assimilation_pdaf, &
+      USE assimilation_pdaf, &
          ONLY: filtertype, delt_obs
-      USE mod_nemo_pdaf, &
+      USE nemo_pdaf, &
          ONLY: ni_p, nj_p
-      USE mod_parallel_pdaf, &
+      USE parallel_pdaf, &
          ONLY: COMM_filter
       USE par_oce, &
          ONLY: jpiglo, jpjglo
@@ -224,8 +209,6 @@ IF (mype_filter == 0) write (*,*) 'NEMO-PDAF:    Warning: reading step ', nc_ste
       DO j = 1, nj_p
          DO i = 1, ni_p
             ! Convert to global coordinates
-            i_obs = istart + i - 1
-            j_obs = jstart + j - 1
             cnt_p = cnt_p + 1
          END DO
       END DO
@@ -362,7 +345,7 @@ IF (mype_filter == 0) write (*,*) 'NEMO-PDAF:    Warning: reading step ', nc_ste
 
       USE pdafomi, &
          ONLY: PDAFomi_init_dim_obs_l
-      USE mod_assimilation_pdaf, &
+      USE assimilation_pdaf, &
          ONLY: domain_coords, locweight
 
       !> Index of current local analysis domain
@@ -419,4 +402,4 @@ IF (mype_filter == 0) write (*,*) 'NEMO-PDAF:    Warning: reading step ', nc_ste
 
    END SUBROUTINE add_noise
 
-END MODULE mod_obs_ssh_mgrid_pdafomi
+ END MODULE obs_ssh_mgrid_pdafomi

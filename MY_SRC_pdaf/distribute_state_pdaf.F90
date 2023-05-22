@@ -15,11 +15,11 @@
 subroutine distribute_state_pdaf(dim_p, state_p)
 
   use mod_kind_pdaf
-  use mod_parallel_pdaf, &
+  use parallel_pdaf, &
        only: mype_ens
-  use mod_aux_pdaf, &
+  use transforms_pdaf, &
        only: transform_field_mv
-  use mod_asm_pdaf, &
+  use asminc_pdaf, &
        only: update_bkginc_pdaf
 
   implicit none

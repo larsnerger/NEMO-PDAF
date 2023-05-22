@@ -11,11 +11,11 @@
 subroutine l2g_state_pdaf(step, domain_p_all, dim_l, state_l, dim_p, state_p)
 
   use mod_kind_pdaf
-  use mod_assimilation_pdaf, &
+  use assimilation_pdaf, &
        only: id_lstate_in_pstate
-  use mod_statevector_pdaf, &
+  use statevector_pdaf, &
        only: n_fields, sfields, sfields_l
-  use mod_nemo_pdaf, &
+  use nemo_pdaf, &
        only: nwet
 
   implicit none

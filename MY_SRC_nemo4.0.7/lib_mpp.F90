@@ -53,7 +53,7 @@ MODULE lib_mpp
    USE dom_oce        ! ocean space and time domain
    USE in_out_manager ! I/O manager
 #if defined key_USE_PDAF
-   USE mod_parallel_pdaf, ONLY: init_parallel_pdaf
+   USE parallel_pdaf, ONLY: init_parallel_pdaf
 #endif
 
    IMPLICIT NONE

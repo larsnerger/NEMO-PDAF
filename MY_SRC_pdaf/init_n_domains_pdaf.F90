@@ -8,11 +8,11 @@
 !!
 !! This code is for NEMO-PDAF
 !!
-!! - Called from: `PDAFomi_assimilate_local`/`mod_assimilation_pdaf`
+!! - Called from: `PDAFomi_assimilate_local`/`assimilation_pdaf`
 !
 subroutine init_n_domains_pdaf(step, n_domains_p)
 
-  use mod_nemo_pdaf, &
+  use nemo_pdaf, &
        only: nwet
 
   implicit none
@@ -30,7 +30,7 @@ subroutine init_n_domains_pdaf(step, n_domains_p)
   !
   ! The number of local domains is defined as
   ! the number of grid points at the surface
-  ! where tmask is 1 ie horizontal localization
+  ! where tmask is 1 i.e. horizontal localization
   ! is used, and land points are ignored.
   !
   ! *******************************************

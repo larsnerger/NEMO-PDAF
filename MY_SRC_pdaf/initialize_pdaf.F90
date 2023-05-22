@@ -1,4 +1,4 @@
-!> Initialise PDAF
+!> Initialize PDAF
 !!
 !! This modules contains the initialization routine for PDAF
 !! `init_pdaf`. Here the ensemble is initialized and distributed
@@ -13,7 +13,7 @@
 !! - Yuchen Sun, AWI, Germany
 !! - Lars Nerger, AWI, Germany
 !!
-module mod_init_pdaf
+module initialize_pdaf
 
    implicit none
 
@@ -57,26 +57,26 @@ contains
   subroutine init_pdaf()
 
     use mod_kind_pdaf
-    use mod_parallel_pdaf, &
+    use parallel_pdaf, &
          only: n_modeltasks, task_id, COMM_model, COMM_filter, &
          COMM_couple, COMM_ensemble, mype_ens, filterpe, abort_parallel
-    use mod_assimilation_pdaf, &
+    use assimilation_pdaf, &
          only: dim_state, dim_state_p, screen, filtertype, subtype, dim_ens, &
          incremental, type_forget, forget, rank_analysis_enkf, &
          type_trans, type_sqrt, delt_obs, locweight, type_ens_init, &
          type_central_state, type_hyb, hyb_gamma, hyb_kappa
-    use mod_asm_pdaf, &
+    use asminc_pdaf, &
          only: asm_inc_init_pdaf
-    use mod_nemo_pdaf, &
+    use nemo_pdaf, &
          only: set_nemo_grid, lwp, numout
-    use mod_statevector_pdaf, &
+    use statevector_pdaf, &
          only: setup_statevector
-    use mod_util_pdaf, &
+    use utils_pdaf, &
          only: init_info_pdaf, read_config_pdaf
-    use mod_obs_sst_cmems_pdafomi, &
+    use obs_sst_cmems_pdafomi, &
          only: assim_sst_cmems, rms_obs_sst_cmems, &
          lradius_sst_cmems, sradius_sst_cmems, mode_sst_cmems, dist_sst_cmems
-    use mod_obs_ssh_mgrid_pdafomi, &
+    use obs_ssh_mgrid_pdafomi, &
          only: assim_ssh_mgrid, rms_ssh_mgrid, &
          lradius_ssh_mgrid, sradius_ssh_mgrid
     use timer, only: timeit, time_temp
@@ -333,4 +333,4 @@ contains
 
   end subroutine init_pdaf
 
-end module mod_init_pdaf
+end module initialize_pdaf

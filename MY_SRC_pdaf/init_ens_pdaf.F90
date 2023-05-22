@@ -16,18 +16,20 @@ subroutine init_ens_pdaf(filtertype, dim_p, dim_ens, state_p, Uinv, &
      ens_p, flag)
 
   use mod_kind_pdaf
-  use mod_parallel_pdaf, &
+  use parallel_pdaf, &
        only: mype_filter
-  use mod_assimilation_pdaf, &
+  use assimilation_pdaf, &
        only: dim_state, type_ens_init, type_central_state, ensscale, &
        coupling_nemo, screen
-  use mod_io_pdaf, &
+  use io_pdaf, &
        only: path_inistate, path_ens, file_ens, file_covar, &
-             read_state_mv, read_ens_mv_loop, read_ens, gen_ens_mv
-  use mod_statevector_pdaf, &
+       read_state_mv, read_ens_mv_loop, read_ens_states, read_ens_mv_filelist
+  use statevector_pdaf, &
        only: n_fields, sfields
-  use mod_aux_pdaf, &
+  use transforms_pdaf, &
        only: transform_field_mv
+  use sample_ens_pdaf, &
+       only: sample_ens_from_covar
 
   implicit none
 
@@ -65,15 +67,15 @@ subroutine init_ens_pdaf(filtertype, dim_p, dim_ens, state_p, Uinv, &
   elseif (type_ens_init == 1) then
      if (mype_filter==0) write (*,'(a,1x,a)') 'NEMO-PDAF', 'Initialize ensemble from single ensemble file'
 
-     call read_ens(trim(file_ens), dim_p, dim_ens, ens_p)
+     call read_ens_states(trim(file_ens), dim_p, dim_ens, ens_p)
 
   elseif (type_ens_init == 2) then
      
-     ! Real ensemble states as model snapshots from separate files
+     ! Read ensemble states as model snapshots from separate files
 
-     if (mype_filter==0) write (*,'(a,1x,a)') 'NEMO-PDAF', 'Initialize ensemble from output files'
+     if (mype_filter==0) write (*,'(a,1x,a)') 'NEMO-PDAF', 'Initialize ensemble from list of output files'
 
-      call gen_ens_mv(1.0_pwp, .true., path_ens, dim_p, dim_ens, ens_p)
+      call read_ens_mv_filelist(1.0, .true., path_ens, dim_p, dim_ens, ens_p)
 
   elseif (type_ens_init == 3) then
      
@@ -82,7 +84,7 @@ subroutine init_ens_pdaf(filtertype, dim_p, dim_ens, state_p, Uinv, &
      if (mype_filter==0) write (*,'(a,1x,a)') 'NEMO-PDAF', 'Initialize ensemble by sampling from covariance matrix'
 
      state_p = 0.0
-     call gen_ens_from_cov(trim(file_covar), dim_p, dim_ens, state_p, ens_p)
+     call sample_ens_from_covar(trim(file_covar), dim_p, dim_ens, state_p, ens_p)
 
   elseif (type_ens_init == 4) then
      

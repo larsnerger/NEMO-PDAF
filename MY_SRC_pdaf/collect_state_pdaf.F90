@@ -8,25 +8,25 @@
 !!
 !! **Calling Sequence**
 !!
-!!  - Called from:* `PDAFomi_assimilate_local`/`mod_assimilation_pdaf` (as U_coll_state)
+!!  - Called from:* `PDAFomi_assimilate_local`/`assimilation_pdaf` (as U_coll_state)
 !!
 subroutine collect_state_pdaf(dim_p, state_p)
 
   use mod_kind_pdaf
-  use mod_parallel_pdaf, &
+  use parallel_pdaf, &
        only: mype_model, task_id
-  use mod_statevector_pdaf, &
+  use statevector_pdaf, &
        only: sfields, id
-  use mod_nemo_pdaf, &
+  use nemo_pdaf, &
        only: ni_p, nj_p, nk_p, i0, j0, &
        jp_tem, jp_sal, sshn, tsn, un, vn
 #if defined key_top
-  use mod_statevector_pdaf, &
+  use statevector_pdaf, &
        only: n_trc, sv_trc
-  use mod_nemo_pdaf, &
+  use nemo_pdaf, &
        only: jptra, trn
 #endif
-  use mod_aux_pdaf, &
+  use transforms_pdaf, &
        only: field2state, transform_field_mv
 
   implicit none

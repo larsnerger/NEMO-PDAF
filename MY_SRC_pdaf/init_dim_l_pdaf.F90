@@ -9,16 +9,16 @@
 !! local state vector and the mapping between global
 !! to local state vectors are initialized.
 !! 
-!! - Called from: `PDAFomi_assimilate_local`/`mod_assimilation_pdaf`
+!! - Called from: `PDAFomi_assimilate_local`/`assimilation_pdaf`
 !!
 subroutine init_dim_l_pdaf(step, domain_p, dim_l)
 
   use mod_kind_pdaf
-  use mod_assimilation_pdaf, &
+  use assimilation_pdaf, &
        only: domain_coords, dim_state_p, id_lstate_in_pstate
-  use mod_statevector_pdaf, &
+  use statevector_pdaf, &
        only: n_fields, sfields, sfields_l
-  use mod_nemo_pdaf, &
+  use nemo_pdaf, &
        only: lons, lats, use_wet_state, nwet, wet_pts, &
        sdim2d, deg2rad
 
