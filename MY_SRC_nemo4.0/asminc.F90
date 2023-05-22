@@ -41,7 +41,9 @@ MODULE asminc
    USE in_out_manager  ! I/O manager
    USE iom             ! Library to read input files
    USE lib_mpp         ! MPP library
-
+#if defined key_top
+   USE trc,       ONLY : trn, trb, tra
+#endif
    IMPLICIT NONE
    PRIVATE
    
@@ -90,6 +92,31 @@ MODULE asminc
    REAL(wp), DIMENSION(:,:), ALLOCATABLE ::   seaice_bkginc         ! Increment to the background sea ice conc
 #if defined key_cice && defined key_asminc
    REAL(wp), DIMENSION(:,:), ALLOCATABLE ::   ndaice_da             ! ice increment tendency into CICE
+#endif
+
+#if defined key_top
+   LOGICAL, PUBLIC :: ln_trcinc    !: No trc concentration increment
+   LOGICAL, PUBLIC :: ln_bgcdin    !: No DI BGC of increment
+   LOGICAL, PUBLIC :: ln_bgciau    !: No applying forcing with an assimilation increment
+   INTEGER :: iiauperbgc           ! Number of time steps in the IAU period for bgc
+   INTEGER, PUBLIC :: nitdinbgc    !: Time step of direct init for bgc
+   INTEGER, PUBLIC :: niaufnbgc    !: Type of BGC IAU weighing function: = 0   Constant weighting
+   INTEGER, PUBLIC :: nitibgcstr   !: Time step of the start of the IAU interval 
+   INTEGER, PUBLIC :: nitibgcfin   !: Time step of the end of the IAU interval
+   REAL(wp), PUBLIC, DIMENSION(:)    , ALLOCATABLE ::   wgtiaubgc            !: IAU weights for each time step
+   REAL(KIND=dp) :: ditdinbgc_date   ! Date YYYYMMDD.HHMMSS of background time step for BGC DI
+   REAL(KIND=dp) :: ditibgcstr_date  ! Date YYYYMMDD.HHMMSS of BGC IAU interval start time step
+   REAL(KIND=dp) :: ditibgcfin_date  ! Date YYYYMMDD.HHMMSS of BGC IAU interval final time step
+   INTEGER, PUBLIC :: nitdinbgc_r
+   INTEGER, PUBLIC :: nitibgcstr_r
+   INTEGER, PUBLIC :: nitibgcfin_r
+#endif
+
+#if defined key_USE_PDAF && defined key_top
+  ! Variables used to update BGC fields in module asminc
+  integer, public :: n_update_trc=0                    !< Number of BGC fields updates in the assimilation
+  integer, public, allocatable :: ids_update_trc(:)    !< Index array for BGC fields updated in the assimilation
+  real(wp), public, allocatable :: BGC_bkginc(:,:,:,:) !< Array to store BGC increments
 #endif
 
    !! * Substitutions
@@ -180,6 +207,20 @@ CONTAINS
          WRITE(numout,*) '      Type of IAU weighting function                           niaufn    = ', niaufn
          WRITE(numout,*) '      Logical switch for ensuring that the sa > salfixmin      ln_salfix = ', ln_salfix
          WRITE(numout,*) '      Minimum salinity after applying the increments           salfixmin = ', salfixmin
+#if defined key_top && key_asminc
+         IF (ln_trcinc) THEN
+            WRITE(numout,*) ' Logical switch for applying incr. at one ts    ln_bgcdin = ', ln_bgcdin
+            IF (ln_bgcdin) THEN
+               WRITE(numout,*) ' Timestep for DI of BGC                         nitdinbgc = ', nitdinbgc
+            END IF
+            WRITE(numout,*) ' Logical switch for IAU of BGC                  ln_bgciau = ', ln_bgciau
+            IF (ln_bgciau) THEN
+               WRITE(numout,*) ' Timestep of start of IAU interval for BGC     nitibgcstr = ', nitibgcstr
+               WRITE(numout,*) ' Timestep of end of IAU interval for BGC       nitibgcfin = ', nitibgcfin
+               WRITE(numout,*) ' Type of BCG IAU weighting function            niaufnbgc  = ', niaufnbgc
+            END IF
+         END IF
+#endif
       ENDIF
 
       nitbkg_r    = nitbkg    + nit000 - 1            ! Background time referenced to nit000
@@ -195,6 +236,19 @@ CONTAINS
       CALL calc_date( nitdin_r   , ditdin_date    )   ! Background time for DI referenced to ndate0
       CALL calc_date( nitiaustr_r, ditiaustr_date )   ! IAU start time referenced to ndate0
       CALL calc_date( nitiaufin_r, ditiaufin_date )   ! IAU end time referenced to ndate0
+
+#if defined key_top && defined key_asminc
+      IF (ln_trcinc) THEN
+         nitdinbgc_r  = nitdinbgc  + nit000 - 1            ! Background time for DI referenced to nit000
+         nitibgcstr_r = nitibgcstr + nit000 - 1            ! Start of IAU interval referenced to nit000
+         nitibgcfin_r = nitibgcfin + nit000 - 1            ! End of IAU interval referenced to nit000
+         iiauperbgc   = nitibgcfin_r - nitibgcstr_r + 1    ! IAU interval length
+
+         CALL calc_date( nitdinbgc_r   , ditdinbgc_date    )   ! Background time for DI referenced to ndate0
+         CALL calc_date( nitibgcstr_r, ditibgcstr_date )   ! IAU start time referenced to ndate0
+         CALL calc_date( nitibgcfin_r, ditibgcfin_date )   ! IAU end time referenced to ndate0
+      ENDIF
+#endif
 
       IF(lwp) THEN
          WRITE(numout,*)
@@ -216,6 +270,13 @@ CONTAINS
          WRITE(numout,*) '       ditdin_date    = ', ditdin_date
          WRITE(numout,*) '       ditiaustr_date = ', ditiaustr_date
          WRITE(numout,*) '       ditiaufin_date = ', ditiaufin_date
+#if defined key_top
+         IF (ln_trcinc) THEN
+            WRITE(numout,*)' ditdinbgc_date  = ', ditdinbgc_date
+            WRITE(numout,*)' ditibgcstr_date = ', ditibgcstr_date
+            WRITE(numout,*)' ditibgcfin_date = ', ditibgcfin_date
+         END IF
+#endif
       ENDIF
 
 
@@ -255,6 +316,20 @@ CONTAINS
          & CALL ctl_stop( ' nitdin :',  &
          &                ' Background time step for Direct Initialization is outside', &
          &                ' the cycle interval')
+
+#if defined key_top
+      IF (ln_trcinc .AND. (.NOT.ln_bgcdin).AND.(.NOT.ln_bgciau)) &
+           CALL ctl_stop( 'either ln_bgcdin or ln_bcgiau have to be true for bgc DA')
+
+      IF ( ( ln_bgciau ).AND. (ln_trcinc).AND.( nitibgcstr == nitibgcfin ) ) &
+         & CALL ctl_stop( ' nitibgcstr = nitibgcfin :',  &
+         &                ' IAU interval is of zero length')
+
+      IF ( ( ln_bgciau ).AND. (ln_trcinc).AND.( ( nitibgcstr_r < nit000 ).OR.( nitibgcfin_r > nitend ) ) ) &
+         & CALL ctl_stop( ' nitibgcstr or nitibgcfin :',  &
+         &                ' IAU starting or final time step is outside the cycle interval', &
+         &                 ' Valid range nit000 to nitend')
+#endif
 
       IF ( nstop > 0 ) RETURN       ! if there are any errors then go no further
 
@@ -322,6 +397,17 @@ CONTAINS
           ENDIF
 #endif         
       ENDIF
+
+#if defined key_top && defined key_USE_PDAF
+      !--------------------------------------------------------------------
+      ! Allocate the Incremental Analysis Updating weighting function for BGC
+      !--------------------------------------------------------------------
+
+      IF (ln_trcinc .AND. ln_bgciau) THEN
+         ALLOCATE( wgtiaubgc( icycper ) )
+         wgtiaubgc(:) = 0._wp
+      ENDIF
+#endif
 
       !--------------------------------------------------------------------
       ! Allocate and initialize the increment arrays
@@ -1029,7 +1115,6 @@ CONTAINS
          !
       ENDIF
       !
-   END SUBROUTINE seaice_asm_inc
-   
+   END SUBROUTINE seaice_asm_inc   
    !!======================================================================
 END MODULE asminc
