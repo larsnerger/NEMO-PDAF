@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=NPDA
 #SBATCH -p mpp
-#SBATCH --nodes=8
+#SBATCH --nodes=2
 #SBATCH --tasks-per-node=96
 #SBATCH --time=0:30:00
 #SBATCH --partition=standard96:test
@@ -24,69 +24,64 @@ export LD_LIBRARY_PATH=/sw/dataformats/netcdf-parallel/ompi/intel.22/4.9.1/skl/l
 
 # ---------------------------------------------------------------------------------------------------
 
-yy=2015 #Start year
+yy=0001 #Start year
 mm=01   #Start month
 dd=01   #Start day
 
-tstr_end='20150101' #End date yyyymmdd
+tstr_end='00010131' #End date yyyymmdd
 
-np_nemo=186  #number of PE's for nemo
-np_xios=6    #number of PE's for xios
-np=$np_nemo
+np_nemo=46  #number of MPI tasks for each nemo
+np_xios=2   #number of MPI tasks for each xios
 
 NENS=4       # Ensemble size
 
-# Whether we initialize with distributed restart files: 1=true, 0=global restart files
-restart_dis=1
-
-# Whether NEMO should write the single outputs
-nemooutput1=0       # (1) Let NEMO write for ensemble member 1
-nemooutput_ens=0    # (1) Let NEMO write for ensemble members 2-N
+# Whether NEMO should write its outputs (i.e. separate files for each ensemble task)
+nemooutput1=0         # (1) Let NEMO write for ensemble member 1
+nemooutput_ens=0      # (1) Let NEMO write for ensemble members 2-N
+piscesoutput1=0       # (1) Let NEMO-PISCES write for ensemble member 1
+piscesoutput_ens=0    # (1) Let NEMO-PISCES write for ensemble members 2-N
 
 # Whether the script prepares the run directories, runs the experiment, does posptprocessing
 prepare=1
 dorun=1
 postproc=1
 
+# Time step size
+rn_rdt=5400
+
 # ---------------------------------------------------------------------------------------------------
 
 # Set initial date  $yy$mm$dd==$initial_date we use the restart files from the input directory
 
-initial_date=20150101
+initial_date=00010101
 
 # ---------------------------------------------------------------------------------------------------
 # Name of experiment and output directory
-EXP='out.devel'
-OUTDIR="."
+cn_exp='ORCA2'      # Name of NEMO configuration
+EXP='test_DA'       # Name of output directory for storing outputs in post-processing step
 # ---------------------------------------------------------------------------------------------------
 
-nemo_exe_dir='/home/hbknerge/SEAMLESS/nemo4_dev_allEuler.nobio/cfgs/NEMO-PDAF_codetest/BLD/bin'
-xios_exe_dir='/home/hzfblner/SEAMLESS/xios-2.0_par_intel22/bin'
-restart_out='output/restarts'
-forcing_dir='/scratch/usr/hzfblner/SEAMLESS/forcings'
-inputs_nc='/scratch/usr/hzfblner/SEAMLESS/run/inputs_NEMO-PDAF'
-setup_store='/scratch/usr/hbknerge/SEAMLESS/run/config_ERGOM_allEuler'
+nemo_exe_dir='/home/hbknerge/SEAMLESS/r4.0.7/cfgs/ORCA2-PDAF_nobio_test/BLD/bin'
+xios_exe_dir='/home/hzfblner/SEAMLESS/xios-2.5/bin'
+forcing_dir='/scratch/usr/hbknerge/SEAMLESS/run/ORCA2_inputs/inputs'
+inputs_nc='/scratch/usr/hbknerge/SEAMLESS/run/ORCA2_inputs/inputs'
+setup_store='/scratch/usr/hbknerge/SEAMLESS/run/ORCA2_inputs/config'
 initialdir='/scratch/usr/hzfblner/SEAMLESS/restart'
-disrestartdir='/scratch/usr/hzfblner/SEAMLESS/run/restart_dist_20150101'
+restart_out='output/restarts'
 # ---------------------------------------------------------------------------------------------------
 
-export nemo_exe_dir
-export restart_out
+#export nemo_exe_dir
+#export restart_out
 
 # ---------------------------------------------------------------------------------------------------
-
-sdte=`date --date "$dte0 0 day" +'%Y-%m-%d %H:%M:%S'`
-yyp1=`date +'%Y' -d"$sdte"`                     #  formating
-mmp1=`date +'%m' -d"$sdte"`
-ddp1=`date +'%d' -d"$sdte"`
 
 tstr_ini="$yy$mm$dd"                          # Date at start of run
-tstrm1=$(date -I -d "$tstr_ini - 1 day ")         # Previous day (used to link forcings)
+tstrm1=$(date -I -d "$tstr_ini - 1 day ")     # Previous day (used to link forcings)
 tstrendp1=$(date -I -d "$tstr_end + 1 day ")  # Final day plus one (used to link forcings)
 tstr=$tstr_ini                                # Store date at start of run
 
 echo '----------------------------------------'
-echo 'NEMO-ERGOM-PDAF data assimilation'
+echo 'NEMO-PDAF data assimilation'
 if [ $tstr -eq $initial_date ]; then
     echo "Start from initial date: " $initial_date
 else
@@ -94,7 +89,7 @@ else
 fi
 echo "Final date:              " $tstr_end
 echo "Experiment:              " $EXP
-echo "Results are stored in: " $OUTDIR/$EXP
+echo "Results are stored in: " $EXP
 echo 'Ensemble size = ' $NENS
 echo '----------------------------------------'
 
@@ -105,54 +100,7 @@ if [ $prepare -eq 1 ]; then
 
     if [ $tstr -eq $initial_date ]; then
 
-	# Prepare PDAF namelist
-	#cp $setup_store/namelist_cfg.pdaf_template ./
-	cat namelist_cfg.pdaf_template     \
-	    | sed -e "s:_DIMENS_:$NENS:"     \
-	    | sed -e "s:_RESTART_:.false.:"     \
-	    | sed -e "s:_MONTH_:$mm:"     \
-	    > namelist_cfg.pdaf
-    else
-
-    	# Prepare PDAF namelist
-	cat namelist_cfg.pdaf_template     \
-	    | sed -e "s:_DIMENS_:$NENS:"     \
-	    | sed -e "s:_RESTART_:.true.:"     \
-	    | sed -e "s:_MONTH_:$mm:"     \
-	    > namelist_cfg.pdaf
-
-    fi # if [ $tstr -eq $initial_date ]
-
-    echo 'Prepare XML files ...'
-    for((i=1;i<=$NENS;i++))
-      do
-      ENSstr=`printf %03d $i`
-      ENSstr2=`printf %02d $i`
-     #echo 'preparing context_nemo.xml...'
-      cat $setup_store/context_nemoXXX.xml_template   \
-	  | sed -e "s:_DIMENS3_:${ENSstr}:g"   \
-	  > context_nemo${ENSstr}.xml
-     #echo 'preparing file_def_nemo-ice.xml...'
-      cat $setup_store/file_def_nemo-iceXXX.xml_template   \
-	  | sed -e "{s:_DIMENS3_:${ENSstr}:g;s:_DIMENS2_:${ENSstr2}:g}"   \
-	  > file_def_nemo-ice${ENSstr}.xml
-     #echo 'preparing file_def_nemo-oce.xml...'
-      cat $setup_store/file_def_nemo-oceXXX.xml_template   \
-	  | sed -e "{s:_DIMENS3_:${ENSstr}:g;s:_DIMENS2_:${ENSstr2}:g}"   \
-	  > file_def_nemo-oce${ENSstr}.xml
-    done
-
-    cp  $setup_store/iodef.xml_template iodef.xml
-    for((i=1;i<=$NENS;i++))
-      do
-      ENSstr=`printf %03d $i`
-      echo "  <context id=\"nemo_${ENSstr}\" src=\"./context_nemo${ENSstr}.xml\"/> " >> iodef.xml
-    done
-    echo "</simulation>" >> iodef.xml
-
-    if [ $tstr -eq $initial_date ]; then
-
-        # set working directories for different ensemble members
+        # Create working directories for different ensemble members
 	echo ' '
 	echo 'Creating ensemble working directories...'
 	for((i=1;i<=$NENS;i++))
@@ -160,15 +108,13 @@ if [ $prepare -eq 1 ]; then
 	  ENSstr=`printf %03d $i`
 	  if [ ! -d ${ENSstr} ]; then
 	      mkdir -p ${ENSstr}
-	  else
-	      rm -rf ${ENSstr}    # delete output from previous test runs
-	  fi
-	  wdir=`pwd`/${ENSstr}
-	  export wdir
-	  mkdir -p $wdir/output/restarts
-	  mkdir -p $wdir/output/log
-	  mkdir -p $wdir/initialstate
-	  mkdir -p $wdir/forcing
+
+              wdir=`pwd`/${ENSstr}
+              mkdir -p $wdir/output/restarts
+	      mkdir -p $wdir/output/log
+	      mkdir -p $wdir/initialstate
+	      mkdir -p $wdir/forcing
+          fi
 
 	  echo 'Run directory: ' $wdir
 	done
@@ -176,19 +122,18 @@ if [ $prepare -eq 1 ]; then
         # Create experiment output directories
         echo  ' '
         echo 'Create experiment output directories...'
-        mkdir -p $OUTDIR/$EXP/cfg
-        mkdir -p $OUTDIR/$EXP/data
-        mkdir -p $OUTDIR/$EXP/DA
+        mkdir -p $EXP/cfg
+        mkdir -p $EXP/data
+        mkdir -p $EXP/DA
 
 	echo ' '
 
-# ---------------------------------------------------------------------------------------------------
+	# Link executables into run directories
 	echo 'linking executables...'
 	for((i=1;i<=$NENS;i++))
 	  do
 	  ENSstr=`printf %03d $i`
 	  wdir=`pwd`/${ENSstr}
-	  export wdir
 	  if [ ! -f ${ENSstr}/xios_server.exe ]; then
 	      ln -s $xios_exe_dir/xios_server.exe $wdir/
 	  fi
@@ -198,60 +143,55 @@ if [ $prepare -eq 1 ]; then
 	done
 
     fi # if [ $tstr -eq $initial_date ]
-    
+
 # ---------------------------------------------------------------------------------------------------
 
     echo 'Simulation with nemo executable from ' $nemo_exe_dir
+    
 
 # ---------------------------------------------------------------------------------------------------
 
-    #linking restart
+    # Prepare PDAF namelist
+    if [ $tstr -eq $initial_date ]; then
+        pdafrestart=".false."
+    else
+        pdafrestart=".true."
+    fi
 
-    for((i=1;i<=$NENS;i++))
-      do
-      ENSstr=`printf %03d $i`
-      wdir=`pwd`/${ENSstr}
-      export wdir
-      if [ $i -eq 1 ]; then
+    cat namelist_cfg.pdaf_template     \
+    | sed -e "s:_DIMENS_:$NENS:"     \
+    | sed -e "s:_RESTART_:$pdafrestart:"     \
+    | sed -e "s:_MONTH_:$mm:"     \
+    > namelist_cfg.pdaf
+
+# ---------------------------------------------------------------------------------------------------
+
+    # Linking restart files - optional
+
+    link_restarts=0  # Set to 1 to activate this block
+    if [ $link_restarts -eq 1 ]; then
+      for((i=1;i<=$NENS;i++)); do
+        ENSstr=`printf %03d $i`
+        wdir=`pwd`/${ENSstr}
+
+        if [ $i -eq 1 ]; then
 	  echo '----------------------------------------'
 	  echo 'Prepare restart files'
-      fi
-      if [ $tstr -eq $initial_date ]; then
-	  if [ $restart_dis -eq 0 ]; then
-	      if [ $i -eq 1 ]; then
-		  echo "Link initial restart files for full domain"
-	      fi
-	      if [ ! -f $wdir/initialstate/restart_in.nc ]; then
-		  ln -s $initialdir/NORDIC_2015010100_restart.nc $wdir/initialstate/restart_in.nc
-	      fi
-	      if [ ! -f $wdir/initialstate/restart_ice_in.nc ]; then
-		  ln -s $initialdir/NORDIC_2015010100_restart_ice.nc $wdir/initialstate/restart_ice_in.nc
-	      fi
-	      if [ ! -f $wdir/initialstate/restart_trc_in.nc ]; then
-		  ln -s $initialdir/NORDIC_2015010100_restart_trc.nc $wdir/initialstate/restart_trc_in.nc
-	      fi
-	      if [ ! -f $wdir/initialstate/NORDIC-NS1_restart_ptrc_in_iowfix.nc ]; then
-		  ln -s $inputs_nc/initialstate/NORDIC-NS1_restart_ptrc_in_iowfix.nc $wdir/initialstate/NORDIC-NS1_restart_ptrc_in_iowfix.nc
-		  ln -s $inputs_nc/initialstate/NORDIC-NS1_restart_ptrc_in_iowfix.nc $wdir/NORDIC-NS1_restart_ptrc_in_iowfix.nc
-	      fi
-	      if [ ! -f $wdir/initialstate/NORDIC-NS1_restart_ptrc_in.nc ]; then
-		  ln -s $inputs_nc/initialstate/NORDIC-NS1_restart_ptrc_in.nc $wdir/initialstate/NORDIC-NS1_restart_ptrc_in.nc
-		  ln -s $inputs_nc/initialstate/NORDIC-NS1_restart_ptrc_in.nc $wdir/NORDIC-NS1_restart_ptrc_in.nc
-	      fi
-	  else
-	      if [ $i -eq 1 ]; then
-		  echo "Link distributed initial restart files"
-	      fi
-	      ln -s ${disrestartdir}/* $wdir/initialstate
-	  fi
-      else
-	  if [ $i -eq 1 ]; then
-	      echo "Use distributed restart files from previous run"
-	  fi
-      fi
-    done
+        fi
+        if [ $tstr -eq $initial_date ]; then
+          if [ $i -eq 1 ]; then
+              echo "Link initial restart files"
+          fi
+#	  if [ ! -f $wdir/restart_in.nc ]; then
+#              ln -s $initialdir/${nc_exp}_restart.nc $wdir/restart_in.nc
+#	  fi
+        fi
+      done
+    fi # if [ $link_restarts -eq 1 ]; then
 
+    
 # ---------------------------------------------------------------------------------------------------
+
     echo '----------------------------------------'
     echo 'Preparing forcing'
     echo 'Time period from ' $tstrm1 'until' $tstrendp1
@@ -263,203 +203,113 @@ if [ $prepare -eq 1 ]; then
 	  do
 	  ENSstr=`printf %03d $i`
 	  wdir=`pwd`/${ENSstr}
-	  export wdir
 
-	  if [ ! -f $wdir/forcing/river_data.nc ]; then
-	      ln -s $inputs_nc/river_data.nc $wdir/forcing
-	  fi
-	  if [ ! -f $wdir/forcing/dum12_y2015.nc ]; then
-	      ln -s $inputs_nc/dum12_y2015.nc $wdir/forcing
-	  fi
-	  if [ ! -f $wdir/forcing/weights_bilin.nc ]; then
-	      ln -s $inputs_nc/weights_bilin.nc $wdir/forcing
-	      ln -s $inputs_nc/weights_bilin.nc $wdir/
-	  fi
-	  if [ ! -f $wdir/forcing/weights_bicubic.nc ]; then
-	      ln -s $inputs_nc/weights_bicubic.nc $wdir/forcing
-	      ln -s $inputs_nc/weights_bicubic.nc $wdir/
-	  fi
-
-	  ln -s $inputs_nc/bdytide*.nc            $wdir/
-	  ln -s $inputs_nc/coordinates.bdy.nc     $wdir/
-	  ln -s $inputs_nc/chlorophyll.nc         $wdir/
-	  ln -s $inputs_nc/benthos_null.nc        $wdir/
-	  ln -s $inputs_nc/domain_cfg.nc          $wdir/
-	  ln -s $inputs_nc/eddy_viscosity_3D.nc   $wdir/
-	  ln -s $inputs_nc/eddy_diffusivity_3D.nc $wdir/
-
-          # for ERGOM_allEuler
-	  ln -s $inputs_nc/bfr_roughness.nc       $wdir/
-	  ln -s $inputs_nc/carbon.nc              $wdir/
-	  ln -s $inputs_nc/iron_dummy.nc          $wdir/
-	  ln -s $inputs_nc/np_ergom_c16.nc        $wdir/
-	  ln -s $inputs_nc/sed_init_1k.nc         $wdir/
-	  ln -s $inputs_nc/z2d_ben201401.nc       $wdir/
-
-          # for PDAF
-	  ln -s $setup_store/*.txt       $wdir/
+          # For the ORCA2 test case, we link all input files from a single directory
+          cd $wdir
+          ln -s $inputs_nc/* .          
+          cd -
 	done
     fi # if [ $tstr -eq $initial_date ]
 
     
-    # Link time-dependent forcing files
-    tstrhere=$tstrm1
-    while [ "$(date -d "$tstrhere" +%Y%m%d)" -le "$(date -d "$tstrendp1" +%Y%m%d)" ]; do
-	date_nemo=$(date -d "$tstrhere" +y%Ym%md%d)
-	date_force=$(date -d "$tstrhere" +%Y%m%d)
-	date_NS01=$(date -d "$tstrhere" +y%Ym%m)
-	tstrhere=$(date -d "$tstrhere" +%Y%m%d)
+    # Link time-dependent forcing files - optional
+    
+    link_time_dep_forcing=0  # Set to 1 to activate this block
+    if [ $link_time_dep_forcing -eq 1 ]; then
+      tstrhere=$tstrm1
+      while [ "$(date -d "$tstrhere" +%Y%m%d)" -le "$(date -d "$tstrendp1" +%Y%m%d)" ]; do
+	date_nemo=$(date -d "$tstrhere" +y%Ym%md%d)  # Date format yYYYYmMMdDD
+	date_force=$(date -d "$tstrhere" +%Y%m%d)    # Date format YYYYMMDD
+	
+	tstrhere=$(date -d "$tstrhere" +%Y%m%d)      # Loop date
 
 	echo 'Link time-varying forcing files ... date ' $tstrhere
-	for((i=1;i<=$NENS;i++))
-	  do
+	for((i=1;i<=$NENS;i++)); do
 	  ENSstr=`printf %03d $i`
 	  wdir=`pwd`/${ENSstr}
-	  export wdir
 
-          #1. get river forcing
-	  if [ -f $wdir/forcing/EHYPE_$date_nemo.nc ]; then
-	      if [ $i -eq 1 ]; then
-		  echo 'Use existing file ' EHYPE_$date_nemo.nc
-	      fi
-	  else
-  	     if [ -f $forcing_dir/EHYPE_$date_nemo'+024H.nc' ]; then
- 	       ln -s $forcing_dir/EHYPE_$date_nemo'+024H.nc' $wdir/forcing/EHYPE_$date_nemo.nc || { echo '1. failed' ; exit 1; }
-	     else
-		 if [ $i -eq 1 ]; then
-		     echo 'Non-existing forcing file ' $forcing_dir/EHYPE_$date_nemo'+024H.nc'
-		 fi
-	     fi
-	  fi
-
-          #2. get atm. force
-	  if [ -f $wdir/forcing/FORCE_$date_nemo.nc ]; then
-	      if [ $i -eq 1 ]; then
-		  echo 'Use existing file ' FORCE_$date_nemo.nc
-	      fi
-	  else
-  	     if [ -f $forcing_dir/FORCE_$tstrhere'+24.nc' ]; then
-  	        ln -s $forcing_dir/FORCE_$tstrhere'+24.nc' $wdir/forcing/FORCE_$date_nemo.nc  || { echo '2. failed' ; exit 1; }
-	     else
-		 if [ $i -eq 1 ]; then
-		     echo 'Non-existing forcing file ' $forcing_dir/FORCE_$tstrhere'+24.nc'
-		 fi
-	     fi
-	  fi
-
-          #3a. get uhv bdy
-	  if [ -f $wdir/forcing/bdy_uvh_$date_nemo.nc ]; then
-	      if [ $i -eq 1 ]; then
-		  echo 'Use existing file ' bdy_uvh_$date_nemo.nc
-	      fi
-	  else
-  	     if [ -f $forcing_dir/bdy_uvh_$tstrhere.nc ]; then
-		 ln -s $forcing_dir/bdy_uvh_$tstrhere.nc  $wdir/forcing/bdy_uvh_$date_nemo.nc || { echo '3. failed' ; exit 1; }
-	     else
-		 if [ $i -eq 1 ]; then
-		     echo 'Non-existing forcing file ' $forcing_dir/bdy_uvh_$tstrhere.nc
-		 fi
-	     fi
-	  fi
-
-          #4. get ts bdy
-	  if [ -f $wdir/forcing/bdy_ts_$date_nemo.nc ]; then
-	      if [ $i -eq 1 ]; then
-		  echo 'Use existing file ' bdy_ts_$date_nemo.nc
-	      fi
-	  else
-  	     if [ -f $forcing_dir/bdy_ts_$tstrhere.nc ]; then
-	        ln -s $forcing_dir/bdy_ts_$tstrhere.nc  $wdir/forcing/bdy_ts_$date_nemo.nc || { echo '4. failed' ; exit 1; }
-	     else
-		 if [ $i -eq 1 ]; then
-		     echo 'Non-existing forcing file ' $forcing_dir/bdy_ys_$tstrhere.nc
-		 fi
-	     fi
-	  fi
+          # Example: Link TS boundary file
+	  # This is configures for daily files
+#	  if [ -f $wdir/forcing/bdy_ts_$date_nemo.nc ]; then
+#	    if [ $i -eq 1 ]; then
+#             echo 'Use existing file ' bdy_ts_$date_nemo.nc
+#	    fi
+#	  else
+#	    ln -s $forcing_dir/bdy_ts_$tstrhere.nc  $wdir/forcing/bdy_ts_$date_nemo.nc
+#	  fi
 	done
 
 	tstrhere=$(date -I -d "$tstrhere + 1 day ")
 	
-    done
+      done
+    fi
 
     echo '----------------------------------------'
 
     # Count days
     ndays=0
     while [ "$(date -d "$tstr" +%Y%m%d)" -le "$(date -d "$tstr_end" +%Y%m%d)" ]; do
+	date_nemo=$(date -d "$tstr" +y%Ym%md%d)  # Date format yYYYYmMMdDD
 	tstr=$(date -I -d "$tstr + 1 day ")
 	ndays=$(($ndays + 1))
     done
     echo 'Number of days in this run: ' $ndays
 
-    rn_rdt=90
-    rnl=$(($ndays * 24 * 3600 / $rn_rdt ))
-    nnstep=`printf %08d $rnl`
-    echo 'run length rnl: ' $rnl
+    # Compute number of time steps in this run
+    nn_itend=$(($ndays * 24 * 3600 / $rn_rdt ))
+    nnstep=`printf %08d $nn_itend`
+    echo 'run length nn_itend: ' $nn_itend
 
     echo '----------------------------------------'
 
 # ---------------------------------------------------------------------------------------------------
 
-    # Prepare namelists
-    echo 'Prepare namelist files'
+    # Prepare XML files for ensemble outputs
+    echo 'Prepare XML files ...'
+    for((i=1;i<=$NENS;i++))
+      do
+      ENSstr=`printf %03d $i`
+      ENSstr2=`printf %02d $i`
 
-    cp $setup_store/ACCESS ./
+      cat $setup_store/context_nemoXXX.xml_template   \
+	  | sed -e "s:_DIMENS3_:${ENSstr}:g"   \
+	  > context_nemo${ENSstr}.xml
 
-    ACCESS=`cat ACCESS | head`
-    echo 'ACCESS: ' $ACCESS
+      cat $setup_store/file_def_nemo-iceXXX.xml_template   \
+	  | sed -e "{s:_DIMENS3_:${ENSstr}:g;s:_DIMENS2_:${ENSstr2}:g}"   \
+	  > file_def_nemo-ice${ENSstr}.xml
 
-    if [ "$ACCESS" == ".true." ];then
-	echo 'hot start'
-	nn_itend=$rnl
-	ln_rstart=.true.
-	ln_rsttrc=.true.
-	ln_trcdta=.false.
-	ln_apr_dyn=.true.
-	ln_tsd_init=.false.
-    else
-	echo 'cold start'
-	nn_itend=$rnl
-	ln_rstart=.false.
-	ln_rsttrc=.false.
-	ln_trcdta=.false.
-#       ln_trcdta=.true.
-	ln_apr_dyn=.true.
-	ln_tsd_init=.true.
-    fi
+      cat $setup_store/file_def_nemo-oceXXX.xml_template   \
+	  | sed -e "{s:_DIMENS3_:${ENSstr}:g;s:_DIMENS2_:${ENSstr2}:g}"   \
+	  > file_def_nemo-oce${ENSstr}.xml
+
+      cat $setup_store/file_def_nemo-piscesXXX.xml_template   \
+          | sed -e "{s:_DIMENS3_:${ENSstr}:g;s:_DIMENS2_:${ENSstr2}:g}"   \
+          > file_def_nemo-pisces${ENSstr}.xml
+    done
+
+    cp  $setup_store/iodef.xml_template iodef.xml
+    for((i=1;i<=$NENS;i++))
+      do
+      ENSstr=`printf %03d $i`
+      echo "  <context id=\"nemo_${ENSstr}\" src=\"./context_nemo${ENSstr}.xml\"/> " >> iodef.xml
+    done
+    echo "</simulation>" >> iodef.xml
 
     #define NEMO_001 output - ensemble member 1
     if [ $nemooutput1 -eq 1 ]; then
-	FILE101flag=.true. #oce SURF_grid_T
-	FILE201flag=.true. #oce grid_T
-	FILE301flag=.true. #oce grid_U
-	FILE401flag=.true. #oce grid_V
-	FILE501flag=.true. #oce grid_W
-	FILE601flag=.true. #ice ice_grid_T
+	FILE101flag=.true.
     else
-	FILE101flag=.false. #oce SURF_grid_T
-	FILE201flag=.false. #.true. #oce grid_T
-	FILE301flag=.false. #.true. #oce grid_U
-	FILE401flag=.false. #.true. #oce grid_V
-	FILE501flag=.false. #.true. #oce grid_W
-	FILE601flag=.false. #.true. #ice ice_grid_T
+	FILE101flag=.false.
+	echo "Deactivate NEMO output for ensemble member 1"
     fi
 
     #define NEMO_00X output - ALL ENSEMBLE MEMBERS 2-n
     if [ $nemooutput_ens -eq 1 ]; then
-	FILE10Xflag=.true. #oce SURF_grid_T
-	FILE20Xflag=.true. #oce grid_T
-	FILE30Xflag=.true. #oce grid_U
-	FILE40Xflag=.true. #oce grid_V
-	FILE50Xflag=.true. #oce grid_W
-	FILE60Xflag=.true. #ice ice_grid_T
+	FILE10Xflag=.true.
     else
-	FILE10Xflag=.false. #oce SURF_grid_T
-	FILE20Xflag=.false. #oce grid_T
-	FILE30Xflag=.false. #oce grid_U
-	FILE40Xflag=.false. #oce grid_V
-	FILE50Xflag=.false. #oce grid_W
-	FILE60Xflag=.false. #ice ice_grid_T
+	FILE10Xflag=.false.
+	echo "Deactivate NEMO output for ensemble members 2-NENS"
     fi
 
     for((i=1;i<=$NENS;i++))
@@ -467,59 +317,66 @@ if [ $prepare -eq 1 ]; then
       ENSstr=`printf %03d $i`
       if [ $i -eq 1 ]; then
 	  sed -i "s:_FILE1flag_:${FILE101flag}:g" file_def_nemo-oce001.xml
-	  sed -i "s:_FILE2flag_:${FILE201flag}:g" file_def_nemo-oce001.xml
-	  sed -i "s:_FILE3flag_:${FILE301flag}:g" file_def_nemo-oce001.xml
-	  sed -i "s:_FILE4flag_:${FILE401flag}:g" file_def_nemo-oce001.xml
-	  sed -i "s:_FILE5flag_:${FILE501flag}:g" file_def_nemo-oce001.xml
-	  sed -i "s:_FILE6flag_:${FILE601flag}:g" file_def_nemo-ice001.xml
+	  sed -i "s:_FILE1flag_:${FILE101flag}:g" file_def_nemo-ice001.xml
       else
 	  sed -i "s:_FILE1flag_:${FILE10Xflag}:g" file_def_nemo-oce${ENSstr}.xml
-	  sed -i "s:_FILE2flag_:${FILE20Xflag}:g" file_def_nemo-oce${ENSstr}.xml
-	  sed -i "s:_FILE3flag_:${FILE30Xflag}:g" file_def_nemo-oce${ENSstr}.xml
-	  sed -i "s:_FILE4flag_:${FILE40Xflag}:g" file_def_nemo-oce${ENSstr}.xml
-	  sed -i "s:_FILE5flag_:${FILE50Xflag}:g" file_def_nemo-oce${ENSstr}.xml
-	  sed -i "s:_FILE6flag_:${FILE60Xflag}:g" file_def_nemo-ice${ENSstr}.xml
+	  sed -i "s:_FILE1flag_:${FILE10Xflag}:g" file_def_nemo-ice${ENSstr}.xml
       fi
     done
 
-    echo "Copy configuration files"
+    #define PISCES_001 output - ensemble member 1
+    if [ $piscesoutput1 -eq 1 ]; then
+	FILE201flag=.true.
+    else
+	FILE201flag=.false.
+    fi
+
+    #define PISCES_00X output - ALL ENSEMBLE MEMBERS 2-n
+    if [ $piscesoutput_ens -eq 1 ]; then
+	FILE20Xflag=.true.
+    else
+	FILE20Xflag=.false.
+    fi
+
+    for((i=1;i<=$NENS;i++))
+      do
+      ENSstr=`printf %03d $i`
+      if [ $i -eq 1 ]; then
+	  sed -i "s:_FILE2flag_:${FILE201flag}:g" file_def_nemo-pisces001.xml
+      else
+	  sed -i "s:_FILE2flag_:${FILE20Xflag}:g" file_def_nemo-pisces${ENSstr}.xml
+      fi
+    done
+
+# ---------------------------------------------------------------------------------------------------
+
+    # Prepare NEMO namelist file and copy configuration files
+    echo "Copy and prepare configuration files"
 
     for((i=1;i<=$NENS;i++))
       do
       ENSstr=`printf %03d $i`
       wdir=`pwd`/${ENSstr}
-      export wdir
-      cp $setup_store/*.nml $wdir/
+
       cp $setup_store/*.xml $wdir/
-      cp iodef.xml $wdir/
       cp $setup_store/namelist* $wdir/
-      cp $setup_store/ACCESS $wdir/
       cp `pwd`/namelist_cfg.pdaf $wdir/
       cp `pwd`/*.xml $wdir/
 
-      cat $wdir/namelist_cfg_template		       \
+      cat $wdir/namelist_cfg_template                  \
           | sed -e "s:_nn_itend_:$nn_itend:"    \
-          | sed -e "s:_ln_rstart_:$ln_rstart:"  \
           | sed -e "s:_nn_date0_:$tstr_ini:"        \
           | sed -e "s:_rn_rdt_:$rn_rdt:"        \
-          | sed -e "s:_ln_tsd_init_:$ln_tsd_init:"    \
-          | sed -e "s:_cn_ocerst_outdir_:$restart_out:"  \
-          | sed -e "s:_ln_apr_dyn_:$ln_apr_dyn:" \
-          > $wdir/namelist_ref
+          > $wdir/namelist_cfg
 
-      cat $wdir/namelist_top_cfg_template		         \
-          | sed -e "s:_ln_rstart_:$ln_rsttrc:"  \
-          | sed -e "s:_ln_trcdta_:$ln_trcdta:"       \
-          > $wdir/namelist_top_ref
     done
-
-   # Clean up xml prepared xml files
+    # Clean up xml prepared xml files
     rm `pwd`/*.xml 
 
 
 # ---------------------------------------------------------------------------------------------------
 
-    # Create MPMD configuration file
+    # Create MPMD configuration file for srun
 
     echo 'Prepare mpmd.conf ...'
 
@@ -543,7 +400,6 @@ if [ $prepare -eq 1 ]; then
       chmod +x xios${ENSstr}.sh
 
       echo $(((i-1)*($np_nemo+$np_xios)))'-'$(((i-1)*($np_nemo+$np_xios)+$np_nemo-1))' ./nemo'${ENSstr}.sh >> mpmd.conf
-      #echo $(((i-1)*($np_nemo+$np_xios)+$np_nemo))'-'$(((i)*($np_nemo+$np_xios)-1))' ./xios'${ENSstr}.sh >> mpmd.conf
       echo $(((i-1)*($np_nemo+$np_xios)+$np_nemo))'-'$(((i)*($np_nemo+$np_xios)-1))' ./xios001.sh' >> mpmd.conf
     done
     
@@ -555,17 +411,19 @@ if [ $prepare -eq 1 ]; then
 fi  # if $prepare==1
 
 
+# ---------------------------------------------------------------------------------------------------
+
 # Execute the run
 if [ $dorun -eq 1 ]; then
-    srun -l --cpu_bind=cores --multi-prog mpmd.conf
+    echo 'RUN ASSIMILATION'
 
-# ---------------------------------------------------------------------------------------------------
-# error check in ocean.output
+        srun -l --cpu_bind=cores --multi-prog mpmd.conf
+
+    # error check in ocean.output
     for((i=1;i<=$NENS;i++))
       do
       ENSstr=`printf %03d $i`
       wdir=`pwd`/${ENSstr}
-      export wdir
   
       if grep -q 'E R R O R' $wdir/ocean.output
         then
@@ -576,45 +434,40 @@ if [ $dorun -eq 1 ]; then
 
 fi # if $dorun==1
 
-#echo "EXIT SCRIPT FOR DEBUGGING"
-#exit
+
+# ---------------------------------------------------------------------------------------------------
+# POSTPROCESSING
 
 if [ $postproc -eq 1 ]; then
 
-    echo "START POSTPROCESSING"
+    echo '----------------------------------------'
+    echo "POSTPROCESSING"
     date
 
 # ---------------------------------------------------------------------------------------------------
 # Move output files
 
-    echo "Move NORDIC and DA output files in task 001"
+    echo "Move NEMO and DA output files from directory 001"
     wdir=`pwd`
 
-    mv $wdir/001/???_NORDIC_* $OUTDIR/$EXP/data/
-    mv $wdir/001/state_*.nc $OUTDIR/$EXP/DA/
-    mv $wdir/001/variance_*.nc $OUTDIR/$EXP/DA/
-    cp $wdir/001/namelist_cfg.pdaf $OUTDIR/$EXP/cfg/namelist_cfg.pdaf_$tstr_ini
+    mv $wdir/001/state_*.nc $EXP/DA/
+    mv $wdir/001/variance_*.nc $EXP/DA/
+    mv $wdir/001/${cn_exp}_*_???.nc $EXP/data/
+    cp $wdir/001/namelist_cfg.pdaf $EXP/cfg/namelist_cfg.pdaf_$tstr_ini-$tstr
 
 
 
 # ---------------------------------------------------------------------------------------------------
-#Remove old restart files
+#Remove old files
 
-    echo "clean up directories initialstate/ and forcing/"
+    echo "clean up old files"
     for((i=1;i<=$NENS;i++))
       do
       ENSstr=`printf %03d $i`
       wdir=`pwd`/${ENSstr}
 
-      rm $wdir/initialstate/restart_in_*
-      rm $wdir/initialstate/restart_ice_in_*
-      rm $wdir/initialstate/restart_trc_in_*
-
-    # remove forcing files
-      rm $wdir/forcing/bdy_ts_*.nc
-      rm $wdir/forcing/bdy_uvh_*.nc
-      rm $wdir/forcing/EHYPE_*.nc
-      rm $wdir/forcing/FORCE_*.nc
+      # Her you might like to e.g. remove forcing files
+#      rm $wdir/forcing/bdy_ts_*.nc
     done
 
 
@@ -634,21 +487,8 @@ if [ $postproc -eq 1 ]; then
 
       # Rename restart files to include date
       for n in `seq -f "%04g" 0 $np`;do
-	  mv $wdir/$restart_out/'NORDIC_'$nnstep'_restart_out_'$n'.nc'     $wdir/$restart_out/'/restart_in_'$n'_'$date_nemo'.nc'
-	  mv $wdir/$restart_out/'NORDIC_'$nnstep'_restart_ice_out_'$n'.nc' $wdir/$restart_out/'/restart_ice_in_'$n'_'$date_nemo'.nc'
-      done
-    done
-
-    # Link restart files for restarting
-    echo "Link new restart files into initialstate"
-    for((i=1;i<=$NENS;i++))
-      do
-      ENSstr=`printf %03d $i`
-      wdir=`pwd`/${ENSstr}
-
-      for n in `seq -f "%04g" 0 $np`;do
-	  ln -s $wdir/$restart_out/'/restart_in_'$n'_'$date_nemo'.nc'     $wdir'/initialstate/restart_in_'$n'.nc'
-	  ln -s $wdir/$restart_out/'/restart_ice_in_'$n'_'$date_nemo'.nc' $wdir'/initialstate/restart_ice_in_'$n'.nc'
+	  mv $wdir/${cn_exp}'_'$nnstep'_restart_'$n'.nc'     $wdir/$restart_out/'/restart_'$n'_'$date_nemo'.nc'
+	  mv $wdir/${cn_exp}'_'$nnstep'_restart_ice_'$n'.nc' $wdir/$restart_out/'/restart_ice_'$n'_'$date_nemo'.nc'
       done
     done
 
