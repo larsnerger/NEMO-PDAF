@@ -169,7 +169,7 @@ contains
     use mod_statevector_pdaf, &
          only: update_trc
 #endif
-    use mod_iau_pdaf, &
+    use mod_asm_pdaf, &
          only: do_asmiau, steps_asmiau, shape_asmiau, iter_divdmp
     use mod_obs_ssh_mgrid_pdafomi, &
          only: assim_ssh_mgrid, rms_ssh_mgrid, file_ssh_mgrid, &
@@ -179,7 +179,7 @@ contains
          lradius_sst_cmems, sradius_sst_cmems, mode_sst_cmems, dist_sst_cmems, &
          varname_sst_cmems
 #if defined key_top
-    use mod_iau_pdaf, &
+    use mod_asm_pdaf, &
          only: do_bgciau, steps_bgciau, shape_asmiau, shape_bgciau
 #endif
 
@@ -328,7 +328,7 @@ contains
 
     use mod_parallel_pdaf, &
          only: mype_ens, comm_ensemble, mpierr, mype_model
-    use mod_iau_pdaf, &
+    use mod_asm_pdaf, &
          only: asm_inc_deallocate_pdaf
     use timer, &
          only: timeit, time_tot

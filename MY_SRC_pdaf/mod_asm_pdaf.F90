@@ -1,11 +1,11 @@
-!> Module for using NEMO's ASMINC module with PDAF
+!> Module for interfacing between PDAF and NEMO's ASMINC module
 !!
 !! This module provides the interfacing with NEMO's
 !! ASMINC module. Settings of ASMINC are set on the
 !! basis of DA settings for PDAF. both the direct
 !! initialization and IAU of ASMINC can be used.
 !!
-module mod_iau_pdaf
+module mod_asm_pdaf
 
   use mod_kind_pdaf
   use mod_statevector_pdaf, &
@@ -34,34 +34,31 @@ module mod_iau_pdaf
   use asminc, &
        only: n_update_trc, ids_update_trc, bgc_bkginc, &
        nitdinbgc, nitibgcstr, nitibgcfin, niaufnbgc, &
-       ln_trcinc, ln_bgcdin, ln_bgciau, &
-       ln_oxyinc, ln_no3inc, ln_nh4inc, ln_po4inc, &
-       ln_flainc, ln_diainc, ln_cyainc, wgtiaubgc
-  use asmpar, &
-       only: nitdinbgc_r, nitibgcstr_r, nitibgcfin_r
+       ln_trcinc, ln_bgcdin, ln_bgciau, wgtiaubgc, &
+       nitdinbgc_r, nitibgcstr_r, nitibgcfin_r
 #endif
 
-   implicit none
-   save
-   public
+  implicit none
+  save
+  public
 
-   ! Variables that control the behavior of increments
-   ! Next to these, the DA parameters set for PDAF influence the increments
-   logical :: do_asmiau = .false.      ! Whether to apply IAU for ocean physics; if FALSE, DIN is used
-   integer :: steps_asmiau = 1         ! Number of steps for physics IAU 
-   integer :: shape_asmiau = 0         ! Shape of physics IAU function: (0) constant; (1) hat (NEMO: niaufn)
-   real(pwp), allocatable :: iauweight(:)   ! Weights for IAU
-   integer :: iter_divdmp = 0          ! Number of iterations of divergence damping operator
+  ! Variables that control the behavior of increments
+  ! Next to these, the DA parameters set for PDAF influence the increments
+  logical :: do_asmiau = .false.      ! Whether to apply IAU for ocean physics; if FALSE, DIN is used
+  integer :: steps_asmiau = 1         ! Number of steps for physics IAU 
+  integer :: shape_asmiau = 0         ! Shape of physics IAU function: (0) constant; (1) hat (NEMO: niaufn)
+  real(pwp), allocatable :: iauweight(:)   ! Weights for IAU
+  integer :: iter_divdmp = 0          ! Number of iterations of divergence damping operator
 
 #if defined key_top
-   logical :: do_bgciau = .false.      ! Whether to apply IAU for BGC; if FALSE, DIN is used
-   integer :: steps_bgciau = 1         ! Number of steps for BGC IAU
-   integer :: shape_bgciau = 0         ! Shape of BGC IAU function: (0) constant; (1) hat (NEMO: niaufnbgc)
-   real(pwp), allocatable :: bgciauweight(:)   ! Weights for IAU for BGC 
+  logical :: do_bgciau = .false.      ! Whether to apply IAU for BGC; if FALSE, DIN is used
+  integer :: steps_bgciau = 1         ! Number of steps for BGC IAU
+  integer :: shape_bgciau = 0         ! Shape of BGC IAU function: (0) constant; (1) hat (NEMO: niaufnbgc)
+  real(pwp), allocatable :: bgciauweight(:)   ! Weights for IAU for BGC 
 #endif
 
 ! *** Local variables ***
-   integer, private :: next_inc = 0
+  integer, private :: next_inc = 0
 
 contains
 
@@ -72,19 +69,19 @@ contains
 !! The routine also initializes the increment array for the
 !! BGC data assimilation uypdate.
 !!
-   subroutine asm_inc_init_pdaf(delt_obs)
+  subroutine asm_inc_init_pdaf(delt_obs)
 
-     implicit none
+    implicit none
 
 ! *** Arguments ***
-     integer, intent(in) :: delt_obs
+    integer, intent(in) :: delt_obs
 
 ! *** Local variables
-     integer :: i             ! Counter
-     real(pwp) :: totwgt      ! Accumulated IAU weight for checking
+    integer :: i             ! Counter
+    real(pwp) :: totwgt      ! Accumulated IAU weight for checking
 #if defined key_top
-     integer :: id_trc        ! Index of BGC variable in trc array
-     integer :: id_var        ! Index of BGC variable in state vector
+    integer :: id_trc        ! Index of BGC variable in trc array
+    integer :: id_var        ! Index of BGC variable in state vector
 #endif
      
 
@@ -93,83 +90,73 @@ contains
 ! *** Initialize Settings for NEMO ASMINC ***
 ! *******************************************
 
-     ! Set initial increment step
-     next_inc = delt_obs
+    ! Set initial increment step
+    next_inc = delt_obs
 
-     ! Set switches and parameters for ASMINC - physics
+    ! Set switches and parameters for ASMINC - physics
 
-     ln_bkgwri  = .false.   !  Logical switch for writing out background state
-     if (.not. (update_ssh .or. update_temp .or. update_salt .or. update_vel)) then
-        ln_trainc  = .false.   !  Logical switch for applying tracer increments
-        ln_dyninc  = .false.   !  Logical switch for applying velocity increments
-        ln_sshinc  = .false.   !  Logical switch for applying SSH increments
-        ln_asmdin  = .false.      !  Logical switch for Direct Initialization (DI)
-        ln_asmiau  = .false.   !  Logical switch for Incremental Analysis Updating (IAU)
-     else
-        if (update_temp .or. update_salt) then
-           ln_trainc  = .true.    !  Logical switch for applying tracer increments
-        else
-           ln_trainc  = .false.   !  Logical switch for applying tracer increments
-        end if
-        if (update_vel) then
-           ln_dyninc  = .true.    !  Logical switch for applying velocity increments
-        else
-           ln_dyninc  = .false.   !  Logical switch for applying velocity increments
-        end if
-        if (update_ssh) then
-           ln_sshinc  = .true.    !  Logical switch for applying SSH increments
-        else
-           ln_sshinc  = .false.   !  Logical switch for applying SSH increments
-        end if
-        if (do_asmiau) then
-           ln_asmiau  = .true.    !  Logical switch for Incremental Analysis Updating (IAU)
-           ln_asmdin  = .false.   !  Logical switch for Direct Initialization (DI)
-        else
-           ln_asmiau  = .false.   !  Logical switch for Incremental Analysis Updating (IAU)
-           ln_asmdin  = .true.    !  Logical switch for Direct Initialization (DI)
-        end if
-     end if
+    ln_bkgwri  = .false.   !  Logical switch for writing out background state
+    if (.not. (update_ssh .or. update_temp .or. update_salt .or. update_vel)) then
+       ln_trainc  = .false.   !  Logical switch for applying tracer increments
+       ln_dyninc  = .false.   !  Logical switch for applying velocity increments
+       ln_sshinc  = .false.   !  Logical switch for applying SSH increments
+       ln_asmdin  = .false.      !  Logical switch for Direct Initialization (DI)
+       ln_asmiau  = .false.   !  Logical switch for Incremental Analysis Updating (IAU)
+    else
+       if (update_temp .or. update_salt) then
+          ln_trainc  = .true.    !  Logical switch for applying tracer increments
+       else
+          ln_trainc  = .false.   !  Logical switch for applying tracer increments
+       end if
+       if (update_vel) then
+          ln_dyninc  = .true.    !  Logical switch for applying velocity increments
+       else
+          ln_dyninc  = .false.   !  Logical switch for applying velocity increments
+       end if
+       if (update_ssh) then
+          ln_sshinc  = .true.    !  Logical switch for applying SSH increments
+       else
+          ln_sshinc  = .false.   !  Logical switch for applying SSH increments
+       end if
+       if (do_asmiau) then
+          ln_asmiau  = .true.    !  Logical switch for Incremental Analysis Updating (IAU)
+          ln_asmdin  = .false.   !  Logical switch for Direct Initialization (DI)
+       else
+          ln_asmiau  = .false.   !  Logical switch for Incremental Analysis Updating (IAU)
+          ln_asmdin  = .true.    !  Logical switch for Direct Initialization (DI)
+       end if
+    end if
 
-     ! The step settings are initialized here and later updated in cycled DA
-     nitbkg    = 0                      !  Timestep of background in [0,nitend-nit000-1]
-     nitdin    = delt_obs               !  Timestep of background for DI in [0,nitend-nit000-1]
-     nitiaustr = delt_obs               !  Timestep of start of BGC IAU interval
-     nitiaufin = delt_obs+steps_asmiau  !  Timestep of end of BGC IAU interval
-     niaufn    = shape_asmiau           !  Type of IAU weighting function
-     ln_salfix = .false.                !  Logical switch for ensuring that the sa > salfixmin
-     salfixmin = -9999                  !  Minimum salinity after applying the increments
-     nn_divdmp = iter_divdmp            !  Number of iterations of divergence damping operator
+    ! The step settings are initialized here and later updated in cycled DA
+    nitbkg    = 0                      !  Timestep of background in [0,nitend-nit000-1]
+    nitdin    = delt_obs               !  Timestep of background for DI in [0,nitend-nit000-1]
+    nitiaustr = delt_obs               !  Timestep of start of BGC IAU interval
+    nitiaufin = delt_obs+steps_asmiau  !  Timestep of end of BGC IAU interval
+    niaufn    = shape_asmiau           !  Type of IAU weighting function
+    ln_salfix = .false.                !  Logical switch for ensuring that the sa > salfixmin
+    salfixmin = -9999                  !  Minimum salinity after applying the increments
+    nn_divdmp = iter_divdmp            !  Number of iterations of divergence damping operator
 
 
 #if defined key_top
 
-     ! Switches and parameters for ASM BGC increments
+    ! Switches and parameters for ASM BGC increments
 
-     ln_trcinc  = .true.        !  Logical switch for applying BGC increments
+    ln_trcinc  = .true.        !  Logical switch for applying BGC increments
 
-     if (do_bgciau) then        ! Switch between IAU and direct insertion
-        ln_bgciau  = .true.     !  Logical switch for Incremental Analysis Updating (IAU)
-        ln_bgcdin = .false.     !  Logical switch for applying DI for BGC
-     else
-        ln_bgciau  = .false.    !  Logical switch for Incremental Analysis Updating (IAU)
-        ln_bgcdin = .true.      !  Logical switch for applying DI for BGC
-     end if
-     niaufnbgc  = shape_bgciau  !  Type of BGC IAU weighting function
+    if (do_bgciau) then        ! Switch between IAU and direct insertion
+       ln_bgciau  = .true.     !  Logical switch for Incremental Analysis Updating (IAU)
+       ln_bgcdin = .false.     !  Logical switch for applying DI for BGC
+    else
+       ln_bgciau  = .false.    !  Logical switch for Incremental Analysis Updating (IAU)
+       ln_bgcdin = .true.      !  Logical switch for applying DI for BGC
+    end if
+    niaufnbgc  = shape_bgciau  !  Type of BGC IAU weighting function
      
-     ! The step settings are initialized here and later updated in cycled DA
-     nitdinbgc  = delt_obs                !  Timestep for DI for BGC
-     nitibgcstr = delt_obs                !  Timestep of start of BGC IAU interval
-     nitibgcfin = delt_obs+steps_bgciau   !  Timestep of end of BGC IAU interval
-
-     ! The folloing switches should be set for consistency
-     ! they are not used with PDAF
-     ln_oxyinc = .false.     !: No oxygen concentration increment
-     ln_no3inc = .false.     !: No nitrate concentration increment
-     ln_nh4inc = .false.     !: No ammonium concentration increment
-     ln_po4inc = .false.     !: No phosphate concentration increment
-     ln_flainc = .false.     !: No flagellate concentration increment
-     ln_diainc = .false.     !: No diatom concentration increment
-     ln_cyainc = .false.     !: No cyano concentration increment
+    ! The step settings are initialized here and later updated in cycled DA
+    nitdinbgc  = delt_obs                !  Timestep for DI for BGC
+    nitibgcstr = delt_obs                !  Timestep of start of BGC IAU interval
+    nitibgcfin = delt_obs+steps_bgciau   !  Timestep of end of BGC IAU interval
 #endif
 
 
@@ -177,16 +164,16 @@ contains
 ! *** Initialize weights vector for IAU ***
 ! *****************************************
 
-     if (ln_asmiau) then
-        allocate(iauweight(steps_asmiau))
-        call init_iauweight(iauweight, steps_asmiau, shape_asmiau)
-     end if
+    if (ln_asmiau) then
+       allocate(iauweight(steps_asmiau))
+       call init_iauweight(iauweight, steps_asmiau, shape_asmiau)
+    end if
 
 #if defined key_top
-     if (ln_bgciau) then
-        allocate(iauweight(steps_bgciau))
-        call init_iauweight(bgciauweight, steps_bgciau, shape_bgciau)
-     end if
+    if (ln_bgciau) then
+       allocate(iauweight(steps_bgciau))
+       call init_iauweight(bgciauweight, steps_bgciau, shape_bgciau)
+    end if
 #endif
 
 
@@ -280,10 +267,10 @@ contains
        write (*,'(a,4x,a)') 'NEMO-PDAF', '************************************'
     end if
 
-     ! Update increment step
-     call update_asm_step_pdaf(0)
+    ! Update increment step
+    call update_asm_step_pdaf(0)
 
-   end subroutine asm_inc_init_pdaf
+  end subroutine asm_inc_init_pdaf
 
 
 
@@ -292,20 +279,20 @@ contains
 !!
 !! For direct initialization, the increment is applied on the
 !! time step after the analysis update is computed by PDAF
-   subroutine store_asm_step_pdaf(nextinc, initial)
+  subroutine store_asm_step_pdaf(nextinc, initial)
 
-     implicit none
+    implicit none
 
 ! *** Arguments ***
-     integer, intent(in) :: nextinc      ! Time of (starting) next assimilation increment
-     integer, intent(in) :: initial      ! Whether the routine is called at inital time
+    integer, intent(in) :: nextinc      ! Time of (starting) next assimilation increment
+    integer, intent(in) :: initial      ! Whether the routine is called at inital time
 
-     ! Store step of (start) of next increments
-     next_inc = nextinc + 1
+    ! Store step of (start) of next increments
+    next_inc = nextinc + 1
 
-     call update_asm_step_pdaf(initial)
+    call update_asm_step_pdaf(initial)
 
-   end subroutine store_asm_step_pdaf
+  end subroutine store_asm_step_pdaf
 
 
 
@@ -316,83 +303,95 @@ contains
 !! update the time step information for applying
 !! assimilation increments.
 !!
-   subroutine update_asm_step_pdaf(initial)
+  subroutine update_asm_step_pdaf(initial)
 
-     implicit none
+    implicit none
 
 ! *** Arguments ***
-     integer, intent(in) :: initial
+    integer, intent(in) :: initial
 
 ! *** Local variables ***
-     integer :: i, cnt            ! Counter
+    integer :: i, cnt            ! Counter
 
 
 ! *** Settings for ASMINC physics ***
 
-     nitdin       = next_inc                           ! Time step of the background state for direct initialization
-     nitdin_r     = nitdin    + nit000 - 1             ! Background time for DI referenced to nit000
-     nitiaustr   = next_inc                            ! Timestep of start of IAU interval
-     nitiaufin   = next_inc+steps_asmiau - 1           ! Timestep of end of IAU interval
-     nitiaustr_r = nitiaustr + nit000 - 1              ! Start of IAU interval referenced to nit000
-     nitiaufin_r = nitiaufin + nit000 - 1              ! End of IAU interval referenced to nit000
+    nitdin       = next_inc                           ! Time step of the background state for direct initialization
+    nitdin_r     = nitdin    + nit000 - 1             ! Background time for DI referenced to nit000
+    nitiaustr   = next_inc                            ! Timestep of start of IAU interval
+    nitiaufin   = next_inc+steps_asmiau - 1           ! Timestep of end of IAU interval
+    nitiaustr_r = nitiaustr + nit000 - 1              ! Start of IAU interval referenced to nit000
+    nitiaufin_r = nitiaufin + nit000 - 1              ! End of IAU interval referenced to nit000
 
-     if (mype_ens==0) then
-        if (ln_trainc .or. ln_dyninc .or. ln_sshinc) then
-           if (ln_asmiau) then
-              write (*,'(a,5x,a,2i)') 'NEMO-PDAF', '--- set IAU steps for ASMINC: ', nitiaustr_r, nitiaufin_r
-           else
-              write (*,'(a,5x,a,i)') 'NEMO-PDAF', '--- set DIN step for ASMINC: ', nitdin_r
-           end if
-        end if
-     end if
+    if (mype_ens==0) then
+       if (ln_trainc .or. ln_dyninc .or. ln_sshinc) then
+          if (ln_asmiau) then
+             write (*,'(a,5x,a,2i)') 'NEMO-PDAF', '--- set IAU steps for ASMINC: ', nitiaustr_r, nitiaufin_r
+          else
+             write (*,'(a,5x,a,i)') 'NEMO-PDAF', '--- set DIN step for ASMINC: ', nitdin_r
+          end if
+       end if
+    end if
 
-     ! Set weights in the full IAU weight array
-     if (ln_asmiau .and. initial > 0) then
-        cnt = 1
-        wgtiau(:) = 0.0
-        do i = nitiaustr_r, nitiaufin_r
-           wgtiau(i) = iauweight(cnt)
-           cnt = cnt + 1
-        end do
-        if (mype_ens==0) &
-             write (*,'(a,5x,a,2i)') 'NEMO-PDAF', '--- update IAU weight array'
-     end if
+    ! Set weights in the full IAU weight array
+    if (ln_asmiau .and. initial > 0) then
+
+       if (allocated(wgtiau)) then
+          if (mype_ens==0) &
+               write (*,'(a,5x,a,2i)') 'NEMO-PDAF', '--- update IAU weight array'
+
+          cnt = 1
+          wgtiau(:) = 0.0
+          do i = nitiaustr_r, nitiaufin_r
+             wgtiau(i) = iauweight(cnt)
+             cnt = cnt + 1
+          end do
+       else
+          write (*,*) 'PDAF-ERROR: wgtiau not allocated; is program compiled with key_asminc?'
+       end if
+    end if
 
 
 #if defined key_top
 ! *** Settings for ASMINC BGC ***
 
-     nitdinbgc    = next_inc                           ! Time step of direct init for BGC
-     nitdinbgc_r  = nitdinbgc    + nit000 - 1          ! Background time for DI referenced to nit000
-     nitibgcstr   = next_inc                           ! Timestep of start of BGC IAU interval
-     nitibgcfin   = next_inc+steps_bgciau - 1          ! Timestep of end of BGC IAU interval
-     nitibgcstr_r = nitibgcstr + nit000 - 1            ! Start of BGC IAU interval referenced to nit000
-     nitibgcfin_r = nitibgcfin + nit000 - 1            ! End of BGC IAU interval referenced to nit000
+    nitdinbgc    = next_inc                           ! Time step of direct init for BGC
+    nitdinbgc_r  = nitdinbgc    + nit000 - 1          ! Background time for DI referenced to nit000
+    nitibgcstr   = next_inc                           ! Timestep of start of BGC IAU interval
+    nitibgcfin   = next_inc+steps_bgciau - 1          ! Timestep of end of BGC IAU interval
+    nitibgcstr_r = nitibgcstr + nit000 - 1            ! Start of BGC IAU interval referenced to nit000
+    nitibgcfin_r = nitibgcfin + nit000 - 1            ! End of BGC IAU interval referenced to nit000
 
-     if (mype_ens==0) then
-        if (ln_trcinc) then
-           if (ln_bgciau) then
-              write (*,'(a,5x,a,2i)') 'NEMO-PDAF', '--- set BGC IAU steps for ASMINC: ', nitibgcstr_r, nitibgcfin_r
-           else
-              write (*,'(a,5x,a,i)') 'NEMO-PDAF', '--- set BGC DIN step for ASMINC: ', nitdinbgc_r
-           end if
-        end if
-     end if
+    if (mype_ens==0) then
+       if (ln_trcinc) then
+          if (ln_bgciau) then
+             write (*,'(a,5x,a,2i)') 'NEMO-PDAF', '--- set BGC IAU steps for ASMINC: ', nitibgcstr_r, nitibgcfin_r
+          else
+             write (*,'(a,5x,a,i)') 'NEMO-PDAF', '--- set BGC DIN step for ASMINC: ', nitdinbgc_r
+          end if
+       end if
+    end if
 
-     ! Set weights in the full BGC IAU weight array
-     if (ln_bgciau .and. initial > 0) then
-        cnt = 1
-        wgtiaubgc(:) = 0.0
-        do i = nitibgcstr_r, nitibgcfin_r
-           wgtiaubgc(i) = bgciauweight(cnt)
-           cnt = cnt + 1
-        end do
-        if (mype_ens==0) &
-             write (*,'(a,5x,a,2i)') 'NEMO-PDAF', '--- update BGC IAU weight array'
-     end if
+    ! Set weights in the full BGC IAU weight array
+    if (ln_bgciau .and. initial > 0) then
+
+       if (allocated(wgtiaubgc)) then
+          if (mype_ens==0) &
+               write (*,'(a,5x,a,2i)') 'NEMO-PDAF', '--- update BGC IAU weight array'
+
+          cnt = 1
+          wgtiaubgc(:) = 0.0
+          do i = nitibgcstr_r, nitibgcfin_r
+             wgtiaubgc(i) = bgciauweight(cnt)
+             cnt = cnt + 1
+          end do
+       else
+          write (*,*) 'PDAF-ERROR: wgtiaubgc not allocated; is program compiled with key_asminc?'
+       end if
+    end if
 #endif
 
-   end subroutine update_asm_step_pdaf
+  end subroutine update_asm_step_pdaf
 
 
 
@@ -402,158 +401,158 @@ contains
 !! This routine updates the increment arrays for the
 !! ASMINC module of NEMO.
 !!
-   subroutine update_bkginc_pdaf(dim_p, state_p, verbose)
+  subroutine update_bkginc_pdaf(dim_p, state_p, verbose)
 
-     use mod_nemo_pdaf, &
-          only: ni_p, nj_p, nk_p, i0, j0
-     use mod_aux_pdaf, &
-          only: state2field_inc
-     use oce, &
-          only: sshn, tsn, un, vn
-     use dom_oce, &
-          only: tmask, umask, vmask
-     use lbclnk, &
-          only: lbc_lnk, lbc_lnk_multi
-     use asminc, &
-          only: ssh_bkg, t_bkg, s_bkg, u_bkg, v_bkg, &
-          ssh_bkginc, t_bkginc, s_bkginc, u_bkginc, v_bkginc
+    use mod_nemo_pdaf, &
+         only: ni_p, nj_p, nk_p, i0, j0
+    use mod_aux_pdaf, &
+         only: state2field_inc
+    use oce, &
+         only: sshn, tsn, un, vn
+    use dom_oce, &
+         only: tmask, umask, vmask
+    use lbclnk, &
+         only: lbc_lnk, lbc_lnk_multi
+    use asminc, &
+         only: ssh_bkg, t_bkg, s_bkg, u_bkg, v_bkg, &
+         ssh_bkginc, t_bkginc, s_bkginc, u_bkginc, v_bkginc
 #if defined key_top
-     use trc, &
-          only: trb, trn
+    use trc, &
+         only: trb, trn
 #endif
 
-     implicit none
+    implicit none
 
 ! *** Arguments ***
-     integer, intent(in) :: dim_p               !< PE-local state dimension
-     real(pwp), intent(inout) :: state_p(dim_p) !< PE-local state vector
-     integer, intent(in) :: verbose             !< Verbosity flag
+    integer, intent(in) :: dim_p               !< PE-local state dimension
+    real(pwp), intent(inout) :: state_p(dim_p) !< PE-local state vector
+    integer, intent(in) :: verbose             !< Verbosity flag
 
 ! *** Local variables ***
-     integer :: i_bgcinc, i_trn     ! Indices
-     integer :: id_var              ! Index
+    integer :: i_bgcinc, i_trn     ! Indices
+    integer :: id_var              ! Index
 
 
 ! *************************************************
 ! *** Prepare increment arrays for NEMO physics ***
 ! *************************************************
 
-     if (verbose==1) write (*,'(a,4x,a)') 'NEMO-PDAF', 'Distribute state increment'
+    if (verbose==1) write (*,'(a,4x,a)') 'NEMO-PDAF', 'Distribute state increment'
 
-     physics: if (update_temp .or. update_salt .or. update_ssh .or. update_vel) then
+    physics: if (update_temp .or. update_salt .or. update_ssh .or. update_vel) then
 
-        ! Ensure that the increment arrays are allocated and set to zero
-        if (.not. allocated(ssh_bkginc)) allocate(ssh_bkginc(jpi,jpj))
-        if (.not. allocated(t_bkginc)) allocate(t_bkginc(jpi,jpj,jpk))
-        if (.not. allocated(s_bkginc)) allocate(s_bkginc(jpi,jpj,jpk))
-        if (.not. allocated(u_bkginc)) allocate(u_bkginc(jpi,jpj,jpk))
-        if (.not. allocated(v_bkginc)) allocate(v_bkginc(jpi,jpj,jpk))
-        ssh_bkginc = 0.0_pwp
-        t_bkginc = 0.0_pwp
-        s_bkginc = 0.0_pwp
-        u_bkginc = 0.0_pwp
-        v_bkginc = 0.0_pwp
+       ! Ensure that the increment arrays are allocated and set to zero
+       if (.not. allocated(ssh_bkginc)) allocate(ssh_bkginc(jpi,jpj))
+       if (.not. allocated(t_bkginc)) allocate(t_bkginc(jpi,jpj,jpk))
+       if (.not. allocated(s_bkginc)) allocate(s_bkginc(jpi,jpj,jpk))
+       if (.not. allocated(u_bkginc)) allocate(u_bkginc(jpi,jpj,jpk))
+       if (.not. allocated(v_bkginc)) allocate(v_bkginc(jpi,jpj,jpk))
+       ssh_bkginc = 0.0_pwp
+       t_bkginc = 0.0_pwp
+       s_bkginc = 0.0_pwp
+       u_bkginc = 0.0_pwp
+       v_bkginc = 0.0_pwp
 
-        ! SSH
-        if (id%ssh > 0 .and. update_ssh) then
-           call state2field_inc(state_p, sshn(1+i0:ni_p+i0, 1+j0:nj_p+j0), &
-                ssh_bkginc(1+i0:ni_p+i0, 1+j0:nj_p+j0), sfields(id%ssh)%off, sfields(id%ssh)%ndims)
+       ! SSH
+       if (id%ssh > 0 .and. update_ssh) then
+          call state2field_inc(state_p, sshn(1+i0:ni_p+i0, 1+j0:nj_p+j0), &
+               ssh_bkginc(1+i0:ni_p+i0, 1+j0:nj_p+j0), sfields(id%ssh)%off, sfields(id%ssh)%ndims)
 
-            ssh_bkginc(:,:) = ssh_bkginc(:,:) * tmask(:,:,1)
+          ssh_bkginc(:,:) = ssh_bkginc(:,:) * tmask(:,:,1)
 
-           ! Fill halo regions
-           call lbc_lnk('distribute_state_pdaf', ssh_bkginc, 'T', 1.)
-        end if
+          ! Fill halo regions
+          call lbc_lnk('distribute_state_pdaf', ssh_bkginc, 'T', 1.)
+       end if
 
-        ! T
-        if (id%temp > 0 .and. update_temp) then
-           call state2field_inc(state_p, &
-                tsn(1+i0:ni_p+i0, 1+j0:nj_p+j0, 1:nk_p, jp_tem), &
-                t_bkginc(1+i0:ni_p+i0, 1+j0:nj_p+j0, 1:nk_p), &
-                sfields(id%temp)%off, sfields(id%temp)%ndims)
-        end if
-        t_bkginc(:,:,:) = t_bkginc(:,:,:) * tmask(:,:,:)
+       ! T
+       if (id%temp > 0 .and. update_temp) then
+          call state2field_inc(state_p, &
+               tsn(1+i0:ni_p+i0, 1+j0:nj_p+j0, 1:nk_p, jp_tem), &
+               t_bkginc(1+i0:ni_p+i0, 1+j0:nj_p+j0, 1:nk_p), &
+               sfields(id%temp)%off, sfields(id%temp)%ndims)
+       end if
+       t_bkginc(:,:,:) = t_bkginc(:,:,:) * tmask(:,:,:)
 
-        ! S
-        if (id%salt > 0 .and. update_salt) then
-           call state2field_inc(state_p, &
-             tsn(1+i0:ni_p+i0, 1+j0:nj_p+j0, 1:nk_p, jp_sal), &
-             s_bkginc(1+i0:ni_p+i0, 1+j0:nj_p+j0, 1:nk_p), &
-             sfields(id%salt)%off, sfields(id%salt)%ndims)
-        end if
-        s_bkginc(:,:,:) = s_bkginc(:,:,:) * tmask(:,:,:)
+       ! S
+       if (id%salt > 0 .and. update_salt) then
+          call state2field_inc(state_p, &
+               tsn(1+i0:ni_p+i0, 1+j0:nj_p+j0, 1:nk_p, jp_sal), &
+               s_bkginc(1+i0:ni_p+i0, 1+j0:nj_p+j0, 1:nk_p), &
+               sfields(id%salt)%off, sfields(id%salt)%ndims)
+       end if
+       s_bkginc(:,:,:) = s_bkginc(:,:,:) * tmask(:,:,:)
 
-        if (id%temp>0 .or. id%salt>0) then
-           ! Fill halo regions
-           call lbc_lnk_multi('distribute_state_pdaf', t_bkginc, 'T', &
-                1., s_bkginc, 'T', 1.)
-        end if
+       if (id%temp>0 .or. id%salt>0) then
+          ! Fill halo regions
+          call lbc_lnk_multi('distribute_state_pdaf', t_bkginc, 'T', &
+               1., s_bkginc, 'T', 1.)
+       end if
 
-        ! U
-        if (id%uvel > 0 .and. update_vel) then
-           call state2field_inc(state_p, &
-                un(1+i0:ni_p+i0, 1+j0:nj_p+j0, 1:nk_p), &
-                u_bkginc(1+i0:ni_p+i0, 1+j0:nj_p+j0, 1:nk_p), &
-                sfields(id%uvel)%off, sfields(id%uvel)%ndims)
-           u_bkginc(:,:,:) = u_bkginc(:,:,:) * umask(:,:,:)
-        end if
+       ! U
+       if (id%uvel > 0 .and. update_vel) then
+          call state2field_inc(state_p, &
+               un(1+i0:ni_p+i0, 1+j0:nj_p+j0, 1:nk_p), &
+               u_bkginc(1+i0:ni_p+i0, 1+j0:nj_p+j0, 1:nk_p), &
+               sfields(id%uvel)%off, sfields(id%uvel)%ndims)
+          u_bkginc(:,:,:) = u_bkginc(:,:,:) * umask(:,:,:)
+       end if
 
-        ! V
-        if (id%vvel > 0 .and. update_vel) then
-           call state2field_inc(state_p, &
-                vn(1+i0:ni_p+i0, 1+j0:nj_p+j0, 1:nk_p), &
-                v_bkginc(1+i0:ni_p+i0, 1+j0:nj_p+j0, 1:nk_p), &
-                sfields(id%vvel)%off, sfields(id%vvel)%ndims)
-            v_bkginc(:,:,:) = v_bkginc(:,:,:) * vmask(:,:,:)
-        end if
+       ! V
+       if (id%vvel > 0 .and. update_vel) then
+          call state2field_inc(state_p, &
+               vn(1+i0:ni_p+i0, 1+j0:nj_p+j0, 1:nk_p), &
+               v_bkginc(1+i0:ni_p+i0, 1+j0:nj_p+j0, 1:nk_p), &
+               sfields(id%vvel)%off, sfields(id%vvel)%ndims)
+          v_bkginc(:,:,:) = v_bkginc(:,:,:) * vmask(:,:,:)
+       end if
 
-        if (id%uvel>0 .or. id%vvel>0) then
-           ! Fill halo regions
-           call lbc_lnk_multi('distribute_state_pdaf', u_bkginc, 'U', -1., v_bkginc, 'V', -1.)
+       if (id%uvel>0 .or. id%vvel>0) then
+          ! Fill halo regions
+          call lbc_lnk_multi('distribute_state_pdaf', u_bkginc, 'U', -1., v_bkginc, 'V', -1.)
 
-           ! Apply divergence damping to the velocity increment
-           call div_damping_filter()
-        end if
+          ! Apply divergence damping to the velocity increment
+          call div_damping_filter()
+       end if
 
 
-        ! For direct initialization we intialize the background arrays
-        ! and apply the increments here. They are set the Euler flag
-        if (ln_asmdin) then
+       ! For direct initialization we intialize the background arrays
+       ! and apply the increments here. They are set the Euler flag
+       if (ln_asmdin) then
 
            
-           ! Ensure that the background arrays are allocated
-           if (.not. allocated(ssh_bkg)) allocate(ssh_bkg(jpi,jpj))
-           if (.not. allocated(t_bkg)) allocate(t_bkg(jpi,jpj,jpk))
-           if (.not. allocated(s_bkg)) allocate(s_bkg(jpi,jpj,jpk))
-           if (.not. allocated(u_bkg)) allocate(u_bkg(jpi,jpj,jpk))
-           if (.not. allocated(v_bkg)) allocate(v_bkg(jpi,jpj,jpk))
+          ! Ensure that the background arrays are allocated
+          if (.not. allocated(ssh_bkg)) allocate(ssh_bkg(jpi,jpj))
+          if (.not. allocated(t_bkg)) allocate(t_bkg(jpi,jpj,jpk))
+          if (.not. allocated(s_bkg)) allocate(s_bkg(jpi,jpj,jpk))
+          if (.not. allocated(u_bkg)) allocate(u_bkg(jpi,jpj,jpk))
+          if (.not. allocated(v_bkg)) allocate(v_bkg(jpi,jpj,jpk))
 
-           ! Initialize background fields for use in asm_inc routines
-           ssh_bkg = sshn
-           t_bkg = tsn(:,:,:,jp_tem)
-           s_bkg = tsn(:,:,:,jp_sal)
-           u_bkg = un
-           v_bkg = vn
-           ssh_bkg(:,:) = ssh_bkg(:,:) * tmask(:,:,1)
-           t_bkg(:,:,:) = t_bkg(:,:,:) * tmask(:,:,:)
-           s_bkg(:,:,:) = s_bkg(:,:,:) * tmask(:,:,:)
-           u_bkg(:,:,:) = u_bkg(:,:,:) * umask(:,:,:)
-           v_bkg(:,:,:) = v_bkg(:,:,:) * vmask(:,:,:)
-           
-           if (mype_ens==0) &
-                write (*,'(a,4x,a)') 'NEMO-PDAF', '--- Apply full increment in ASMINC'
+          ! Initialize background fields for use in asm_inc routines
+          ssh_bkg = sshn
+          t_bkg = tsn(:,:,:,jp_tem)
+          s_bkg = tsn(:,:,:,jp_sal)
+          u_bkg = un
+          v_bkg = vn
+          ssh_bkg(:,:) = ssh_bkg(:,:) * tmask(:,:,1)
+          t_bkg(:,:,:) = t_bkg(:,:,:) * tmask(:,:,:)
+          s_bkg(:,:,:) = s_bkg(:,:,:) * tmask(:,:,:)
+          u_bkg(:,:,:) = u_bkg(:,:,:) * umask(:,:,:)
+          v_bkg(:,:,:) = v_bkg(:,:,:) * vmask(:,:,:)
 
-           ! Apply assimilation increment
-           if( ln_trainc )   call tra_asm_inc(next_inc)      ! Tracers
-           if( ln_dyninc )   call dyn_asm_inc(next_inc)      ! Dynamics
-           if( ln_sshinc )   call ssh_asm_inc(next_inc)      ! SSH
+          if (mype_ens==0) &
+               write (*,'(a,4x,a)') 'NEMO-PDAF', '--- Apply full increment in ASMINC'
 
-        else
-           if (mype_ens==0) &
-                write (*,'(a,4x,a)') 'NEMO-PDAF', '--- Store increments for IAU'
-        end if
+          ! Apply assimilation increment
+          if( ln_trainc )   call tra_asm_inc(next_inc)      ! Tracers
+          if( ln_dyninc )   call dyn_asm_inc(next_inc)      ! Dynamics
+          if( ln_sshinc )   call ssh_asm_inc(next_inc)      ! SSH
 
-     end if physics
+       else
+          if (mype_ens==0) &
+               write (*,'(a,4x,a)') 'NEMO-PDAF', '--- Store increments for IAU'
+       end if
+
+    end if physics
 
 
 ! *************************************************
@@ -561,35 +560,35 @@ contains
 ! *************************************************
 
 #if defined key_top
-     do i_bgcinc = 1, n_update_trc
+    do i_bgcinc = 1, n_update_trc
 
-        ! Get index in BGC tracer array
-        i_trn = ids_update_trc(i_bgcinc)
+       ! Get index in BGC tracer array
+       i_trn = ids_update_trc(i_bgcinc)
 
-        if (sv_trc(i_trn)) then
+       if (sv_trc(i_trn)) then
 
-           ! Get field index in state vector
-           id_var=id%trc(i_trn)
+          ! Get field index in state vector
+          id_var=id%trc(i_trn)
 
-           if (sfields(id_var)%update) then
+          if (sfields(id_var)%update) then
 
-              ! Update prognostic BGC variables
-              call state2field_inc(state_p, &
-                   trn(1+i0:ni_p+i0, 1+j0:nj_p+j0, 1:nk_p, i_trn), &
-                   bgc_bkginc(1+i0:ni_p+i0, 1+j0:nj_p+j0, 1:nk_p, i_bgcinc), &
-                   sfields(id_var)%off, sfields(id_var)%ndims)
+             ! Update prognostic BGC variables
+             call state2field_inc(state_p, &
+                  trn(1+i0:ni_p+i0, 1+j0:nj_p+j0, 1:nk_p, i_trn), &
+                  bgc_bkginc(1+i0:ni_p+i0, 1+j0:nj_p+j0, 1:nk_p, i_bgcinc), &
+                  sfields(id_var)%off, sfields(id_var)%ndims)
 
-              ! Fill halo regions
-              call lbc_lnk('distribute_state_pdaf', bgc_bkginc(:, :, :, i_bgcinc), 'T', &
-                   1._pwp)
+             ! Fill halo regions
+             call lbc_lnk('distribute_state_pdaf', bgc_bkginc(:, :, :, i_bgcinc), 'T', &
+                  1._pwp)
 
-              bgc_bkginc(:,:,:,i_bgcinc) = bgc_bkginc(:,:,:,i_bgcinc) * tmask(:,:,:)
-           end if
-        end if
-     end do
+             bgc_bkginc(:,:,:,i_bgcinc) = bgc_bkginc(:,:,:,i_bgcinc) * tmask(:,:,:)
+          end if
+       end if
+    end do
 #endif
 
-   end subroutine update_bkginc_pdaf
+  end subroutine update_bkginc_pdaf
 
 
 !-------------------------------------------------------------------------------
@@ -598,23 +597,23 @@ contains
 !! The functionality inside the routine is copied from NEMO's
 !! routine asm_inc_init
 !!
-   subroutine div_damping_filter()
+  subroutine div_damping_filter()
 
-     use asminc, &
-          only: u_bkginc, v_bkginc
-     use par_oce, &
-          only: jpkm1, jpjm1, jpim1
-     use dom_oce, &
-          only: e1v, e3v_n, e2u, e3u_n, e3t_n, &
-          r1_e1u, r1_e2v, umask, vmask
-     use lbclnk, &
-          only: lbc_lnk
+    use asminc, &
+         only: u_bkginc, v_bkginc
+    use par_oce, &
+         only: jpkm1, jpjm1, jpim1
+    use dom_oce, &
+         only: e1v, e3v_n, e2u, e3u_n, e3t_n, &
+         r1_e1u, r1_e2v, umask, vmask
+    use lbclnk, &
+         only: lbc_lnk
 
-     implicit none
+    implicit none
 
 ! *** Local variables ***
-     integer :: ji, jj, jt, jk                ! Counters
-     real(pwp), allocatable ::   zhdiv(:,:)   ! 2D workspace
+    integer :: ji, jj, jt, jk                ! Counters
+    real(pwp), allocatable ::   zhdiv(:,:)   ! 2D workspace
 
    !! * Substitutions
 #include "vectopt_loop_substitute.h90"
@@ -623,116 +622,115 @@ contains
 ! *** Apply divergence damping filter ***
 ! ***************************************
 
-     divdmp: if ( ln_dyninc .and. nn_divdmp > 0 ) then    ! Apply divergence damping filter
+    divdmp: if ( ln_dyninc .and. nn_divdmp > 0 ) then    ! Apply divergence damping filter
 
-        if (mype_ens==0) &
-             write (*,'(a,4x,a,i)') 'NEMO-PDAF', '--- apply divergence damping: nn_divdmp', nn_divdmp
+       if (mype_ens==0) &
+            write (*,'(a,4x,a,i)') 'NEMO-PDAF', '--- apply divergence damping: nn_divdmp', nn_divdmp
 
-        allocate( zhdiv(jpi,jpj) ) 
+       allocate( zhdiv(jpi,jpj) ) 
 
-        do jt = 1, nn_divdmp
+       do jt = 1, nn_divdmp
 
-           do jk = 1, jpkm1           ! zhdiv = e1e1 * div
-              zhdiv(:,:) = 0.0
-              do jj = 2, jpjm1
-                 do ji = fs_2, fs_jpim1   ! vector opt.
-                    zhdiv(ji,jj) = (  e2u(ji  ,jj) * e3u_n(ji  ,jj,jk) * u_bkginc(ji  ,jj,jk)    &
-                         - e2u(ji-1,jj) * e3u_n(ji-1,jj,jk) * u_bkginc(ji-1,jj,jk)    &
-                         + e1v(ji,jj  ) * e3v_n(ji,jj  ,jk) * v_bkginc(ji,jj  ,jk)    &
-                         - e1v(ji,jj-1) * e3v_n(ji,jj-1,jk) * v_bkginc(ji,jj-1,jk)  ) / e3t_n(ji,jj,jk)
-                 end do
-              end do
-              call lbc_lnk( 'asminc', zhdiv, 'T', 1. )   ! lateral boundary cond. (no sign change)
+          do jk = 1, jpkm1           ! zhdiv = e1e1 * div
+             zhdiv(:,:) = 0.0
+             do jj = 2, jpjm1
+                do ji = fs_2, fs_jpim1   ! vector opt.
+                   zhdiv(ji,jj) = (  e2u(ji  ,jj) * e3u_n(ji  ,jj,jk) * u_bkginc(ji  ,jj,jk)    &
+                        - e2u(ji-1,jj) * e3u_n(ji-1,jj,jk) * u_bkginc(ji-1,jj,jk)    &
+                        + e1v(ji,jj  ) * e3v_n(ji,jj  ,jk) * v_bkginc(ji,jj  ,jk)    &
+                        - e1v(ji,jj-1) * e3v_n(ji,jj-1,jk) * v_bkginc(ji,jj-1,jk)  ) / e3t_n(ji,jj,jk)
+                end do
+             end do
+             call lbc_lnk( 'asminc', zhdiv, 'T', 1. )   ! lateral boundary cond. (no sign change)
 
-              do jj = 2, jpjm1
-                 do ji = fs_2, fs_jpim1   ! vector opt.
-                    u_bkginc(ji,jj,jk) = u_bkginc(ji,jj,jk)                         &
-                         + 0.2_pwp * ( zhdiv(ji+1,jj) - zhdiv(ji  ,jj) ) * r1_e1u(ji,jj) * umask(ji,jj,jk)
-                    v_bkginc(ji,jj,jk) = v_bkginc(ji,jj,jk)                         &
-                         + 0.2_pwp * ( zhdiv(ji,jj+1) - zhdiv(ji,jj  ) ) * r1_e2v(ji,jj) * vmask(ji,jj,jk) 
-                 end do
-              end do
-           end do
+             do jj = 2, jpjm1
+                do ji = fs_2, fs_jpim1   ! vector opt.
+                   u_bkginc(ji,jj,jk) = u_bkginc(ji,jj,jk)                         &
+                        + 0.2_pwp * ( zhdiv(ji+1,jj) - zhdiv(ji  ,jj) ) * r1_e1u(ji,jj) * umask(ji,jj,jk)
+                   v_bkginc(ji,jj,jk) = v_bkginc(ji,jj,jk)                         &
+                        + 0.2_pwp * ( zhdiv(ji,jj+1) - zhdiv(ji,jj  ) ) * r1_e2v(ji,jj) * vmask(ji,jj,jk) 
+                end do
+             end do
+          end do
 
-        end do
+       end do
 
-        deallocate( zhdiv ) 
+       deallocate( zhdiv ) 
 
-     endif divdmp
+    endif divdmp
 
-   end subroutine div_damping_filter
+  end subroutine div_damping_filter
 
 !-------------------------------------------------------------------------------
 !> Routine to deallocate the BGC increment array
 !!
-   subroutine init_iauweight(weights, nsteps, iaushape)
+  subroutine init_iauweight(weights, nsteps, iaushape)
 
-     implicit none
+    implicit none
 
 ! *** Arguments ***
-     real(pwp), intent(out) :: weights(:)  ! Array of IAU weights
-     integer, intent(in) :: nsteps         ! number of steps
-     integer, intent(in) :: iaushape       ! Shape of the IAU weight function
+    real(pwp), intent(out) :: weights(:)  ! Array of IAU weights
+    integer, intent(in) :: nsteps         ! number of steps
+    integer, intent(in) :: iaushape       ! Shape of the IAU weight function
 
 ! *** Local variables
-     integer :: i, imid       ! Counter
-     real(pwp) :: wnorm       ! Weights norm
+    integer :: i, imid       ! Counter
+    real(pwp) :: wnorm       ! Weights norm
      
-     weights(:) = 0._pwp
+    weights(:) = 0._pwp
 
-     if( shape_asmiau == 0 ) then
+    if( shape_asmiau == 0 ) then
 
-        wnorm = 1.0 / real(nsteps, pwp)
+       wnorm = 1.0 / real(nsteps, pwp)
         
-        ! Constant IAU forcing
-        do i = 1, nsteps
-           weights(i) = wnorm
-        end do
+       ! Constant IAU forcing
+       do i = 1, nsteps
+          weights(i) = wnorm
+       end do
 
-     elseif (shape_asmiau == 1) then
+    elseif (shape_asmiau == 1) then
 
-        ! Linear hat-like, centred in middle of IAU interval 
+       ! Linear hat-like, centred in middle of IAU interval 
 
-        ! Compute the normalization factor
-        wnorm = 0.0
-        if( mod(nsteps, 2) == 0 ) then   ! Even number of time steps in IAU interval
-           imid = nsteps / 2 
-           do i = 1, imid
-              wnorm = wnorm + real(i)
-           end do
-           wnorm = 2.0 * wnorm
-        else                                ! Odd number of time steps in IAU interval
-           imid = (nsteps + 1) / 2        
-           do i = 1, imid - 1
-              wnorm = wnorm + real(i)
-           end do
-           wnorm = 2.0 * wnorm + real( imid )
-        endif
-        wnorm = 1.0 / wnorm
+       ! Compute the normalization factor
+       wnorm = 0.0
+       if( mod(nsteps, 2) == 0 ) then   ! Even number of time steps in IAU interval
+          imid = nsteps / 2 
+          do i = 1, imid
+             wnorm = wnorm + real(i)
+          end do
+          wnorm = 2.0 * wnorm
+       else                                ! Odd number of time steps in IAU interval
+          imid = (nsteps + 1) / 2        
+          do i = 1, imid - 1
+             wnorm = wnorm + real(i)
+          end do
+          wnorm = 2.0 * wnorm + real( imid )
+       endif
+       wnorm = 1.0 / wnorm
+       
+       do i = 1, imid - 1
+          weights(i) = real(i) * wnorm
+       end do
+       do i = imid, nsteps
+          weights(i) = real(nsteps - i + 1) * wnorm
+       end do
+    endif
 
-        do i = 1, imid - 1
-           weights(i) = real(i) * wnorm
-        end do
-        do i = imid, nsteps
-           weights(i) = real(nsteps - i + 1) * wnorm
-        end do
-     endif
-
-   end subroutine init_iauweight
+  end subroutine init_iauweight
 
 
 !-------------------------------------------------------------------------------
 !> Routine to deallocate the BGC increment array
 !!
-   subroutine asm_inc_deallocate_pdaf
+  subroutine asm_inc_deallocate_pdaf
 
-     implicit none
+    implicit none
      
 #if defined key_top
-     if (allocated(bgc_bkginc)) deallocate(bgc_bkginc)
+    if (allocated(bgc_bkginc)) deallocate(bgc_bkginc)
 #endif
 
-   end subroutine asm_inc_deallocate_pdaf
+  end subroutine asm_inc_deallocate_pdaf
 
-
-end module mod_iau_pdaf
+end module mod_asm_pdaf

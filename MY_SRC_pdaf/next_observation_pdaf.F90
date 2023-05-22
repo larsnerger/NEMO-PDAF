@@ -22,11 +22,11 @@ subroutine next_observation_pdaf(stepnow, nsteps, doexit, time)
        only: mype_ens
   use mod_nemo_pdaf, &
        only: nitend, nit000
-  use mod_iau_pdaf, &
+  use mod_asm_pdaf, &
        only: do_asmiau, steps_asmiau, &
        store_asm_step_pdaf, update_asm_step_pdaf
 #if defined key_top
-  use mod_iau_pdaf, &
+  use mod_asm_pdaf, &
        only: do_bgciau, steps_bgciau
 #endif
 
@@ -49,6 +49,17 @@ subroutine next_observation_pdaf(stepnow, nsteps, doexit, time)
 
   if (stepnow + delt_obs <= nitend) then
      ! *** During the assimilation process ***
+
+     ! The time step settings here account for the fact that for
+     ! direct initialization one needs one time steps afterwards
+     ! to appliy the increment, while for IAU one needs as many
+     ! time steps as set for IAU. A DA run has to include these
+     ! steps before writing restart files as otherwise the increment
+     ! will not be fully applied. Here, we subtract this number
+     ! of steps to ensure the application of the increment. An
+     ! alternative would be to compute the first analysis step
+     ! before the time stepping and not to perform an analysis
+     ! step at the very end.
      
      if (stepnow == nit000 - 1) then
         ! First analysis step 

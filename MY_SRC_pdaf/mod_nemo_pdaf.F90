@@ -4,7 +4,7 @@ module mod_nemo_pdaf
 
   ! Include variables from NEMO
   ! User routines should only include from mod_nemo_pdaf not from NEMO modules
-  ! The only exception is `mod_iau_pdaf` whic halso directly includes from NEMO
+  ! The only exception is `mod_asm_pdaf` whic halso directly includes from NEMO
   use par_oce, &
        only: jpi, jpj, jpk, jpiglo, jpjglo, &
        jp_tem, jp_sal

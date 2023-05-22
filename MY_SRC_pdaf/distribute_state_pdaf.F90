@@ -19,7 +19,7 @@ subroutine distribute_state_pdaf(dim_p, state_p)
        only: mype_ens
   use mod_aux_pdaf, &
        only: transform_field_mv
-  use mod_iau_pdaf, &
+  use mod_asm_pdaf, &
        only: update_bkginc_pdaf
 
   implicit none

@@ -141,7 +141,7 @@ contains
 #if defined key_top
     ! Prepare arrays for indices and switches for BGC fields
     allocate(update_trc(jptra))
-    update_trc(:) = .true.
+    update_trc(:) = .false.
 
     allocate(id%trc(jptra))
     id%trc(:)=0

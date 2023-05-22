@@ -10,6 +10,7 @@
 !! - Wibke Duesterhoeft-Wriggers, BSH, Germany
 !! - Nicholas Byrne, NCEO and University of Reading, UK
 !! - Yumeng Chen, NCEO and University of Reading, UK
+!! - Yuchen Sun, AWI, Germany
 !! - Lars Nerger, AWI, Germany
 !!
 module mod_init_pdaf
@@ -64,7 +65,7 @@ contains
          incremental, type_forget, forget, rank_analysis_enkf, &
          type_trans, type_sqrt, delt_obs, locweight, type_ens_init, &
          type_central_state, type_hyb, hyb_gamma, hyb_kappa
-    use mod_iau_pdaf, &
+    use mod_asm_pdaf, &
          only: asm_inc_init_pdaf
     use mod_nemo_pdaf, &
          only: set_nemo_grid, lwp, numout
