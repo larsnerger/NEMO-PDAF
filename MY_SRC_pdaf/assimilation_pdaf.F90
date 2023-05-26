@@ -213,8 +213,6 @@ contains
          only: mype_ens, abort_parallel, COMM_ensemble, MPIerr
     use nemo_pdaf, &
          only: lwp, numout
-    use asminc_pdaf, &
-         only: update_asm_step_pdaf
 
     implicit none
 
