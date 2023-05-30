@@ -108,8 +108,8 @@ program MAIN_OFFLINE
      write (*, '(25x, a)') 'Allocated memory  (MB)'
      write (*, '(17x, a, f12.3, a)') &
           'Model fields:', memcount_get(1, 'M'), ' MB'
-     write (*, '(20x, a, f12.3, a)') &
-          'gen_covar:', memcount_get(4, 'M'), ' MB'
+     write (*, '(21x, a, f12.3, a)') &
+          'eofcovar:', memcount_get(4, 'M'), ' MB'
 
      write (*, '(/17x, a)') 'Offline - Timing information'
      write (*, '(10x, 45a)') ('-', i=1, 45)

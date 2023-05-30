@@ -44,7 +44,7 @@ subroutine eofcovar()
   real    :: limit         ! lower limit for singular values
 
   namelist /generate_covar/ dim_ens, maxtimes, do_mv, subtract_mean, limit, hwindow, &
-       type_ens_init, file_covar, path_covar, path_ens
+       type_ens_init, file_covar, path_covar, path_ens, running_mean
 
 
 ! ************************************************

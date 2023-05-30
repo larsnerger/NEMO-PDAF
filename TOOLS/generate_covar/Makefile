@@ -25,7 +25,7 @@ DEFS = -DUSE_NCPAR -DPDAF_OFFLINE  #-Dkey_top
 include $(BASEDIR)/make.arch/$(PDAF_ARCH).h
 
 # Name of executable
-EXE = PDAF_offline
+EXE = PDAF_eofcovar
 
 # End of user specifications
 ######################################################
