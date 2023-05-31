@@ -41,7 +41,6 @@ module obs_sst_cmems_pdafomi
   real(pwp) :: rms_obs_sst_cmems = 0.8  !< Observation error standard deviation (for constant errors)
   real(pwp) :: lradius_sst_cmems = 1.0  !< Localization cut-off radius
   real(pwp) :: sradius_sst_cmems = 1.0  !< Support radius for weight function
-  real(pwp) :: omit_sst_cmems = 0.0     !< Omit obs. if innovation > obs. rms * this factor
   integer :: mode_sst_cmems = 0         !< Observation mode: 
                                         !< (0) linear interpolation
                                         !< (1) super-obbing: average 4 observation values
@@ -208,9 +207,6 @@ contains
     ! Number of coordinates used for distance computation
     ! The distance compution starts from the first row
     thisobs%ncoord = 2
-
-    ! Set limit factor for omitted observation due to high innovation
-    thisobs%inno_omit = omit_sst_cmems
 
     ! In case of MPI parallelization restrict observations to sub-domains
     if (npes_filter>1) thisobs%use_global_obs = 0
