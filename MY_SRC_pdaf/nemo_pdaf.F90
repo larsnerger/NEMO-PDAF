@@ -1,7 +1,20 @@
+!> Include NEMO variables and initialize NEMO grid information
+!!
+!! This module includes variables from NEMO. For PDAF in its
+!! online coupling it is the single point which directly links
+!! to NEMO. All other routines include from this module.
+!! For the offline case the variables are declared here and
+!! separately initialized.
+!!
+!! Next to including information from NEMO, the routine
+!! set_nemo_grid initializes arrays holding the grid information
+!! for use with state vectors in the PDAF user code for NEMO.
+!!
 module nemo_pdaf
 
   use mod_kind_pdaf
 
+#ifndef PDAF_OFFLINE
   ! Include variables from NEMO
   ! User routines should only include from `nemo_pdaf` not from NEMO modules
   ! The only exception is `asminc_pdaf` which also directly includes from NEMO
@@ -29,18 +42,25 @@ module nemo_pdaf
   use trcnam, &
        only: sn_tracer
 #endif
+#endif
 
   implicit none
 
+#if defined PDAF_OFFLINE
   ! *** NEMO model variables - they used in the offline mode
-!  integer :: jpiglo, jpjglo, jpk        ! Global NEMO grid dimensions
-!  integer :: nldi, nldj                 ! first inner index in i/j direction of sub-domain
-!  integer :: nlei, nlej                 ! last inner index in i/j direction of sub-domain
-!  integer :: nimpp, njmpp               ! start i,j of subdomain including halo
+  integer :: jpiglo, jpjglo, jpk        ! Global NEMO grid dimensions
+  integer :: nldi, nldj                 ! first inner index in i/j direction of sub-domain
+  integer :: nlei, nlej                 ! last inner index in i/j direction of sub-domain
+  integer :: nimpp, njmpp               ! start i,j of subdomain including halo
 
-!  real, allocatable :: glamt(:,:)       ! Longitudes
-!  real, allocatable :: gphit(:,:)       ! Latitudes
-!  real, allocatable :: gdept_1d(:)      ! Depths
+  real(pwp), allocatable :: glamt(:,:)       ! Longitudes
+  real(pwp), allocatable :: gphit(:,:)       ! Latitudes
+  real(pwp), allocatable :: gdept_1d(:)      ! Depths
+  real(pwp), allocatable :: tmask(:,:,:)     ! Temperature mask array
+
+  logical :: lwp = .true.
+  integer :: numout = 6
+#endif
 
   ! *** Other grid variables
   real(pwp), allocatable :: tmp_4d(:,:,:,:)     ! 4D array used to represent full NEMO grid box
@@ -88,8 +108,10 @@ contains
   subroutine set_nemo_grid()
 
     use mod_kind_pdaf
+    use assimilation_pdaf, &
+         only: screen
     use parallel_pdaf, &
-         only: mype_model, task_id
+         only: mype_model, npes_model, task_id
     use PDAFomi, &
          only: PDAFomi_set_domain_limits
 
@@ -118,10 +140,26 @@ contains
     istart = nimpp+nldi-1
     jstart = njmpp+nldj-1
 
-    ! Set coordinate vectors
+    ! Set coordinate vectors for rectangular grids
     allocate(lat1_p(nj_p), lon1_p(ni_p))
-    lat1_p = gphit(1, j0 + 1 : j0 + nj_p)
-    lon1_p = glamt(i0 + 1 : i0 + ni_p, 1)
+
+    lat1_p(:) = 0.0
+    do j = 1, nj_p
+       do i = 1, ni_p
+          if (gphit(i+i0, j+j0) > 0.00001) then
+             lat1_p(j) = gphit(i+i0, j+j0)
+          endif
+       enddo
+    enddo
+
+    lon1_p(:) = 0.0
+    do j = 1, nj_p
+       do i = 1, ni_p
+          if (abs(glamt(i+i0, j+j0)) > 0.00001) then
+             lon1_p(i) = glamt(i+i0, j+j0)
+          endif
+       enddo
+    enddo
 
     ! Store interior coordinates
     allocate(lons(ni_p, nj_p), lats(ni_p, nj_p))
@@ -237,6 +275,23 @@ contains
        ! State vector contains 2d/3d grid box
        sdim3d = dim_3d_p
        sdim2d = dim_2d_p
+    end if
+
+! *** Screen output ***
+
+    if (npes_model==1) then
+       write(*,'(a,5x,a,3x,i11)') 'NEMO-PDAF', 'Number of wet surface points', nwet
+       write(*,'(a,5x,a,8x,i11)') 'NEMO-PDAF', 'Number of 3D wet points', nwet3d
+       write(*,'(a,5x,a,8x,i11)') 'NEMO-PDAF', '2D wet points * nlayers', nwet*nk_p
+    else 
+       if (screen>1) then
+          write(*,'(a,2x,a,1x,i4,2x,a,3x,i11)') &
+               'NEMO-PDAF', 'PE', mype_model, 'Number of wet surface points', nwet
+          write(*,'(a,2x,a,1x,i4,2x,a,8x,i11)') &
+               'NEMO-PDAF', 'PE', mype_model, 'Number of 3D wet points', nwet3d
+          write(*,'(a,2x,a,1x,i4,2x,a,8x,i11)') &
+               'NEMO-PDAF', 'PE', mype_model, '2D wet points * nlayers', nwet*nk_p
+     end if
     end if
 
 

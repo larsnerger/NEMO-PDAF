@@ -35,7 +35,7 @@ module io_pdaf
   implicit none
   save
 
-  integer :: verbose_io=1   ! Set verbosity of IO routines (0,1,2,3)
+  integer :: verbose_io=0   ! Set verbosity of IO routines (0,1,2,3)
 
   ! Control of IO
   character(len=4) :: save_var='none'        ! Write variance at 'fcst', 'ana', 'both', or 'none'
@@ -53,6 +53,7 @@ module io_pdaf
   character(len=200) :: path_inistate      ! Path to NEMO files
   character(len=200) :: path_ens           ! Path of ensemble file
   character(len=200) :: file_ens           ! File name of ensemble file
+  character(len=200) :: path_covar         ! Path of file holding covariance matrix
   character(len=200) :: file_covar         ! File name of file holding covariance matrix
   character(len=200) :: path_restart       ! Path of restart file
   character(len=80)  :: file_restart       ! file name of restart dile
@@ -585,7 +586,7 @@ end subroutine read_ens_mv_filelist
       else
          n_fields_read = n_fields_covar
          if (verbose_io>0 .and. mype==0) &
-              WRITE(*, '(a,1x,a,i)') 'NEMO-PDAF', '--- Number of fields to read', n_fields_read
+              WRITE(*, '(a,1x,a,i4)') 'NEMO-PDAF', '--- Number of fields to read', n_fields_read
       end if
 
       ! loop over all fields
@@ -625,6 +626,181 @@ end subroutine read_ens_mv_filelist
     call check( NF90_CLOSE(ncid) )
 
   end subroutine read_eof_cov
+
+!================================================================================
+
+!> Write a covariance matrix into file
+!!
+  subroutine write_covar_mv(path, name, dim_p, rank, svdU, meanstate, svals)
+    
+    use netcdf
+   
+    implicit none
+
+! *** Arguments ***
+    character(len=*), intent(in) :: path         ! File path
+    character(len=*), intent(in) :: name         ! File name
+    integer(4),       intent(in) :: dim_p        ! State dimension
+    integer(4),       intent(in) :: rank         ! Number of EOFs to write
+    real(8),          intent(inout) :: svdU(:,:) ! Array of singular vectors
+    real(8),          intent(in) :: meanstate(:) ! State vector
+    real(8),          intent(in) :: svals(:)     ! Vector of singular values
+
+! *** Local variables ***
+    integer(4) :: ncid
+    integer(4) :: dimids_field(4)
+    integer(4) :: cnt,i,j,k, member
+    integer(4) :: dimid_rank, dimid_lvls, dimid_lat, dimid_lon, dimid_one, dimid_state
+    integer(4) :: id_lat, id_lon, id_lev, id_time, id_field, id_svals
+    integer(4) :: dimids(4)
+    integer(4) :: startC(2), countC(2)
+    integer(4) :: startt(4), countt(4)
+    integer(4) :: startz(1), countz(1)
+    real(8)    :: fillval
+    real(8)    :: timeField(1)
+    character(len=200) :: filename
+
+
+! *** Create file ***
+
+!    filename = trim(path)//trim(name)
+
+    if (verbose_io>0 .and. mype==0) then
+       write (*,'(1x,a)') 'Write covariance matrix into file'
+       write (*,'(1x,a,a)') 'Create file: ', trim(path)//trim(name)
+       if (do_deflate) write (*,'(1x,a)') '--- Apply deflation'
+    endif
+
+    if (npes==1) then
+       call check( NF90_CREATE(trim(path)//trim(name),NF90_NETCDF4,ncid))
+    else
+       call check( NF90_CREATE_PAR(trim(path)//trim(name), NF90_NETCDF4, comm_filter, MPI_INFO_NULL, ncid))
+    end if
+    call check( NF90_PUT_ATT(ncid, NF90_GLOBAL, 'title', 'Covariance matrix'))
+    
+    ! define dimensions for NEMO-input file
+    call check( NF90_DEF_DIM(ncid,'rank', rank, dimid_rank))
+    call check( NF90_DEF_DIM(ncid, 'z', nlvls, dimid_lvls))
+    call check( NF90_DEF_DIM(ncid, 'y', nlats, dimid_lat) )
+    call check( NF90_DEF_DIM(ncid, 'x', nlons, dimid_lon) )
+    call check( NF90_DEF_DIM(ncid, 'one', 1, dimid_one) )
+    call check( NF90_DEF_DIM(ncid, 'dim_state', dim_p, dimid_state) )
+   
+    dimids_field(4)=dimid_rank
+    dimids_field(3)=dimid_lvls
+    dimids_field(2)=dimid_lat
+    dimids_field(1)=dimid_lon
+       
+    ! define variables
+    call check( NF90_DEF_VAR(ncid, 'nav_lat', NF90_FLOAT, dimids_field(1:2), id_lat))
+    call check( NF90_DEF_VAR(ncid, 'nav_lon', NF90_FLOAT, dimids_field(1:2), id_lon))
+    call check( NF90_DEF_VAR(ncid, 'nav_lev', NF90_FLOAT, dimids_field(3), id_lev))
+
+    if (do_deflate) then
+       call check( NF90_def_var_deflate(ncid, id_lat, 0, 1, 1) )
+       call check( NF90_def_var_deflate(ncid, id_lon, 0, 1, 1) )
+       call check( NF90_def_var_deflate(ncid, id_lev, 0, 1, 1) )
+    end if
+
+    call check( NF90_DEF_VAR(ncid, 'sigma', NF90_FLOAT, dimids_field(4), id_svals))
+
+    do i = 1, n_fields
+       if (sfields(i)%ndims==3) then
+          dimids_field(3)=dimid_lvls
+          call check( NF90_DEF_VAR(ncid, trim(sfields(i)%variable)//'_svd', NF90_DOUBLE, dimids_field(1:4), id_field) )
+       else
+          dimids_field(3)=dimid_rank
+          call check( NF90_DEF_VAR(ncid, trim(sfields(i)%variable)//'_svd', NF90_DOUBLE, dimids_field(1:3), id_field) )
+       end if
+       if (do_deflate) &
+            call check( NF90_def_var_deflate(ncid, id_field, 0, 1, 1) )
+       call check( nf90_put_att(ncid, id_field, "coordinates", "nav_lat nav_lon") )
+       fillval = 1.0e20
+       call check( nf90_put_att(ncid, id_field, "_FillValue", fillval) )
+       call check( nf90_put_att(ncid, id_field, "missing_value", fillval) )
+    end do
+       
+    ! End define mode
+    call check( NF90_ENDDEF(ncid) )
+
+    ! write coordinates
+    startz(1)=1
+    countz(1)=nlvls
+
+    startC(1)=1
+    startC(2)=1
+    countC(1)=nlons
+    countC(2)=nlats
+
+    if (mype==0) then
+       call check( nf90_put_var(ncid,id_lev,depths,startz,countz))
+       call check( nf90_put_var(ncid,id_lon,lons,startC,countC))
+       call check( nf90_put_var(ncid,id_lat,lats,startC,countC))
+    end if
+
+     ! *** Write singular values
+
+    if (mype==0) then
+       startz(1)=1
+       countz(1)=rank
+       call check( nf90_put_var(ncid, id_svals, svals(1:rank), startz, countz))
+    end if
+
+    ! *** Write singular vectors as fields
+
+    do member = 1, rank
+
+       ! Backwards transformation of state
+       call transform_field_mv(2, svdU(:,member),0, verbose_io)
+
+    enddo
+
+    do i = 1, n_fields
+
+       if (verbose_io>1 .and. mype==0) then
+          write (*,'(a,i5,a,1x,a,a,i10)') &
+               'NEMO-PDAF', i, 'Variable: ',trim(sfields(i)%variable), ',  offset', sfields(i)%off
+       end if
+
+       do member = 1, rank
+
+          ! Convert state vector to field
+          tmp_4d = 1.0e20
+          call state2field(svdU(:,member), tmp_4d, sfields(i)%off, sfields(i)%ndims, tmask)
+
+          if (verbose_io>0 .and. mype==0 .and. i==1) &
+               write (*,'(a,4x,a,i6)') 'NEMO-PDAF','--- write rank', member
+
+          call check( nf90_inq_varid(ncid, trim(sfields(i)%variable)//'_svd', id_field) )
+
+          ! Attention with coordinates, in Nemo Restart it is var(time,depth,y,x)
+          startt(1) = istart
+          countt(1) = ni_p
+          startt(2) = jstart
+          countt(2) = nj_p
+          startt(3) = 1
+          countt(3) = nlvls
+          startt(4) = member
+          countt(4) = 1 
+    
+          if (sfields(i)%ndims==3) then
+             startt(3) = 1
+             countt(3) = nlvls
+             call check( nf90_put_var(ncid, id_field, tmp_4d, startt, countt))
+          else
+             startt(3) = member
+             countt(3) = 1 
+
+             call check( nf90_put_var(ncid, id_field, tmp_4d, startt(1:3), countt(1:3)))
+          end if
+
+       end do
+    end do
+
+    ! *** close file with state sequence ***
+    call check( NF90_CLOSE(ncid) )
+
+  end subroutine write_covar_mv
 
 
 !================================================================================
