@@ -1061,7 +1061,7 @@ end subroutine read_ens_mv_filelist
     ! *** Write fields
 
     call check( nf90_inq_varid(ncid, 'time', id_time) )
-    call check( nf90_VAR_PAR_ACCESS(NCID, id_time, NF90_COLLECTIVE) )
+!    call check( nf90_VAR_PAR_ACCESS(NCID, id_time, NF90_COLLECTIVE) )
 !    call check( nf90_put_vara(ncid, id_time, timeField, start=(/step/), count=(/1/)))
     startt(1) = step
     countt(1) = 1
@@ -1269,7 +1269,7 @@ end subroutine read_ens_mv_filelist
     ! *** Write fields
 
     call check( nf90_inq_varid(ncid, 'time', id_time) )
-    call check( nf90_VAR_PAR_ACCESS(NCID, id_time, NF90_COLLECTIVE) )
+!    call check( nf90_VAR_PAR_ACCESS(NCID, id_time, NF90_COLLECTIVE) )
 !    call check( nf90_put_vara(ncid, id_time, timeField, start=(/step/), count=(/1/)))
     startt(1) = step
     countt(1) = 1

@@ -1,0 +1,13 @@
+! Namelist file for PDAF configuration
+
+&pdaf_offline
+ ! Path and file for reading model dimensions
+ verbose_io = 2
+ path_dims='out_ergom'
+ file_dims='NORDIC_1d_grid_T_20150101-20150101.nc'
+ varname='votemper'
+ use_wet_state = 2
+ read_decomp=.false.
+ jptra = 0
+/
+

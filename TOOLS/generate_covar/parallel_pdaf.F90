@@ -32,11 +32,12 @@ module parallel_pdaf
   integer :: mype_filter        ! Rank in COMM_filter
   integer :: npes_filter        ! Size of COMM_filter
 
-  integer :: npes_world, mype_world   ! # PEs and PE rank in MPI_COMM_WORLD
-
   integer :: COMM_couple        ! MPI communicator for coupling filter and model
-  integer :: mype_couple        ! Rank and size in COMM_couple
-  integer :: npes_couple        ! Rank and size in COMM_couple
+  integer :: mype_couple        ! Rank in COMM_couple
+  integer :: npes_couple        ! Size in COMM_couple
+
+  integer :: mype_world         ! Rank in MPI_COMM_WORLD
+  integer :: npes_world         ! Size in MPI_COMM_WORLD
 
   logical :: modelpe            ! Whether we are on a PE in a COMM_model
   logical :: filterpe           ! Whether we are on a PE in a COMM_filter
@@ -58,8 +59,8 @@ contains
 
 #ifndef PDAF_OFFLINE
       use in_out_manager, only: cxios_context
-      use timer, only: timeit
 #endif
+      use timer, only: timeit
 
       !> Communicator after XIOS splitting
       integer, intent(inout) :: mpi_comm
@@ -70,34 +71,34 @@ contains
       integer :: pe_index
       !> Variables for communicator-splitting
       integer :: my_color, color_couple
-      !> Number of model tasks
+      !> Ensemble size / Number of model tasks
+      integer :: dim_ens
       integer :: tasks
       !> namelist file
       character(lc) :: nmlfile
 
       integer :: screen=1
 
-#ifndef PDAF_OFFLINE
       call timeit(5,'ini')
       call timeit(5,'new')
       call timeit(1,'new')
-#endif
 
       ! Number of ensemble members, supplied by PDAF namelist
-      namelist /tasks_nml/ tasks, screen
+      namelist /ensemble_nml/ dim_ens, screen
 
       ! Read namelist for number of model tasks
       nmlfile = 'namelist_cfg.pdaf'
 
       open (20, file=nmlfile)
-      read (20, NML=tasks_nml)
+      read (20, NML=ensemble_nml)
       close (20)
 
-#ifndef PDAF_OFFLINE
-      n_modeltasks = tasks
-#else
+      ! Online in case of online mode: dim_ens = number of parallel model tasks
+      n_modeltasks = dim_ens
+      tasks = dim_ens
+#ifdef PDAF_OFFLINE
       ! offline mode always has only one model task
-      n_modeltasks = 1
+      tasks = 1
 #endif
 
       ! ***              COMM_ENSEMBLE                ***
@@ -115,10 +116,10 @@ contains
 
       ! Store # PEs per ensemble member. Used for info on PE 0 and for
       ! generation of model communicators on other PEs
-      allocate (local_npes_model(n_modeltasks))
-      local_npes_model = floor(real(npes_ens)/real(n_modeltasks))
+      allocate (local_npes_model(tasks))
+      local_npes_model = floor(real(npes_ens)/real(tasks))
 
-      do i = 1, (npes_ens - n_modeltasks*local_npes_model(1))
+      do i = 1, (npes_ens - tasks*local_npes_model(1))
          local_npes_model(i) = local_npes_model(i) + 1
       end do
 
@@ -126,7 +127,7 @@ contains
       ! *** Generate communicators for model runs ***
 
       pe_index = 0
-      doens1: do i = 1, n_modeltasks
+      doens1: do i = 1, tasks
          do j = 1, local_npes_model(i)
             if (mype_ens == pe_index) then
                task_id = i
@@ -221,10 +222,10 @@ contains
       ! Adapt XIOS contexts for ensemble
       write(task_str,'(I3.3)') task_id
       cxios_context = trim(cxios_context)//'_'//trim(task_str)
+#endif
 
       call timeit(1,'old')
       call timeit(2,'new')
-#endif
 
    end subroutine init_parallel_pdaf
 

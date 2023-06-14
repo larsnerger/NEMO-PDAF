@@ -4,8 +4,11 @@
 !! file for NEMO that can later be used to initialize an
 !! ensemble for assimilation with PDAF.
 !!
-!! History:
-!! - 2022-05 Lars Nerger, initial version based on PDAF offline code
+!! The program reads its configuration from the namelist files
+!! - pdaf_offline.nml  (namelist: pdaf_offline)
+!! - pdaf_eofcovar.nml (namelist: generate_covar)
+!! - namelist_cfg.pdaf (namelists: ensemble_nml, state_vector, sfields_nml)
+!!   This is the same namelist file as used for the NEMO-PDAF online coupling
 !!
 program MAIN_OFFLINE
 
@@ -19,10 +22,12 @@ program MAIN_OFFLINE
        only: timeit, time_tot
   use assimilation_pdaf, &    ! Dimensions
        only: dim_state, dim_state_p
+  use initialize_offline, &   ! Init grid information for offline-mode
+       only: init_offline
   use nemo_pdaf, &            ! NEMO-related variables and functions
        only: set_nemo_grid
-    use statevector_pdaf, &   ! State vector functions
-         only: setup_statevector
+  use statevector_pdaf, &     ! State vector functions
+       only: setup_statevector
 
   implicit none
 
@@ -43,8 +48,6 @@ program MAIN_OFFLINE
 
   ! Initialize memory counting and timers
   call memcount_ini(4)
-  call timeit(3, 'ini')
-  call timeit(1,'new')
 
 
 ! *** Initial Screen output ***
@@ -71,10 +74,9 @@ program MAIN_OFFLINE
 ! *** Specify state vector and state dimension ***
 ! ************************************************
 
-  call timeit(2,'new')
-
   ! Initialize dimension information for NEMO grid
-  call init_grid_dims()
+  call init_offline()
+!  call init_grid_dims()
 
   ! Initialize NEMO grid
   call set_nemo_grid()

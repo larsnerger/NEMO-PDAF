@@ -1,0 +1,9 @@
+! Namelist to generate covariance matrix
+&generate_covar
+ hwindow = 2   ! half window size to compute running mean
+ type_ens_init = 2
+ path_ens = 'out_ergom'
+ path_covar = '.'
+ file_covar = 'covar_test.nc'
+/
+

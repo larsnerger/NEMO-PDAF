@@ -61,6 +61,7 @@ module nemo_pdaf
   logical :: lwp = .true.
   integer :: numout = 6
   integer :: jptra = 0
+  integer :: ndastp = 1
 
 #if defined key_top
   type tracer
@@ -317,5 +318,25 @@ contains
     call PDAFomi_set_domain_limits(lim_coords)
 
   end subroutine set_nemo_grid
+
+
+#ifdef PDAF_OFFLINE
+!> Return date as real from step value
+!!
+!! This routine mimicks what NEMO's routine calc_date would
+!! return. However, here we assume that 'step' is just an integer
+!! containing the date
+!! 
+  subroutine calc_date(step, rdate)
+
+    implicit none
+
+    integer, intent(in)    :: step
+    real(pwp), intent(out) :: rdate
+
+    rdate = REAL(step+1, pwp)
+ 
+  end subroutine calc_date
+#endif
 
 end module nemo_pdaf

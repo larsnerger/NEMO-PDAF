@@ -1,8 +1,84 @@
+module initialize_offline
+
+  implicit none
+
+  character(len=20) :: varname                  ! Name of variable to read to determine mask
+  logical :: read_decomp=.false.                ! Whether to read domain decomposition from file
+  character(len=50) :: file_decomp='decomp.txt' ! Name of decomposition file
+  integer :: screen=1                           ! Verbosity flag
+
+contains
+
+!> Initialize parameters for PDAF offline implementation
+!!
+!! This routine reads in the pdaf offline namelist to 
+!! initialize parameters for the offline implementation.
+!! The routine afterwards calls the routine that initializes
+!! the model grid information.
+!!
+  subroutine init_offline()
+
+  use mod_kind_pdaf
+  use assimilation_pdaf, &
+       only: step_null
+  use nemo_pdaf, &
+       only: path_dims, file_dims, jptra, ndastp, use_wet_state
+#if defined key_top
+  use nemo_pdaf, &
+       only: sn_tracer
+#endif
+  use io_pdaf, &
+       only: verbose_io, check, add_slash
+
+    implicit none
+    
+    integer   :: day, year, month
+    real(pwp) :: rdate
+
+    namelist /pdaf_offline/ screen, path_dims, file_dims, varname, use_wet_state, &
+         read_decomp, file_decomp, verbose_io, jptra, ndastp
+
+
+! *** Initialize
+    varname = 'thetao'
+    path_dims = './'
+    file_dims = 'nemo_grid.nc'
+
+! *** Read namelist file for PDAF-offline ***
+
+    open (500,file='pdaf_offline.nml')
+    read (500,NML=pdaf_offline)
+    close (500)
+
+    call add_slash(path_dims)
+
+    ! Set step_null
+    rdate = real(ndastp)
+    year = floor(rdate/10000.0_pwp)
+    month = floor((rdate-real(year*10000))/100.0_pwp)
+    day = floor(rdate-real(year*10000)-real(month*100))
+    step_null = day
+
+#if defined key_top
+    if (jptra>0) allocate(sn_tracer(jptra))
+#endif
+
+! *** Initialize model grid information ***
+    call init_grid_dims()
+
+  end subroutine init_offline
+
+
+
 !> Initialize model dimensions
 !!
-!! Routine to perform initialization of the model information for
-!! PDAF. Here, the global size of the model domain, it decomposition
-!! and the coordinate arrays need to be initialized.
+!! Routine to perform initialization of the model grid information
+!! for PDAF. Here, the global size of the model domain, its
+!! decomposition and the coordinate arrays are initialized.
+!! 
+!! This routine is particular for the offline implementation of
+!! PDAF since the model grid information is not directly accessible
+!! from the model.
 !!
 subroutine init_grid_dims()
 
@@ -13,19 +89,14 @@ subroutine init_grid_dims()
        only: mype=>mype_world, npes=>npes_world, MPIerr, &
        abort_parallel
   use assimilation_pdaf, &
-       only: dim_ens
+       only: step_null
   use nemo_pdaf, &
-       only: path_dims, file_dims, tmask, jptra, &
+       only: path_dims, file_dims, tmask, tmp_4d, &
        jpiglo, jpjglo, jpk, glamt, gphit, gdept_1d, &
-       tmp_4d, dim_2d, dim_2d_p, lat1, lon1, &
-       use_wet_state, nimpp, njmpp, istart, jstart, &
-       nldi, nldj, nlei, nlej, ni_p, nj_p, nk_p, jptra
-#if defined key_top
-  use nemo_pdaf, &
-       only: sn_tracer
-#endif
+       dim_2d, dim_2d_p, nimpp, njmpp, istart, jstart, &
+       nldi, nldj, nlei, nlej, ni_p, nj_p, nk_p
   use io_pdaf, &
-       only: verbose_io, check, add_slash
+       only: check
   use mod_memcount_pdaf, &
        only: memcount
 
@@ -40,42 +111,15 @@ subroutine init_grid_dims()
   integer :: cnt, cnt_all, cnt_layers           ! Counters
   integer :: ncid                               ! nc file ID
   integer :: lon_dimid, lat_dimid, lvl_dimid    ! Dimension IDs
-  integer :: id_gphit, id_glamt, id_navlev, id_temp  ! variable IDs
-  real(8) :: missing_value                           ! missing value
-  logical :: have_pdafnml                            ! Flag whether namelist file is present
-  character(len=20) :: varname                  ! Name of variable ot read to determine mask
-  character(len=1)  :: decomp='y'               ! Direction of decomposition (x, y)
-  logical :: read_decomp=.false.                ! Whether to read domain decomposition from file
-  character(len=50) :: file_decomp='decomp.txt' ! Name of decomposition file
-  integer :: n_domains_lon, n_domains_lat
+  integer :: id_gphit, id_glamt, id_nlev, id_temp  ! variable IDs
+  real(pwp) :: missing_value                    ! missing value
+  integer :: n_domains_lon, n_domains_lat       ! Number of paralle tasks  in lon/lat
   integer, allocatable :: dims_lat(:), dims_lon(:)
   integer, allocatable :: nldi_all(:), nldj_all(:) ! first inner index in i/j direction for all PEs
   integer, allocatable :: nlei_all(:), nlej_all(:) ! last inner index in i/j direction for all PEs
   integer :: nx, ny, nz                         ! Size of 3D grid
+  character(len=1)  :: decomp='y'               ! Direction of decomposition (x, y)
 
-  namelist /pdaf_offline/ screen, path_dims, file_dims, varname, use_wet_state, &
-       read_decomp, file_decomp, verbose_io, jptra, dim_ens
-
-
-! **********************
-! *** Initialization ***
-! **********************
-
-  varname = 'thetao'
-  path_dims = './'
-  file_dims = 'nemo_output.nc'
-
-! *** Read namelist file for PDAF ***
-
-  open (500,file='pdaf.nml')
-  read (500,NML=pdaf_offline)
-  close (500)
-
-  call add_slash(path_dims)
-
-#if defined key_top
-  if (jptra>0) allocate(sn_tracer(jptra))
-#endif
 
 ! *************************************
 ! *** Read dimensions of model grid ***
@@ -216,7 +260,7 @@ subroutine init_grid_dims()
 
   call check( nf90_inq_varid(ncid, 'nav_lat', id_gphit) )
   call check( nf90_inq_varid(ncid, 'nav_lon', id_glamt) )
-  call check( nf90_inq_varid(ncid, 'deptht', id_navlev) )
+  call check( nf90_inq_varid(ncid, 'deptht', id_nlev) )
   call check( nf90_inq_varid(ncid, trim(varname), id_temp) )
 
   call check( nf90_get_att(ncid, id_temp, 'missing_value', missing_value) )
@@ -228,7 +272,7 @@ subroutine init_grid_dims()
 
   call check( nf90_get_var(ncid, id_glamt, glamt(:,:), (/1, 1/), (/nx, ny/) ) )
   call check( nf90_get_var(ncid, id_gphit, gphit(:,:), (/1, 1/), (/nx, ny/) ) )
-  call check( nf90_get_var(ncid, id_navlev, gdept_1d(:), (/1/), (/nz/) ) )
+  call check( nf90_get_var(ncid, id_nlev, gdept_1d(:), (/1/), (/nz/) ) )
 
   call check( nf90_get_var(ncid, id_temp, tmp_4d(:,:,:,:), (/nldi, nldj, 1, 1/), &
        (/ni_p, nj_p, nz, 1/) ) )
@@ -270,3 +314,6 @@ subroutine init_grid_dims()
   end if
 
 end subroutine init_grid_dims
+
+
+end module initialize_offline
