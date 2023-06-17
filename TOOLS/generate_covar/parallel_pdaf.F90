@@ -65,26 +65,20 @@ contains
       !> Communicator after XIOS splitting
       integer, intent(inout) :: mpi_comm
 
-      !> Counters
-      integer :: i, j
-      !> Index of PE
-      integer :: pe_index
-      !> Variables for communicator-splitting
-      integer :: my_color, color_couple
-      !> Ensemble size / Number of model tasks
-      integer :: dim_ens
-      integer :: tasks
-      !> namelist file
-      character(lc) :: nmlfile
+      integer :: i, j                   !> Counters
+      integer :: pe_index               !> Index of PE
+      integer :: my_color, color_couple !> Variables for communicator-splitting
+      integer :: dim_ens                !> Ensemble size / Number of model tasks
+      integer :: tasks                  !> Number of taks for communicator splitting
+      character(lc) :: nmlfile          !> Namelist file
+      integer :: screen=1               !> Verbosity flag
 
-      integer :: screen=1
+      ! Number of ensemble members, supplied by PDAF namelist
+      namelist /ensemble_nml/ dim_ens, screen
 
       call timeit(5,'ini')
       call timeit(5,'new')
       call timeit(1,'new')
-
-      ! Number of ensemble members, supplied by PDAF namelist
-      namelist /ensemble_nml/ dim_ens, screen
 
       ! Read namelist for number of model tasks
       nmlfile = 'namelist_cfg.pdaf'

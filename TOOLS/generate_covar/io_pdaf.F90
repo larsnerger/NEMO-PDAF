@@ -1406,8 +1406,7 @@ end subroutine read_ens_mv_filelist
 
     if (.not. allocated(tmp_4d)) allocate(tmp_4d(ni_p, nj_p, nk_p, 1))
     nf_prec = NF90_DOUBLE
-
-    fillval = 0.0_pwp
+    fillval = 1.0e20_pwp
 
 
 ! *****************************
@@ -1461,15 +1460,15 @@ end subroutine read_ens_mv_filelist
           if (sfields(i)%update) then
              if (sfields(i)%ndims==3) then
                 dimids_field(3)=dimid_lvls
-                call check( NF90_DEF_VAR(ncid, trim(sfields(i)%variable), nf_prec, dimids_field(1:4), id_incr) )
+                call check( NF90_DEF_VAR(ncid, trim(sfields(i)%name_incr), nf_prec, dimids_field(1:4), id_incr) )
              else
                 dimids_field(3)=dimid_time
-                call check( NF90_DEF_VAR(ncid, trim(sfields(i)%variable), nf_prec, dimids_field(1:3), id_incr) )
+                call check( NF90_DEF_VAR(ncid, trim(sfields(i)%name_incr), nf_prec, dimids_field(1:3), id_incr) )
              end if
              if (do_deflate) &
                   call check( NF90_def_var_deflate(ncid, id_incr, 0, 1, 1) )
 
-             call check( nf90_put_att(ncid, id_incr, "long_name", trim(sfields(i)%name_incr)//trim('Increment')) )
+             call check( nf90_put_att(ncid, id_incr, "long_name", trim(sfields(i)%variable)//'_'//trim('Increment')) )
              call check( nf90_put_att(ncid, id_incr, "units", trim(sfields(i)%unit)) )
              call check( nf90_put_att(ncid, id_incr, "coordinates", "nav_lat nav_lon") )
              call check( nf90_put_att(ncid, id_incr, "_FillValue", fillval) )
@@ -1543,7 +1542,7 @@ end subroutine read_ens_mv_filelist
           if (verbose_io>1 .and. mype==0) &
                write (*,'(a,1x,a,a)') 'NEMO-PDAF', '--- write variable: ', trim(sfields(i)%variable)
 
-          call check( nf90_inq_varid(ncid, trim(sfields(i)%variable), id_incr) )
+          call check( nf90_inq_varid(ncid, trim(sfields(i)%name_incr), id_incr) )
 !       call check( nf90_VAR_PAR_ACCESS(NCID, id_field, NF90_COLLECTIVE) )
 
           startt(1) = istart
