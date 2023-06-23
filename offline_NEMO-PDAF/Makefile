@@ -16,7 +16,7 @@
 BASEDIR = ../PDAF_V2.1
 
 # CPP definitions. Define 'key_top' if the state vector contains also biogeochemistry
-DEFS = -DUSE_NCPAR -DPDAF_OFFLINE  #-Dkey_top
+DEFS = -DPDAF_OFFLINE  #-Dkey_top
 
 # Include machine-specific definitions
 # For available include files see directory make.arch
