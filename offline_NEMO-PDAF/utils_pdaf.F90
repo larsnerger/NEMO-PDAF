@@ -263,9 +263,13 @@ contains
     call add_slash(path_ens)
 
     ! *** Set flags for ensemble restart ***
-    if (ens_restart .and. subtype/=5) then
-       type_ens_init = 4
-       type_central_state = 0
+    if (ens_restart) then
+       if (subtype/=5) then
+          type_ens_init = 4
+          type_central_state = 0
+       else
+          type_central_state = 0
+       end if
     end if
 
     ! Print PDAF parameters to screen
@@ -289,7 +293,7 @@ contains
        end if
        write (*, *) ''
        write (*, '(a,3x,a)') 'NEMO-PDAF','[init_nml]:'
-       if (subtype/=5) write (*, '(a,5x,a,l)') 'NEMO-PDAF','ens_restart ', ens_restart
+       write (*, '(a,5x,a,l)') 'NEMO-PDAF','ens_restart ', ens_restart
        write (*, '(a,5x,a,i10)') 'NEMO-PDAF','type_ens_init      ', type_ens_init
        write (*, '(a,5x,a,i10)') 'NEMO-PDAF','type_central_state ', type_central_state
        write (*, '(a,5x,a,5x,f10.2)') 'NEMO-PDAF','ensscale     ', ensscale
