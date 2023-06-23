@@ -1,13 +1,13 @@
-!> Controlling Pre- and Post-Processing of the PDAF output
+!> Pre- and Post-Processing of the PDAF output
 !!
-!!  - For global filters (e.g. SEIK), the routine is called
+!!  - For global filters (e.g. ESTKF), the routine is called
 !! before the analysis and after the ensemble transformation.
-!!  - For local filters (e.g. LSEIK), the routine is called
+!!  - For local filters (e.g. LESTKF), the routine is called
 !! before and after the loop over all local analysis
 !! domains.
 !! 
 !! The routine provides full access to the state
-!! estimate and the state ensemble to the user.
+!! ensemble to the user.
 !! Thus, user-controlled pre- and poststep
 !! operations can be performed here. For example
 !! the forecast and the analysis states and ensemble

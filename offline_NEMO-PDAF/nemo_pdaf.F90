@@ -122,7 +122,8 @@ contains
     use assimilation_pdaf, &
          only: screen
     use parallel_pdaf, &
-         only: mype_model, npes_model, task_id
+         only: mype_model, npes_model, task_id, comm_model, &
+         MPI_INT, MPI_SUM, MPIerr
     use PDAFomi, &
          only: PDAFomi_set_domain_limits
 
@@ -130,6 +131,7 @@ contains
 
     integer :: i, j, k                    ! Counters
     integer :: cnt, cnt_all, cnt_layers   ! Counters
+    integer :: nwet_g, nwet3d_g           ! Global sums of wet grid point
     real(pwp) :: lim_coords(2,2)          ! Limiting coordinates of sub-domain
 
 ! *** set dimension of 2d and 3d fields in state vector ***
@@ -151,6 +153,7 @@ contains
     istart = nimpp+nldi-1
     jstart = njmpp+nldj-1
 
+#ifndef PDAF_OFFLINE
     ! Set coordinate vectors for rectangular grids
     allocate(lat1_p(nj_p), lon1_p(ni_p))
 
@@ -171,6 +174,7 @@ contains
           endif
        enddo
     enddo
+#endif
 
     ! Store interior coordinates
     allocate(lons(ni_p, nj_p), lats(ni_p, nj_p))
@@ -295,14 +299,32 @@ contains
        write(*,'(a,5x,a,8x,i11)') 'NEMO-PDAF', 'Number of 3D wet points', nwet3d
        write(*,'(a,5x,a,8x,i11)') 'NEMO-PDAF', '2D wet points * nlayers', nwet*nk_p
     else 
-       if (screen>1) then
+       if (screen==1 .or. screen==2) then
+
+          if (task_id==1) then
+             ! Get global sums
+             call MPI_Reduce (nwet, nwet_g, 1, MPI_INT, MPI_SUM, &
+                  0, COMM_model, MPIerr)
+             call MPI_Reduce (nwet3d, nwet3d_g, 1, MPI_INT, MPI_SUM, &
+                  0, COMM_model, MPIerr)
+
+             if (mype_model==0) then
+                write(*,'(a,5x,a,3x,i11)') &
+                     'NEMO-PDAF', 'Number of global wet surface points', nwet_g
+                write(*,'(a,5x,a,8x,i11)') &
+                     'NEMO-PDAF', 'Number of global 3D wet points', nwet3d_g
+                write(*,'(a,5x,a,8x,i11)') &
+                     'NEMO-PDAF', 'global 2D wet points * nlayers', nwet_g*nk_p
+             end if
+          end if
+       elseif (screen>2) then
           write(*,'(a,2x,a,1x,i4,2x,a,3x,i11)') &
                'NEMO-PDAF', 'PE', mype_model, 'Number of wet surface points', nwet
           write(*,'(a,2x,a,1x,i4,2x,a,8x,i11)') &
                'NEMO-PDAF', 'PE', mype_model, 'Number of 3D wet points', nwet3d
           write(*,'(a,2x,a,1x,i4,2x,a,8x,i11)') &
                'NEMO-PDAF', 'PE', mype_model, '2D wet points * nlayers', nwet*nk_p
-     end if
+       end if
     end if
 
 
@@ -310,10 +332,15 @@ contains
 ! *** Specify domain limits to limit observations to sub-domains ***
 ! ******************************************************************
 
-    lim_coords(1,1) = glamt(i0 + 1, j0 + 1) * deg2rad
-    lim_coords(1,2) = glamt(i0 + ni_p, j0 + 1) * deg2rad
-    lim_coords(2,1) = gphit(i0 + ni_p, j0 + nj_p) * deg2rad
-    lim_coords(2,2) = gphit(i0 + 1, j0 + 1) * deg2rad
+!    lim_coords(1,1) = glamt(i0 + 1, j0 + 1) * deg2rad
+!    lim_coords(1,2) = glamt(i0 + ni_p, j0 + 1) * deg2rad
+!    lim_coords(2,1) = gphit(i0 + ni_p, j0 + nj_p) * deg2rad
+!    lim_coords(2,2) = gphit(i0 + 1, j0 + 1) * deg2rad
+
+    lim_coords(1,1) = minval(lon1_p) * deg2rad
+    lim_coords(1,2) = maxval(lon1_p) * deg2rad
+    lim_coords(2,1) = maxval(lat1_p) * deg2rad
+    lim_coords(2,2) = minval(lat1_p) * deg2rad
 
     call PDAFomi_set_domain_limits(lim_coords)
 

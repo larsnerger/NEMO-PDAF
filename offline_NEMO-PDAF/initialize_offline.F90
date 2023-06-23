@@ -16,7 +16,7 @@ contains
 !! The routine afterwards calls the routine that initializes
 !! the model grid information.
 !!
-  subroutine init_offline()
+  subroutine initialize
 
   use mod_kind_pdaf
   use parallel_pdaf, &
@@ -96,7 +96,7 @@ contains
 ! *** Initialize model grid information ***
     call init_grid_dims()
 
-  end subroutine init_offline
+  end subroutine initialize
 
 
 
@@ -222,6 +222,7 @@ contains
              nlei_all(1) = nx
           end if
        elseif (npes==4) then
+          if (decomp=='b') then
              ! Decomposition in y
              nldi_all(0) = 1
              nlei_all(0) = nx/2
@@ -239,6 +240,19 @@ contains
              nlej_all(2) = ny/2
              nldj_all(3) = ny/2 + 1
              nlej_all(3) = ny
+          elseif (decomp=='y') then
+             ! Decomposition in y
+             nldi_all(:) = 1
+             nlei_all(:) = nx
+             nldj_all(0) = 1
+             nlej_all(0) = ny/4
+             nldj_all(1) = ny/4 + 1
+             nlej_all(1) = ny/2
+             nldj_all(2) = ny/2 + 1
+             nlej_all(2) = 3*ny/4
+             nldj_all(3) = 3*ny/4 + 1
+             nlej_all(3) = ny
+          end if
        else
           write (*,*) 'No decomposition defined in the code'
           call abort_parallel()
