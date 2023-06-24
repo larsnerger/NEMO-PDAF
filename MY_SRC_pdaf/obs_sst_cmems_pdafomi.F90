@@ -647,7 +647,7 @@ contains
        dim_obs = cnt 
 
        if (npes_filter==1) then
-          write (6,'(a, 4x, a, a, i7)') 'NEMO-PDAF', '--- number of observations from ', trim(obsname), ': ', dim_obs
+          write (6,'(a, 4x, a, a, a, i7)') 'NEMO-PDAF', '--- number of observations from ', trim(obsname), ': ', dim_obs
        else
           if (screen>2) then
              write (6,'(a, 4x, a, i4, 2x, a, a, i7)') 'NEMO-PDAF', 'PE', mype_filter, &
