@@ -13,10 +13,10 @@
 #    (See directory BASEDIR/make.arch for files. PDAF_ARCH is filename without .h)
 
 # Root directory of PDAF package
-BASEDIR = ../PDAF_V2.1
+BASEDIR = ../../PDAF
 
 # CPP definitions. Define 'key_top' if the state vector contains also biogeochemistry
-DEFS = -DUSE_NCPAR -DPDAF_OFFLINE  #-Dkey_top
+DEFS = -DPDAF_OFFLINE  #-Dkey_top
 
 # Include machine-specific definitions
 # For available include files see directory make.arch
@@ -94,5 +94,5 @@ cleanpdaf:
 
 
 # Some necessary dependencies to ensure that the program compiles
-
-nemo_pdaf.o: assimilation_pdaf_eofcovar.o
+eofcovar.o: assimilation_pdaf_eofcovar.o
+io_pdaf.o: assimilation_pdaf_eofcovar.o

@@ -2,12 +2,8 @@
 
 &pdaf_offline
  ! Path and file for reading model dimensions
- verbose_io = 2
- path_dims='out_ergom'
- file_dims='NORDIC_1d_grid_T_20150101-20150101.nc'
- varname='votemper'
- use_wet_state = 2
- read_decomp=.false.
- jptra = 0
+ path_dims = '../ORCA2_PISCES'                        ! Directory for dimensions file
+ file_dims = 'ORCA2_5d_00010101_00011231_grid_T.nc'   ! Name of file from which dimensions are read
+ use_wet_state = 0      ! Type of state vector compression
+ jptra = 0              ! Number of BGC tracers in state vector
 /
-

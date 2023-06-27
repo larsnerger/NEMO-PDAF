@@ -159,7 +159,6 @@ subroutine eofcovar()
    allocate(stddev(n_fields))
    call memcount(4,'r',maxtimes + n_fields)
 
-write (*,*) 'dim_state_p', dim_state_p, maxtimes, n_fields,subtract_mean, do_mv
    ! Call routine generating matrix decomposition
    call PDAF_eofcovar(dim_state_p, maxtimes, n_fields, sfields(:)%dim, sfields(:)%off, &
       subtract_mean, do_mv, states, stddev, svals, tmp_ens, meanstate, 1, status)

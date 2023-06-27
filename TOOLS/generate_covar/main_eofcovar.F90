@@ -23,7 +23,7 @@ program MAIN_OFFLINE
   use assimilation_pdaf, &    ! Dimensions
        only: dim_state, dim_state_p, screen
   use initialize_offline, &   ! Init grid information for offline-mode
-       only: init_offline
+       only: initialize
   use nemo_pdaf, &            ! NEMO-related variables and functions
        only: set_nemo_grid
   use statevector_pdaf, &     ! State vector functions
@@ -75,7 +75,7 @@ program MAIN_OFFLINE
 ! ************************************************
 
   ! Initialize dimension information for NEMO grid
-  call init_offline()
+  call initialize()
 
   ! Initialize NEMO grid
   call set_nemo_grid(screen)
