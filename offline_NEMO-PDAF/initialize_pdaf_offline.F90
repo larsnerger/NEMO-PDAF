@@ -192,7 +192,7 @@ contains
 ! ************************************************
 
     ! Initialize dimension information for NEMO grid
-    call set_nemo_grid()
+    call set_nemo_grid(screen)
 
     ! Setup state vector
     call setup_statevector(dim_state, dim_state_p)
