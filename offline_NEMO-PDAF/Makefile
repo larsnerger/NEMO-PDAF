@@ -13,7 +13,7 @@
 #    (See directory BASEDIR/make.arch for files. PDAF_ARCH is filename without .h)
 
 # Root directory of PDAF package
-BASEDIR = ../PDAF_V2.1
+BASEDIR = ../../PDAF
 
 # CPP definitions. Define 'key_top' if the state vector contains also biogeochemistry
 DEFS = -DPDAF_OFFLINE  #-Dkey_top
@@ -116,7 +116,6 @@ callback_obs_pdafomi.o: obs_ssh_mgrid_pdafomi.o obs_sst_cmems_pdafomi.o
 initialize_offline.o: nemo_pdaf.o io_pdaf.o
 initialize_pdaf_offline.o: utils_pdaf.o
 io_pdaf.o: statevector_pdaf.o transforms_pdaf.o
-nemo_pdaf.o: assimilation_pdaf_offline.o
 utils_pdaf.o: obs_ssh_mgrid_pdafomi.o obs_sst_cmems_pdafomi.o
 statevector_pdaf.o: nemo_pdaf.o parallel_pdaf.o
 obs_ssh_mgrid_pdafomi.o: io_pdaf.o statevector_pdaf.o parallel_pdaf.o nemo_pdaf.o assimilation_pdaf_offline.o
