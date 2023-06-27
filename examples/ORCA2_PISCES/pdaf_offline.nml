@@ -1,4 +1,4 @@
-! Namelist file for configuring PDAF offline mode
+! Namelist file for PDAF configuration
 
 &pdaf_offline
  ! Path and file for reading model dimensions
