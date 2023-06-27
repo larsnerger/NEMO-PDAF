@@ -95,6 +95,8 @@ module nemo_pdaf
   integer :: ni_p, nj_p, nk_p               ! Size of decomposed grid
   integer :: istart, jstart                 ! Start indices for internal local domain
   integer :: dim_2d_p, dim_3d_p             ! Dimension of 2d/3d grid box of sub-domain
+  integer :: type_limcoords = 0             ! How limiting domain coords are determined
+       ! 0: from glamt/gphit; 1: from min/max of lat1_p and lon1_p
   real(pwp), allocatable :: lat1_p(:), lon1_p(:) ! Vectors holding latitude and latitude for decomposition
   real(pwp), allocatable :: lats(:,:), lons(:,:) ! Arrays for interior coordinates (no halo)
   integer :: sdim2d, sdim3d                 ! 2D/3D dimension of field in state vector
@@ -116,11 +118,9 @@ contains
   !! In particular index information is initialize to map in between
   !! the model grid and the state vector
   !!
-  subroutine set_nemo_grid()
+  subroutine set_nemo_grid(screen)
 
     use mod_kind_pdaf
-    use assimilation_pdaf, &
-         only: screen
     use parallel_pdaf, &
          only: mype_model, npes_model, task_id, comm_model, &
          MPI_INT, MPI_SUM, MPIerr
@@ -129,6 +129,10 @@ contains
 
     implicit none
 
+! *** Argument ***
+    integer, intent(in) :: screen         ! Control verbosity
+
+! *** Local variables ***
     integer :: i, j, k                    ! Counters
     integer :: cnt, cnt_all, cnt_layers   ! Counters
     integer :: nwet_g, nwet3d_g           ! Global sums of wet grid point
@@ -160,7 +164,7 @@ contains
     lat1_p(:) = 0.0
     do j = 1, nj_p
        do i = 1, ni_p
-          if (gphit(i+i0, j+j0) > 0.00001) then
+          if (abs(gphit(i+i0, j+j0)) > 0.00001) then
              lat1_p(j) = gphit(i+i0, j+j0)
           endif
        enddo
@@ -332,15 +336,22 @@ contains
 ! *** Specify domain limits to limit observations to sub-domains ***
 ! ******************************************************************
 
-!    lim_coords(1,1) = glamt(i0 + 1, j0 + 1) * deg2rad
-!    lim_coords(1,2) = glamt(i0 + ni_p, j0 + 1) * deg2rad
-!    lim_coords(2,1) = gphit(i0 + ni_p, j0 + nj_p) * deg2rad
-!    lim_coords(2,2) = gphit(i0 + 1, j0 + 1) * deg2rad
-
-    lim_coords(1,1) = minval(lon1_p) * deg2rad
-    lim_coords(1,2) = maxval(lon1_p) * deg2rad
-    lim_coords(2,1) = maxval(lat1_p) * deg2rad
-    lim_coords(2,2) = minval(lat1_p) * deg2rad
+    if (type_limcoords==0) then
+       lim_coords(1,1) = glamt(i0 + 1, j0 + 1) * deg2rad
+       lim_coords(1,2) = glamt(i0 + ni_p, j0 + 1) * deg2rad
+       lim_coords(2,1) = gphit(i0 + ni_p, j0 + nj_p) * deg2rad
+       lim_coords(2,2) = gphit(i0 + 1, j0 + 1) * deg2rad
+    elseif (type_limcoords==1) then
+       lim_coords(1,1) = minval(lon1_p) * deg2rad
+       lim_coords(1,2) = maxval(lon1_p) * deg2rad
+       lim_coords(2,1) = maxval(lat1_p) * deg2rad
+       lim_coords(2,2) = minval(lat1_p) * deg2rad
+    else
+       lim_coords(1,1) = minval(glamt(:, :)) * deg2rad
+       lim_coords(1,2) = maxval(glamt(:, :)) * deg2rad
+       lim_coords(2,1) = maxval(gphit(:, :)) * deg2rad
+       lim_coords(2,2) = minval(gphit(:, :)) * deg2rad
+    end if
 
     call PDAFomi_set_domain_limits(lim_coords)
 

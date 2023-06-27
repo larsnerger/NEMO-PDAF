@@ -24,7 +24,8 @@ contains
   use assimilation_pdaf, &
        only: step_null
   use nemo_pdaf, &
-       only: path_dims, file_dims, jptra, ndastp, use_wet_state
+       only: path_dims, file_dims, jptra, ndastp, use_wet_state, &
+       type_limcoords
 #if defined key_top
   use nemo_pdaf, &
        only: sn_tracer
@@ -95,6 +96,9 @@ contains
 
 ! *** Initialize model grid information ***
     call init_grid_dims()
+
+! *** Set initialization of lim_coords to using min/max of glamt/gphit
+    type_limcoords = 2
 
   end subroutine initialize
 
