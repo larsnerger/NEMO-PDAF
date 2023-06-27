@@ -341,11 +341,16 @@ contains
        lim_coords(1,2) = glamt(i0 + ni_p, j0 + 1) * deg2rad
        lim_coords(2,1) = gphit(i0 + ni_p, j0 + nj_p) * deg2rad
        lim_coords(2,2) = gphit(i0 + 1, j0 + 1) * deg2rad
-    else
+    elseif (type_limcoords==1) then
        lim_coords(1,1) = minval(lon1_p) * deg2rad
        lim_coords(1,2) = maxval(lon1_p) * deg2rad
        lim_coords(2,1) = maxval(lat1_p) * deg2rad
        lim_coords(2,2) = minval(lat1_p) * deg2rad
+    else
+       lim_coords(1,1) = minval(glamt(:, :)) * deg2rad
+       lim_coords(1,2) = maxval(glamt(:, :)) * deg2rad
+       lim_coords(2,1) = maxval(gphit(:, :)) * deg2rad
+       lim_coords(2,2) = minval(gphit(:, :)) * deg2rad
     end if
 
     call PDAFomi_set_domain_limits(lim_coords)
