@@ -114,7 +114,7 @@ if __name__ == "__main__":
     elif assim2=='Free' and assim=='Ana':
        title='Difference analysis-free for '+str(Variable)+' on '+str(year)+'-'+str(month)+'-'+str(day)
     # Set file name
-    fname= str(MAT_VAR)+'_'+assim+'-'+assim2+'_'+str(year)+str(month)+str(day)+\
+    fname= str(MAT_VAR)+'_'+model_run+'_'+assim+'-'+assim2+'_'+str(year)+str(month)+str(day)+\
 			'_'+domain+'.png'
     print 'filename', fname
     
