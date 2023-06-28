@@ -3469,3 +3469,90 @@ def size(array):
 def transpose(matrix):
     return [list(row) for row in zip(*matrix)]
 
+def read_insitu_vali_ICES(var_num, path_data):
+    # read specific variable + other info from ICES insitu data
+
+    print 'Start reading ', path_data
+
+    # open Excel file
+    wb = xlrd.open_workbook(path_data)
+    worksheet = wb.sheet_by_index(0)
+
+    headers = worksheet.row_values(0)
+    data_rows = []
+    for row_index in range(1,worksheet.nrows):
+      row = worksheet.row(row_index)
+      data_rows.append(row)
+
+    # read relevant information
+    cruise = read_var_insitu(0, data_rows)
+    station = read_var_insitu(1, data_rows)
+    type_station = read_var_insitu(2, data_rows)
+    year = read_var_insitu(3,data_rows)
+    month = read_var_insitu(4, data_rows)
+    day = read_var_insitu(5, data_rows)
+    hour = read_var_insitu(6, data_rows)
+    minute = read_var_insitu(7, data_rows)
+    lon = read_var_insitu(8, data_rows) # [deg east]
+    lat = read_var_insitu(9, data_rows) # [deg north]
+    bot_depth = read_var_insitu(10, data_rows) # [m]
+    if "ICES_2015_Bottle_LR_CTD" in path_data:
+      secchi_depth = read_var_insitu(12, data_rows) # [m]
+      depth = read_var_insitu(14, data_rows) # [m]
+    elif "ICES_2015_HR_CTD" in path_data:
+      depth = read_var_insitu(12, data_rows) #[m]
+
+    # read specified obs
+    # Variable number from the var_names routine.
+                        # Quick ref: 1=z, 2=TEM, 3=SAL, 4=uvel, 5=vvel, 6=NH4, 7=NO3, 8=PO4,
+                        #            9=SIL, 10=DIA, 11=FLA, 12=CYA, 13=MEZ, 14=MIZ, 15=DET,
+                        #            16=DETs, 17=FE, 18=LDON, 19=DIC, 20=ALK, 21=OXY, 22=pCO2,
+                        #            23=PH, 24=CHL, 25=TE, 26=PFT, 27=PP
+    if "ICES_2015_Bottle_LR_CTD" in path_data:
+      if var_num == 2: #TEM
+        idx = 18 # [deg C]
+        idx_qv = 19
+      elif var_num == 3:
+        idx = 20 # practical salinity [dmnless?]
+        idx_qv = 21
+      elif var_num == 6: # Ammonium Nitrogen (NH4-N) [umol/l]
+        idx = 34
+        idx_qv = 35
+        print 'WARNING: This is Ammonium Nitrogen (NH4-N) and not Ammonium (NH4)'
+      elif var_num == 9:
+        idx = 28 # Silicate Silicon (SiO4-Si) [umol/l]
+        idx_qv = 29
+      elif var_num == 20: # alkalinity
+        idx = 42
+        idx_qv = 43
+      elif var_num == 21: # oxygen
+        idx = 22 # dissolved oxygen [ml/l]
+        idx_qv = 23
+      elif var_num == 23: # PH
+        idx = 40 # Hydrogen Ion Concentration (pH) [pH]
+        idx_qv = 41
+      elif var_num == 24: # CHL
+        idx = 44 # Chlorophyll a [ug/l]
+        idx_qv = 45
+      else:
+        print 'ERROR: this variable is not contained in the validation data set'
+    elif "ICES_2015_HR_CTD" in path_data:
+      print 'var_num == ', var_num
+      if var_num == 2: # TEM
+        print 'inside correct: TEM'
+        idx = 16
+        idx_qv = 17
+      elif var_num == 3: # SAL
+        idx = 18
+        idx_qv = 19
+      elif var_num == 21: #OXY
+        idx = 20
+        idx = 21
+      else:
+        print 'test ERROR: this variable is not contained in the validation data set'
+
+    data = read_var_insitu(idx, data_rows)
+    data_qv = read_var_insitu(idx_qv, data_rows)
+
+    return year, month, day, hour, minute, lon, lat, depth, data, data_qv
+
