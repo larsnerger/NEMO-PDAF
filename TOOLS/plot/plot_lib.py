@@ -1601,6 +1601,83 @@ def read_model(variable, grid_area, year, month, day, time_stamp, depth, DA_swit
 
     return data_coarse, coarse_keys
 
+def read_model_path(variable, grid_area, year, month, day, time_stamp, depth, DA_switch, coupled, z_mean, z_integral, z1, z2, path):
+
+    if day < 10:
+        day = '0'+str(day)
+    else:
+        day = str(day)
+
+    letter = 'state' #load_data(variable)
+    print 'Read variable:', variable
+
+    if depth != '0':
+      if depth == ':':
+        print 'depth: entire column'
+      else:
+        print 'Depth level '+depth
+
+    # Set Scale factor
+    scale = 1.0
+
+    # Set file name including path
+    timestr = str(year)+str(month)+str(day)
+
+    print path+str(letter)+'_'+timestr+'.nc'
+    if DA_switch == 1 or DA_switch==2 or DA_switch==11 or DA_switch==12 : # Background or analysis
+        nc_coarse = NetCDFFile(path+str(letter)+'_'+timestr+'.nc')
+    elif DA_switch == 0: # Free Ens
+        nc_coarse = NetCDFFile(path+str(letter)+'_'+timestr+'.nc')
+
+    # Set file index to read
+    #    0: forecast, 1: analysis
+    if DA_switch == 1: #Background
+        DA_step =0
+    elif DA_switch == 2: #Analysis
+        DA_step =1
+    elif DA_switch == 0: #Free Ens
+        DA_step = 0
+    print 'DA_step', DA_step
+    nc_coarse_keys = ['nav_lon', 'nav_lat', 'nav_lev', str(variable)]
+
+    # Coarse Data
+    coarse_keys = {}
+    data_coarse = {}
+    if grid_area == 'all' or grid_area == 'coarse':
+        coarse_keys['lon'] = nc_coarse.variables['nav_lon'][:]
+        coarse_keys['lat'] = nc_coarse.variables['nav_lat'][:]
+        coarse_keys['lev'] = nc_coarse.variables['nav_lev'][:]
+        numdim =  nc_coarse.variables[str(variable)].ndim
+        if numdim == 4:
+            if z_mean == 0 and z_integral == 0:
+                if depth==':':
+                  data_coarse = nc_coarse.variables[str(variable)][DA_step,:,:,:]
+                else:
+                  data_coarse = nc_coarse.variables[str(variable)][DA_step,depth,:,:]
+            elif z_mean == 1 and z_integral ==0:
+                data_coarse_pre = nc_coarse.variables[str(variable)][DA_step,:,:,:]
+                data_coarse = vertical_mean_4D(data_coarse_pre, z1, z2)
+            elif z_mean == 0 and z_integral ==1:
+                data_coarse_pre = nc_coarse.variables[str(variable)][DA_step,:,:,:]
+                data_coarse = vertical_integral_4D(data_coarse_pre, z1, z2)
+            else:
+                print 'Wrong z_mean or z_integral'
+                exit()
+        elif numdim == 3:
+            if str(variable)=='SST_inst':
+                data_coarse = nc_coarse.variables[str(variable)][DA_step,:,:]
+            else:
+                if depth==':':
+                  data_coarse = nc_coarse.variables[str(variable)][:,:,:]
+                else:
+                  data_coarse = nc_coarse.variables[str(variable)][depth,:,:]
+
+
+        # Rescale data
+        data_coarse = data_coarse * scale
+
+    return data_coarse, coarse_keys
+
 def read_model_var(variable, grid_area, year, month, day, time_stamp, depth, DA_switch, coupled, z_mean, z_integral, z1, z2):
 
     if day < 10:
