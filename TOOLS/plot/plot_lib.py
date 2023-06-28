@@ -2839,8 +2839,8 @@ def plot_map(data_coarse, lat_c, lon_c, varnum, domain, \
         bmres = 'i'
 
     # Parameters/Variables for plots
-    vmin = np.min(data_coarse) #; fine_min = np.min(data_fine)
-    vmax = np.max(data_coarse) #; fine_max = np.max(data_fine)
+    vmin = np.nanmin(data_coarse) #; fine_min = np.min(data_fine)
+    vmax = np.nanmax(data_coarse) #; fine_max = np.max(data_fine)
     freeclim=1
 
     print 'Min/Max data values: ', vmin, ', ', vmax
