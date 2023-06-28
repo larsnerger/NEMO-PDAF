@@ -1166,6 +1166,105 @@ def read_station_series_path(varnum, grid_area, year, time_stamp, depth, DA_swit
     else:
       return modmean, modday
 
+def read_latlon_series(varnum, grid_area, year, time_stamp, depth, DA_switch, coupled, z_mean, z_integral, z1, z2, months, lat_stat, lon_stat, dist):
+
+    # Get day of year
+    DoY = day_of_year(months[0], 1)
+    print 'DoY ', DoY
+
+    # Get variable names
+    varstr, mat_var, variable, var_unit = var_names(varnum)
+    model_idx = get_model_idx(lat_stat, lon_stat, dist)
+    lon_min = model_idx[1]-dist
+    lon_max = model_idx[1]+dist+1
+    lat_min = model_idx[0]-dist
+    lat_max = model_idx[0]+dist+1
+    range_lon = lon_max-lon_min
+    range_lat = lat_max-lat_min
+
+    modmean = []
+    modday = []
+
+    alldays = DoY
+
+    for imonth in range(len(months)):
+      _, _, _, ndays = month_names(months[imonth])
+      if months[imonth]<10:
+        month = '0'+str(months[imonth])
+      else:
+        month = str(months[imonth])
+
+      for iday in range(ndays):
+
+        day = iday+1
+
+        data_mod, mod_keys = read_model(varstr, grid_area, year, month, day, time_stamp, depth, DA_switch, coupled, z_mean, z_integral, z1, z2)
+
+        # set coordinates
+        lat = mod_keys['lat'][:]
+        lon = mod_keys['lon'][:]
+
+        dep_temp = mod_keys['lev'][:]
+        if iday == 0:
+          dep = dep_temp
+        else:
+          dep = np.vstack((dep,dep_temp))
+
+        if day==1:
+            print 'check observations within ', dist, ' grid points around location lat/lon = ', lat_stat, lon_stat
+            print 'longitude range: ', lon[lat_min, lon_min], lon[lat_max, lon_max]
+            print 'latitude range: ', lat[lat_min, lon_min], lat[lat_max, lon_max]
+            if isinstance(lon[lat_min, lon_min], np.ma.core.MaskedConstant):
+              print lon[lat_min:lat_max, lon_min:lon_max]
+              print 'longitude range first real value: ', np.ma.minimum.reduce(lon[lat_min:lat_max, lon_min:lon_max]), np.max(lon[lat_min:lat_max, lon_min:lon_max])
+            if isinstance(lat[lat_min, lon_min], np.ma.core.MaskedConstant):
+              print lat[lat_min:lat_max, lon_min:lon_max]
+              print 'latitude range first real value: ', np.ma.min(lat[lat_min:lat_max, lon_min:lon_max]), np.max(lat[lat_min:lat_max, lon_min:lon_max])
+        if depth==':':
+          modval= np.zeros((len(dep_temp), range_lat, range_lon))
+          modval = data_mod[:,lat_min:lat_max, lon_min:lon_max]
+        else:
+          modval= np.zeros((range_lat, range_lon))
+          modval = data_mod[lat_min:lat_max, lon_min:lon_max]
+
+        if depth==':':
+          mean_mobs= np.zeros(len(dep_temp))
+          cnt_mean = np.zeros(len(dep_temp))
+        else:
+          mean_mobs = 0.0
+          cnt_mean = 0
+
+        if depth==':':
+          for d in range(len(modval)):
+            for i in range(len(modval[0])):
+              for j in range(len(modval[0][0])):
+                if modval[d,i,j]>-999.0:
+                    mean_mobs[d] = mean_mobs[d] + modval[d,i,j]
+                    cnt_mean[d] = cnt_mean[d] + 1
+            if cnt_mean[d]>0:
+              mean_mobs[d] = mean_mobs[d] / cnt_mean[d]
+        else:
+          for i in range(len(modval[:,0])):
+            for j in range(len(modval[0,:])):
+                if modval[i,j]>-999.0:
+                    mean_mobs = mean_mobs + modval[i,j]
+                    cnt_mean = cnt_mean + 1
+          if cnt_mean>0:
+            mean_mobs = mean_mobs / cnt_mean
+
+        if varnum==10:
+            if mean_mobs<0.0:
+                mean_mobs = 1.0e-05
+
+        modmean.append(mean_mobs)
+        modday.append(alldays)
+
+        alldays = alldays+1
+    if depth==':':
+      return modmean, modday, dep
+    else:
+      return modmean, modday
+
 def read_station_series_obs(varnum, year, months, istation, strstation, dist):
 
     DoY = day_of_year(months[0], 1)
