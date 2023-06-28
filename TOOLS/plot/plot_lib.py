@@ -3765,3 +3765,82 @@ def calc_rmse(data1, data2):
 
   return rmse
 
+def plot_scatter_map(lat, lon, data, strcmap, domain, minmax, title_str, cbar_label, plot_show, save, fname):
+    if domain=='no':
+        llon=lon_c[0]
+        llat=lat_c[-1]
+        ulon=lon_c[-1]
+        ulat=lat_c[0]
+        res = 5.0  # resolution for meridians & parallels
+        bmres = 'l'
+    elif domain=='ba':
+        llon = 9.25
+        ulon = 30.375
+        llat = 53.229
+        ulat = 66.0 #65.875
+        res = 3.0
+        bmres = 'i'
+    else:
+        llon = 9.25
+        ulon = 18.0
+        llat = 53.229
+        ulat = 60.0 #65.875
+        res = 2.0
+        bmres = 'i'
+
+    # Parameters/Variables for plots
+    if minmax[0]==minmax[1]:
+      vmin = np.min(data) #; fine_min = np.min(data_fine)
+      vmax = np.max(data) #; fine_max = np.max(data_fine)
+    else:
+      vmin = minmax[0]
+      vmax = minmax[1]
+    print 'Min/Max data values: ', vmin, ', ', vmax
+    print 'Limit color range to: ', vmin , 'to', vmax
+
+    fig = plt.figure(figsize=(8,8))
+    m = Basemap(projection='merc',
+                llcrnrlon=llon,
+                llcrnrlat=llat,
+                urcrnrlon=ulon,
+                urcrnrlat=ulat,
+                lon_0=(llon + ulon)/2.0,
+                lat_0=(ulat + llat)/2.0,
+                resolution=bmres, area_thresh = 10)
+    # Map Land Details
+    m.drawcoastlines()                      # Coastlines
+    m.drawcountries()                       # Country Borders
+    m.drawlsmask(land_color='Linen')       # No geographic detail
+    #m.shadedrelief()                        # Low geographic detail
+    #m.bluemarble()                         # High geographic detail
+
+    # draw parallels.
+    parallels = np.arange(0.,360.,res)
+    m.drawparallels(parallels,labels=[1,0,0,0],fontsize=14)
+    # draw meridians
+    meridians = np.arange(0.,360.,res)
+    m.drawmeridians(meridians,labels=[0,0,0,1],fontsize=14)
+
+    cmap = plt.cm.get_cmap(strcmap)
+    clev = np.linspace(vmin, vmax, 100)
+
+    x, y = m(lon,lat)
+
+#    cs = m.scatter(x, y, c=data, cmap=cmap, vmin=vmin, vmax=vmax, marker="s", s=90, edgecolor=[0.0,0.0,0.0], linewidth=0.5, \
+#            norm=MidpointNormalize(midpoint=0.0))
+    cs = m.scatter(x, y, c=data, cmap=cmap, vmin=vmin, vmax=vmax, marker="s", s=90, edgecolor=[0.0,0.0,0.0], linewidth=0.5)
+
+    plt.title(title_str,fontsize=16)
+    tick_locator = ticker.MaxNLocator(nbins=5)
+    cbar = m.colorbar(cs)
+    cbar.locator = tick_locator
+    cbar.update_ticks()
+    #cbar.set_label(var_unit,fontsize=18)
+    cbar.ax.tick_params(labelsize=16)
+    cbar.set_label(cbar_label, fontsize=16)
+
+    if save==1:
+       plt.savefig(fname, dpi=fig.dpi)
+    if plot_show==1:
+       plt.show()
+
