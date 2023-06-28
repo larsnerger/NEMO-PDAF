@@ -3856,3 +3856,26 @@ def check_list_type(lst):
     else:
         return 1#"Only a list"
 
+def get_model_depth_idx(depth_in):
+  # get the right index for the model depth given the input depth
+    varstr, _, _, _ = var_names(2)
+    grid_area = 'coarse'
+    year = 2015
+    month = '02'
+    day = '01'
+    time_stamp = '00'
+    depth = '0'
+    DA_switch = 0
+    coupled = 'weak'
+    z_mean = 0
+    z_integral = 0
+    z1 = 0
+    z2 = 0
+
+    _, mod_keys = read_model(varstr, grid_area, year, month, day, time_stamp, depth, DA_switch, coupled, z_mean, z_integral, z1, z2)
+    depth_m = mod_keys['lev'][:]
+    idx = min(range(len(depth_m)), key=lambda i: abs(depth_m[i] - depth_in))
+    print 'depth/depth_m[idx]', depth_in, '/', depth_m[idx]
+
+    return idx
+
