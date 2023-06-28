@@ -923,6 +923,7 @@ def read_station_idx(varnum, grid_area, year, time_stamp, depth, DA_switch, coup
     print 'Station:', station
     print '   model grid: coords lat/lon', station_coords[0], station_coords[1]
     print '   model grid: index lat/lon ', station_idx[0], station_idx[1]
+    print '   model grid: lat/lon', lat1[station_idx], lon1[station_idx]
 
     return station, station_idx, station_coords
 
