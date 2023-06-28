@@ -59,6 +59,11 @@ if __name__ == "__main__":
     model_run = extractBetween(full_path, 'exp/', '/DA/')
     print 'Model run = ', model_run
 
+    if varnum == 2:
+      minmax = [-1.5, 1.5]
+    elif varnum == 21:
+      minmax = [-20, 20]
+
     varstr, mat_var, Variable, var_unit = var_names(varnum)
     MAT_VAR = mat_var.upper()
 
