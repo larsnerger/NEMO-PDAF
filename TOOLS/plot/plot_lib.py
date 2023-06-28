@@ -3746,6 +3746,11 @@ def unique_tuples2(a, tol=0):
     unique_list = [a[i] for i in unique_indices]
     return unique_list, unique_indices
 
+def unique_strings(arr):
+    unique_arr = np.unique(arr)
+    unique_strings = unique_arr.tolist()
+    return unique_strings
+
 def calc_rmse(data1, data2):
   # calculate rmse between data1 and data2 and ignore possible NaN values
   if isinstance(data1, list):
