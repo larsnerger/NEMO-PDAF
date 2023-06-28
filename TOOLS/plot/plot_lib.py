@@ -2940,3 +2940,43 @@ def vertical_integral_4D(data_coarse_pre, z1, z2):
         data_coarse=np.nansum(data_coarse_pre4,axis=0)
 	print data_coarse[100,100]
     return data_coarse
+
+def get_model_idx(lat_stat, lon_stat, dist):
+    # get model indices in dist 10 to input lat&lon
+
+    # irrelevant variables that need to be specified to read model and obtain model lat lon
+    varstr, _, _, _ = var_names(2)
+    grid_area = 'coarse'
+    year = 2015
+    month = '02'
+    day = '01'
+    time_stamp = '00'
+    depth = '0'
+    DA_switch = 0
+    coupled = 'weak'
+    z_mean = 0
+    z_integral = 0
+    z1 = 0
+    z2 = 0
+
+    _, mod_keys = read_model(varstr, grid_area, year, month, day, time_stamp, depth, DA_switch, coupled, z_mean, z_integral, z1, z2)
+
+    lat = mod_keys['lat'][:]
+    lon = mod_keys['lon'][:]
+
+    lat1 = lat[:,0]
+    lon1 = lon[0,:]
+    for i in range(len(lat[:,0])):
+       lat1[i] = np.max(lat[i,:])
+    for j in range(len(lat[0,:])):
+       lon1[j] = np.max(lon[:,j])
+    lon1[-1] = lon1[-2] + lon1[1]-lon1[0]
+
+    latdiff = lat1 - lat_stat
+    londiff = lon1 - lon_stat
+    model_idx = []
+    model_idx.append(np.argmin(abs(latdiff)))
+    model_idx.append(np.argmin(abs(londiff)))
+
+    return model_idx
+
