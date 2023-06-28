@@ -1527,7 +1527,9 @@ def read_model(variable, grid_area, year, month, day, time_stamp, depth, DA_swit
     letter = 'state' #load_data(variable)
     print 'Read variable:', variable
 
-    if depth != '0':
+    if depth == ':':
+      print 'depth: entire column'
+    elif depth != '0':
       print 'Depth level '+depth
 
     # Set Scale factor
@@ -1558,7 +1560,7 @@ def read_model(variable, grid_area, year, month, day, time_stamp, depth, DA_swit
     elif DA_switch == 0: #Free Ens
         DA_step = 0
     print 'DA_step', DA_step
-    nc_coarse_keys = ['nav_lon', 'nav_lat', str(variable)]
+    nc_coarse_keys = ['nav_lon', 'nav_lat', 'nav_lev', str(variable)]
 
     # Coarse Data
     coarse_keys = {}
@@ -1566,11 +1568,14 @@ def read_model(variable, grid_area, year, month, day, time_stamp, depth, DA_swit
     if grid_area == 'all' or grid_area == 'coarse':
         coarse_keys['lon'] = nc_coarse.variables['nav_lon'][:]
         coarse_keys['lat'] = nc_coarse.variables['nav_lat'][:]
-
+	coarse_keys['lev'] = nc_coarse.variables['nav_lev'][:]
         numdim =  nc_coarse.variables[str(variable)].ndim
         if numdim == 4:
             if z_mean == 0 and z_integral == 0:
-                data_coarse = nc_coarse.variables[str(variable)][DA_step,depth,:,:]
+	        if depth == ':':
+                  data_coarse = nc_coarse.variables[str(variable)][DA_step,:,:,:]
+		else:
+                  data_coarse = nc_coarse.variables[str(variable)][DA_step,depth,:,:]
             elif z_mean == 1 and z_integral ==0:
                 data_coarse_pre = nc_coarse.variables[str(variable)][DA_step,:,:,:]
                 data_coarse = vertical_mean_4D(data_coarse_pre, z1, z2)
@@ -1584,7 +1589,10 @@ def read_model(variable, grid_area, year, month, day, time_stamp, depth, DA_swit
             if str(variable)=='SST_inst':
                 data_coarse = nc_coarse.variables[str(variable)][DA_step,:,:]
             else:
-                data_coarse = nc_coarse.variables[str(variable)][depth,:,:]
+		if depth == ':':
+                  data_coarse = nc_coarse.variables[str(variable)][:,:,:]
+		else:
+                  data_coarse = nc_coarse.variables[str(variable)][depth,:,:]
 
         # Rescale data
         data_coarse = data_coarse * scale
