@@ -956,6 +956,7 @@ def read_station_idx_obs(varnum, year, months, istation, station, dist):
     else:
         # SST
         datatype_obs= 'REP_L4'
+	datatype_obs = 'L3S'
         _, lat_o, lon_o = get_cmems_sst(year, month, day, 'am', datatype_obs, noba)
 
 
