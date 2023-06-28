@@ -125,7 +125,10 @@ if __name__ == "__main__":
     #strcmap = 'gist_earth'
 #    strcmap = 'gist_ncar_r'
     #strcmap = cmocean.cm.thermal
-    strcmap='seismic'
+    if varnum == 2:
+      strcmap='seismic'
+    elif varnum == 21:
+      strcmap = 'cmo.delta'
 
     plotcb = 1
     plotlog = 0
