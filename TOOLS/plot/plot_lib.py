@@ -217,12 +217,14 @@ def var_names(X):
         C = 'Dissolved Oxygen'
         unit = 'mmol/m$^3$'
     elif X == 22:
-        A = 'xpco2'
+        #A = 'xpco2'
+	A = 'PCO2'
         B = 'PCO2'
         C = 'Partial Pressure of Carbon Dioxide'
         unit = 'micro atm'
     elif X == 23:
-        A = 'xph'
+        #A = 'xph'
+	A = 'PH'
         B = 'pH'
         C = 'pH'
         unit = ''
