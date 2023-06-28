@@ -176,7 +176,9 @@ if __name__ == "__main__":
         strcmap = 'gist_ncar_r'
 
     
-    #plot_map(data_coarse, data_fine, lat1, lon1, lat_f, lon_f, varnum, domain, \
+    title = str(Variable)+' on '+str(year)+'-'+str(month)+'-'+str(day)
+    title = 'SST_DA'
+plot_map(data_coarse, data_fine, lat1, lon1, lat_f, lon_f, varnum, domain, \
      #        strcmap, minmax, save, title, fname)
     plot_map(data_coarse, lat1, lon1, varnum, domain, \
              strcmap, minmax, save, title, fname, plotlog, plotcb)
