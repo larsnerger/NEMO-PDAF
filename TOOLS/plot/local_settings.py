@@ -23,14 +23,19 @@ def get_exp_path(coupled, year, month, day, ampm, asml):
 
     if asml==1:
         # Path to assimilation experiment
-#        path = data_loc+'/free_N30/DA/'
-        path = '/scratch/usr/hbknerge/SEAMLESS/run/DA-SST-CHL/sst-chl_Tonly_N30/DA/'
-        #path = '/scratch/usr/hbknerge/SEAMLESS/run/DA-SST-CHL/free_initMarch1_N30/DA/'
-        #path = '/scratch/usr/hbxsovli/SEAMLESS/runfolders/DA_chl/exp.chl_30ens/DA/'
+        #path = data_loc+'/ens_NORDIC_ndays/output_N20_DA_Smago/DA/'
+        #path = data_loc+'/ens_ERGOM_ndays/output_N4_bio/DA/'
+        #path = data_loc+'/ens_ERGOM_ndays/001/' #output/DA/'
+        #path = data_loc+'/ens_ERGOM_ndays/output_N30_log_chl30k/DA/'
+        #path = data_loc+'/LESTKF/DA/'
+        #path = '/scratch/usr/hbxsovli/SEAMLESS/runfolders/DA_L3/DA_L3_test/DA/'
+        #path = data_loc + '/chl_N30/DA/'
+        #path = data_loc+'/chl+sstL3_N30/DA/'
+        path = data_loc + '/sstL3_N30/DA/'
+        #path = data_loc+'/Hybrid/DA/'
+        #path = data_loc + '/fcst_initMay1_N30/DA/'
     else:
         # path to free running experiment
         path = data_loc+'/free_N30/DA/'
-        #path = '/scratch/usr/hbknerge/SEAMLESS/run/DA-SST-CHL/sst-chl_Tonly_N30/DA/'
-
 
     return path
