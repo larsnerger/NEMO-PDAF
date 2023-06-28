@@ -12,6 +12,9 @@ from netCDF4 import Dataset as NetCDFFile
 from local_settings import *
 from scipy import stats
 import xlrd
+import numpy.ma as ma
+import os 
+import datetime
 
 def stations(station):
 
