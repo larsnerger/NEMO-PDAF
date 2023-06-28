@@ -1018,26 +1018,41 @@ def read_station_series(varnum, grid_area, year, time_stamp, depth, DA_switch, c
         # set coordinates
         lat = mod_keys['lat'][:]
         lon = mod_keys['lon'][:]
+	dep_temp = mod_keys['lev'][:]
+	if iday == 0:
+	  dep = dep_temp 
+	else: 
+	  dep = np.vstack((dep,dep_temp))
 
         if day==1:
             print 'check observations within ', dist, ' grid points around location ', station
             print 'longitude range: ', lon[lon_min], lon[lon_max]
             print 'longitude range: ', lat[lat_min], lat[lat_max]
 
-        modval= np.zeros((range_lon, range_lat))
-        modval = data_mod[lat_min:lat_max, lon_min:lon_max]
-
-        #print 'modval: ', modval
-
-
-        mean_mobs= 0.0
-        cnt_mean = 0
-        for i in range(len(modval[:,0])):
+	if depth == ':':
+          modval= np.zeros((len(dep_temp), range_lon, range_lat))
+          modval = data_mod[:,lat_min:lat_max, lon_min:lon_max]	
+          mean_mobs= np.zeros(len(dep_temp))
+          cnt_mean = np.zeros(len(dep_temp))
+          for d in range(len(modval)):
+            for i in range(len(modval[0])):
+              for j in range(len(modval[0][0])):
+                if modval[d,i,j]>-999.0:
+                    mean_mobs[d] = mean_mobs[d] + modval[d,i,j]
+                    cnt_mean[d] = cnt_mean[d] + 1
+            if cnt_mean[d]>0:
+              mean_mobs[d] = mean_mobs[d] / cnt_mean[d]
+	else:
+          modval= np.zeros((range_lon, range_lat))
+          modval = data_mod[lat_min:lat_max, lon_min:lon_max]
+          mean_mobs= 0.0
+          cnt_mean = 0
+          for i in range(len(modval[:,0])):
             for j in range(len(modval[0,:])):
                 if modval[i,j]>-999.0:
                     mean_mobs = mean_mobs + modval[i,j]
                     cnt_mean = cnt_mean + 1
-        if cnt_mean>0:
+          if cnt_mean>0:
             mean_mobs = mean_mobs / cnt_mean
 
         if varnum==10:
@@ -1047,8 +1062,10 @@ def read_station_series(varnum, grid_area, year, time_stamp, depth, DA_switch, c
         modday.append(alldays)
 
         alldays = alldays+1
-
-    return modmean, modday
+    if depth == ':':
+      return modmean, modday, dep 
+    else: 
+      return modmean, modday
 
 
 def read_station_series_obs(varnum, year, months, istation, strstation, dist):
