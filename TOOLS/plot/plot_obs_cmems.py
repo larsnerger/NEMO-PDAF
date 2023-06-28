@@ -20,19 +20,27 @@ import cmocean
 if __name__ == "__main__":
     # Pick a date:
     year   = 2015       # for year 2012 we plot NOAA SST data, for >=2017 Sentinel 3a
-    month  = '03'       # Month has to be string and two digits i.e '05' and '10'
-    day    = 14	        # Day 
+    month  = '04'       # Month has to be string and two digits i.e '05' and '10'
+    day    = 01	        # Day 
     ampm   = 'am'	# am or pm (string)
-    domain = 'no'       # Domain to plot: 'no' for both domain or 'ku' for fine only
-    plotcb=1            # Whether to plot the colorbar
-    save   = 0          # (1) save file
+    domain = 'ba'       # Domain to plot: 'no' for both domain or 'ku' for fine only
+    plotcb=0            # Whether to plot the colorbar
+    save   = 1          # (1) save file
     varnum = 24 	# Variable number from the var_names routine: 2-SST, 24-CHL
-    ssttype='L4'        # Choose SST observation type: 'L4' or 'L3S'
+    ssttype='L3S'        # Choose SST observation type: 'L4' or 'L3S'
     chltype='ba'        # Choose CHL observation data set: 'ba' or 'no'
 
     if varnum==2:
-        minmax = [0, 10]        # max/max plotted values - set min=max for automatic
+        minmax = [16, 16]        # max/max plotted values - set min=max for automatic
         plotlog=0
+        if month == '05' and day == 29:
+          minmax = [-1, 17.0]
+        elif month == '05' and day == 01:
+          minmax = [-1, 13.0]
+        elif month == '04' and day == 01:
+          minmax = [-1, 7.0]
+        elif month == '03' and day == 03:
+          minmax = [-1, 6.0]
     else:
         minmax = [0.1, 10.0]        # max/max plotted values - set min=max for automatic
         plotlog=1
@@ -43,6 +51,27 @@ if __name__ == "__main__":
     var, mat_var, Variable, var_unit = var_names(varnum)
     MAT_VAR = mat_var.upper()
     ######################################################
+
+    if varnum == 2: #TEMP
+      strcmap = 'coolwarm'   # colormap
+    elif varnum==10:
+        strcmap = 'viridis'
+    elif varnum==11:
+        strcmap = 'inferno'
+    elif varnum==12:
+        strcmap = cmocean.cm.deep
+    elif varnum==21:     # OXY
+        strcmap = cmocean.cm.haline
+    elif varnum==23:     # pH
+        strcmap = 'gist_ncar_r'
+    elif varnum==24:     # Chlorophyll
+        strcmap = cmocean.cm.thermal
+    elif varnum==25:   # TE
+        strcmap = cmocean.cm.dense
+    elif varnum==26:   # PFT
+        strcmap = cmocean.cm.rain
+    else:
+        strcmap = 'gist_ncar_r'
 
     if varnum==2:
         if ssttype=='L3S':
@@ -86,17 +115,6 @@ if __name__ == "__main__":
         fname= 'Obs_'+str(MAT_VAR)+'-'+chltype+'_'+str(year)+str(month)+nullstr+str(day)+'_'+domain+'.png'
 
     print('File: '+ fname)
-
-    strcmap = 'coolwarm'   # colormap
-    strcmap = 'jet'   # colormap
-    if varnum==2:
-        strcmap = cmocean.cm.thermal
-        strcmap = 'coolwarm'   # colormap
-    else:
-        strcmap = cmocean.cm.algae
-        strcmap = 'viridis'
-#        strcmap = cmocean.cm.thermal
-#    strcmap = 'gist_earth'
 
     plot_map(data, lat, lon, varnum, domain, \
              strcmap, minmax, save, title, fname, plotlog, plotcb)
