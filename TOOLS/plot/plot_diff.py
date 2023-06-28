@@ -132,6 +132,7 @@ if __name__ == "__main__":
 
     plotcb = 1
     plotlog = 0
+    title = 'Difference: Forecast-Free'
     plot_map(data_coarse, lat1, lon1, varnum, domain, \
              strcmap, minmax, save, title, fname, plotlog, plotcb)
 
