@@ -154,13 +154,7 @@ if __name__ == "__main__":
       fname = varstr+'_'+model_run+'_'+str(assim)+'_'+str(year)+'-'+str(month)+'-'+str(day)+'.png'
     print 'filename', fname
     
-    strcmap = 'coolwarm'   # colormap
-    #strcmap = 'terrain'
-    #strcmap = 'jet'
-#    strcmap = 'viridis'
-    #strcmap = 'gist_earth'
-#    strcmap = 'gist_ncar_r'
-    if varnum==2:     # Chlorophyll
+    if varnum==2:     # TEMP
         strcmap = 'coolwarm' #cmocean.cm.thermal
     elif varnum==10:
         strcmap = 'viridis'
@@ -173,8 +167,7 @@ if __name__ == "__main__":
     elif varnum==23:     # pH
         strcmap = 'gist_ncar_r'
     elif varnum==24:     # Chlorophyll
-        strcmap = 'viridis'
-#        strcmap = cmocean.cm.thermal
+        strcmap = cmocean.cm.thermal
     elif varnum==25:   # TE
         strcmap = cmocean.cm.dense
     elif varnum==26:   # PFT
