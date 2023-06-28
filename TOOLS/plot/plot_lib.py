@@ -3466,3 +3466,6 @@ def size(array):
         array = array[0]
     return tuple(dims)
 
+def transpose(matrix):
+    return [list(row) for row in zip(*matrix)]
+
