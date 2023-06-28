@@ -3556,3 +3556,52 @@ def read_insitu_vali_ICES(var_num, path_data):
 
     return year, month, day, hour, minute, lon, lat, depth, data, data_qv
 
+def unique_list(lst, tol):
+    unique_lst = []
+    for x in lst:
+        for uniq in unique_lst:
+            if abs(x-uniq) < tol:
+                break
+        else:
+            unique_lst.append(x)
+    return unique_lst
+
+def unique_tuples(a, tol=0):
+    unique_list = []
+    unique_indices = []
+    count = 0
+    for i, x in enumerate(a):
+    #    print count,'/',len(a)
+        count = count + 1
+        found = False
+        for j, y in enumerate(unique_list):
+            if len(x) != len(y):
+                continue
+            match = all(abs(xi - yi) <= tol for xi, yi in zip(x, y))
+            if match:
+                found = True
+                break
+        if not found:
+            unique_list.append(x)
+            unique_indices.append(i)
+    return unique_list, unique_indices
+
+
+def unique_tuples2(a, tol=0):
+    unique_dict = {}
+    unique_indices = []
+    for i, x in enumerate(a):
+        key = tuple(x)
+        if key not in unique_dict:
+            unique_dict[key] = i
+            unique_indices.append(i)
+        else:
+            existing_index = unique_dict[key]
+            existing_tuple = a[existing_index]
+            if len(existing_tuple) == len(x) and all(abs(xi - yi) <= tol for xi, yi in zip(x, existing_tuple)):
+                continue
+            unique_dict[key] = i
+            unique_indices.append(i)
+    unique_list = [a[i] for i in unique_indices]
+    return unique_list, unique_indices
+
