@@ -3844,3 +3844,15 @@ def plot_scatter_map(lat, lon, data, strcmap, domain, minmax, title_str, cbar_la
     if plot_show==1:
        plt.show()
 
+def check_list_type(lst):
+    # output: 0 - not a list, 1 - list, 2 - list of lists
+    # Check if the input is a list
+    if not isinstance(lst, list):
+        return 0#"Not a list"
+
+    # Check if all elements in the list are lists
+    if all(isinstance(elem, list) for elem in lst):
+        return 2#"List of lists"
+    else:
+        return 1#"Only a list"
+
