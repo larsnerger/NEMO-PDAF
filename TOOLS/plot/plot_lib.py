@@ -1542,6 +1542,8 @@ def read_model(variable, grid_area, year, month, day, time_stamp, depth, DA_swit
     elif DA_switch==0:
        path = get_exp_path(coupled, year, month, day, time_stamp, 0)
 
+    if variable == 'PFT' or variable == 'TE':
+      path = path.replace('DA','Post_DA')
     # Set file name including path
     timestr = str(year)+str(month)+str(day)
 
