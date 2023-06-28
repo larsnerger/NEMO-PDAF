@@ -3458,3 +3458,11 @@ def get_model_idx(lat_stat, lon_stat, dist):
 
     return model_idx
 
+def size(array):
+    # function that returns the dimensions of a list (or list of lists etc.)
+    dims = []
+    while hasattr(array, '__iter__'):
+        dims.append(len(array))
+        array = array[0]
+    return tuple(dims)
+
