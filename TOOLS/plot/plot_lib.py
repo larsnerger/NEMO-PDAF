@@ -3556,6 +3556,147 @@ def read_insitu_vali_ICES(var_num, path_data):
 
     return year, month, day, hour, minute, lon, lat, depth, data, data_qv
 
+def read_insitu_vali_CMEMS(varnum, data_path):
+  # Read insitu data for specific variable
+  if varnum == 1: #z
+    varstr = 'SLEV' # water surface height above a specific datum
+  elif varnum == 2: #tem
+    varstr = 'TEMP'
+    #varstr = 'TEMP_ADJUSTED' # sea temperature adjusted
+    #varstr = 'SSJT' # sea temperature from TSG
+  elif varnum == 3: # sal
+    varstr = 'PSAL' # practical salinity
+    #varstr = 'PSAD_ADJUSTED' # practical salinity adjusted
+  elif varnum == 6: #NH4
+    print 'CAUTION: Insitu data is not NH4 but NH4-N (Ammonium)'
+    varstr = 'AMON'# NH4-N - Ammonium !!!
+    #varstr = 'AMOW' # NH4-N !!!
+  elif varnum == 7: # NO3
+    print 'CAUTION: Insitu data is not NO3 but NO3-N'
+    varstr = 'NTRA' # NO3-N - Nitrate!!
+    #varstr = 'NTAW' # NO3-N !!
+    #varstr = 'NTAW_ADJUSTED' # NO3-N adjusted
+  elif varnum == 8: #PO4
+    print 'CAUTION: Insitu data is not PO4 but PO4-P'
+    varstr = 'PHOS'
+    #varstr = 'PHOW'
+  elif varnum == 9: #SIL
+    varstr = 'SLCA' # Silicate (SIO4-SI)
+    #varstr = 'SLCW' # Silicate (SIO4-SI)
+  elif varnum == 20: #ALK
+    varstr = 'ALKY' # Total alkalinity
+    #varstr = 'ALKW' # Total alkalinity
+    #varstr = 'ALK3' # Total alkalinity
+  elif varnum == 21: #OXY
+    #varstr = 'DOXY' # dissolved oxygen
+    varstr = 'DOX1' # dissolved oxygen
+    #varstr = 'DOX2' # dissolved oxygen
+    #varstr = 'DOX2_ADJUSTED' ' dissolved oxygen adjusted
+    #varstr = 'OSAT' # oxygen saturation
+  elif varnum == 23: # PH
+    varstr = 'PHPH' # Ph
+  elif varnum == 24: # CHL
+    #varstr = 'CPHL' # Chlorophyll-a
+    #varstr = 'CH1P' # Chlorophyll-a (less divinyl chlorophyll-a)
+    #varstr = 'Chlorophyll-a adjusted' # Chlorophyll-a adjusted
+    #varstr = 'FLU2' # Chlorophyll-a fluorescence
+    varstr = 'CHLT' # Total chlorophyll
+
+  time_final = []
+  data_final = []
+  data_qc_final = []
+  lat_final = []
+  lon_final = []
+  depth_final = []
+  depth_qc_final = []
+  data_source_final = np.array([])
+
+  print 'READING VARIABLE = ', varstr
+  for dirpath, dirnames, filenames in os.walk(data_path):
+    for filename in filenames:
+      if filename.endswith('.nc'):
+        file_path = os.path.join(dirpath, filename)
+        folder_path = '/scratch/usr/hbxsovli/SEAMLESS/validation_data/INSITU_BAL_PHYBGCWAV_DISCRETE_MYNRT_013_032/'
+        idx_split = file_path.index(folder_path)
+        data_source = file_path[idx_split + len(folder_path):]
+        #file_path = '/scratch/usr/hbxsovli/SEAMLESS/validation_data/INSITU_BAL_PHYBGCWAV_DISCRETE_MYNRT_013_032/MO/BO_TS_MO_BothnianSea.nc'
+        nc = NetCDFFile(file_path, 'r')
+        if varstr in nc.variables and 'DEPH' in nc.variables and 'SYKE.nc' not in file_path:
+          data = np.array(nc.variables[varstr][:])
+          data_qc = np.array(nc.variables[varstr+'_QC'][:])
+          lat = np.array(nc.variables['LATITUDE'][:])
+          lon = np.array(nc.variables['LONGITUDE'][:])
+          time = np.array(nc.variables['TIME'][:])
+          depth = np.array(nc.variables['DEPH'][:])
+          ref_date = datetime.datetime(1950,1,1,0,0,0)
+          deltas = [datetime.timedelta(days=f) for f in time]
+          time_dt = ref_date + np.array(deltas)
+          # select only relevent timespan
+          notnan_mask = ~np.isnan(data) & (data>-999).astype(bool)
+          year_mask = np.array([date.year == 2015 for date in time_dt])
+          month_mask = np.array([date.month in [2,3,4,5] for date in time_dt])
+          lat_mask = (lat>50).astype(bool) & (lat<66).astype(bool)
+          lon_mask = (lon>-4).astype(bool) & (lon<31).astype(bool)
+          hour_mask = np.array([date.hour in [22,23,0,24,1,2] for date in time_dt])
+          if len(data.shape)>1:
+            combined_mask = year_mask & month_mask & hour_mask & lat_mask & lon_mask
+            if np.any(combined_mask):
+              depth_temp = depth[combined_mask,:]
+              data_temp = data[combined_mask,:]
+              data_qc_temp = data_qc[combined_mask,:]
+              lat_temp = lat[combined_mask]
+              lon_temp = lon[combined_mask]
+              time_temp = time_dt[combined_mask]
+              if len(data_temp)==len(lat_temp):
+                data_len = len(data_temp[0])
+              elif len(data_temp[0])==len(lat_temp):
+                data_len = len(data_temp)
+              lat_matrix = np.transpose(np.tile(lat_temp,(data_len,1)))
+              lon_matrix = np.transpose(np.tile(lon_temp,(data_len,1)))
+              time_matrix = np.transpose(np.tile(time_temp,(data_len,1)))
+              notnan_mask = ~np.isnan(data_temp) & ~np.isnan(depth_temp) & (data_temp>-999).astype(bool)
+              if np.any(notnan_mask):
+                print file_path
+                print len(time_matrix[notnan_mask])
+                time_final = np.append(time_final, time_matrix[notnan_mask])
+                lat_final = np.append(lat_final, lat_matrix[notnan_mask])
+                lon_final = np.append(lon_final, lon_matrix[notnan_mask])
+                if varstr == 'DOX1':
+                  data_temp = 1/0.022391*data_temp[notnan_mask]#*0.001
+                  print data_temp
+                else: data_temp = data_temp[notnan_mask]
+                data_final = np.append(data_final, data_temp)
+                data_qc_final = np.append(data_qc_final, data_qc_temp[notnan_mask])
+                depth_final = np.append(depth_final, depth_temp[notnan_mask])
+                data_source_final = np.append(data_source_final, np.transpose([str(data_source)]*len(depth_temp[notnan_mask])))
+          else:
+            notnan_mask = ~np.isnan(data)
+            combined_mask= year_mask & month_mask & hour_mask & notnan_mask & lat_mask & lon_mask
+            if np.any(combined_mask):
+              print file_path
+              print len(time_dt[combined_mask])
+              time_final = np.append(time_final, time_dt[combined_mask])
+              if varstr == 'DOX1':
+                data_temp = 1/0.022391*data[combined_mask]#*0.001
+                print data_temp
+              else: data_temp = data[combined_mask]
+              data_final = np.append(data_final, data_temp)
+              data_qc_final = np.append(data_qc_final, data_qc[combined_mask])
+              lat_final = np.append(lat_final, lat[combined_mask])
+              lon_final = np.append(lon_final, lon[combined_mask])
+              depth_final = np.append(depth_final, depth[combined_mask])
+              data_source_final.append([str(data_source)]*len(depth[combined_mask]))
+              if len(data_final) != len(lat_final):
+                print 'PROBLEM LENGTH NOT THE SAME'
+                break
+              else:
+                print len(lat_final), len(data_final)
+          del data, data_qc, lat, lon, time, depth, deltas, time_dt, year_mask, month_mask, hour_mask, combined_mask, data_source
+        #else:
+        #  print 'Variable not found in', file_path
+
+  return time_final, lon_final, lat_final, depth_final, data_final, data_qc_final, data_source_final
+
 def unique_list(lst, tol):
     unique_lst = []
     for x in lst:
