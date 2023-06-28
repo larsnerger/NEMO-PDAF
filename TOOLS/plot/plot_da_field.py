@@ -85,6 +85,12 @@ if __name__ == "__main__":
 
     ######################################################
 
+    if assim == 'Free': asml = 0
+    else: asml = 1
+    full_path = get_exp_path(coupled, '2015', '2', '01', '00', asml)
+    model_run = extractBetween(full_path, 'exp/', '/DA/')
+    print 'Model run = ', model_run
+
     varstr, mat_var, Variable, var_unit = var_names(varnum)
     MAT_VAR = mat_var.upper()
 
@@ -139,11 +145,13 @@ if __name__ == "__main__":
 
     # Set file name
     if assim=='Free':
-        fname= str(MAT_VAR)+'_'+str(assim)+'_'+domain+'_'+\
+      fname= str(MAT_VAR)+'_'+str(assim)+'_'+domain+'_'+\
                str(year)+str(month)+str(day)+'.png'
+      fname = varstr+'_'+str(assim)+'_'+str(year)+'-'+str(month)+'-'+str(day)+'.png'
     else:
-        fname= str(MAT_VAR)+'_'+exp+'_'+str(assim)+'_'+domain+'_'+\
+      fname= str(MAT_VAR)+'_'+exp+'_'+str(assim)+'_'+domain+'_'+\
                str(year)+str(month)+str(day)+'.png'
+      fname = varstr+'_'+model_run+'_'+str(assim)+'_'+str(year)+'-'+str(month)+'-'+str(day)+'.png'
     print 'filename', fname
     
     strcmap = 'coolwarm'   # colormap
