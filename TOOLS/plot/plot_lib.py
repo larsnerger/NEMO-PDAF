@@ -43,6 +43,12 @@ def stations(station):
             lon = sheet.cell_value(i, 3)
             lat = sheet.cell_value(i, 2)
             noba = 'no'
+    
+    # DarsserS is not in .xlsx file above
+    if station == 'DarsserS':
+      lat = 54.70 
+      lon = 12.70 
+      noba = 'ba'
             
     return lon, lat, noba
 
