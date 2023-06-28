@@ -3879,3 +3879,25 @@ def get_model_depth_idx(depth_in):
 
     return idx
 
+def extractBefore(string, delimiter):
+  index = string.find(delimiter)
+  if index != -1:
+    return string[:index]
+  else:
+   return string
+
+def extractBetween(string, start_delimiter, end_delimiter):
+    start_index = string.find(start_delimiter) + len(start_delimiter)
+    end_index = string.find(end_delimiter, start_index)
+    if start_index != -1 and end_index != -1:
+        return string[start_index:end_index]
+    else:
+        return ""
+
+def extractAfter(string, delimiter):
+    index = string.find(delimiter)
+    if index != -1:
+        return string[index + len(delimiter):]
+    else:
+        return ""
+
