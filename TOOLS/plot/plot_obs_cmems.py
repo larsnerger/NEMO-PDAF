@@ -98,6 +98,11 @@ if __name__ == "__main__":
             data = np.flip(data,0)
             lat = np.flip(lat,0)
 
+    lons, lats = np.meshgrid(lon.compressed(),lat.compressed())
+    out_lat = np.array(lats) > 63
+    out_lon = np.array(lons) < 15
+    out_bal = out_lat & out_lon
+    data[out_bal] = np.nan
 
     #### Plotting
 
