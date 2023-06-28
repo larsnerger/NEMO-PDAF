@@ -20,19 +20,13 @@ import cmocean
 
 
 if __name__ == "__main__":
-    coupled = 'strong'	# Coupled: Weak/Strong
-    coupled = 'fine_cmems'	# Coupled: Weak/Strong
     coupled = ''
-#    coupled = 'fine_cmems_int'	# Coupled: Weak/Strong
-#    coupled = 'fine'	# Coupled: Weak/Strong
     depth  = '0'	# Depth
     year   = 2015       # Year
     month  = '03'       # Month has to be string and two digits i.e '05' and '10'
     day    = '10'	# Day has to be double digits
     ampm   = '00'	# am or pm (string)
     assim  = 'Free'     # Free (freerun), Fcst (background/forecast), Ana (analysis)
-#    assim  = 'Fcst'     # Free (freerun), Fcst (background/forecast), Ana (analysis)
-    #assim  = 'Ana'      # Free (freerun), Fcst (background/forecast), Ana (analysis)
     domain = 'no'       # Domain to plot: 'no' for both domains or 'ba' for Baltic, 'Ar' for Arkona
     exp = 'lestkf'
     plotcb = 1          # Whether to show the colorbar
@@ -49,7 +43,14 @@ if __name__ == "__main__":
                         #            23=PH, 24=CHL, 25=TE, 26=PFT, 27=PP
 
     if varnum==2:
-        minmax = [0.0, 10.0]      # TEM
+        if month == '05' and day == '29':
+          minmax = [-1, 17.0]
+        elif month == '05' and day == '01':
+          minmax = [-1, 13.0]
+        elif month == '04' and day == '01':
+          minmax = [-1, 7.0]
+        elif month == '03' and day == '03':
+          minmax = [-1, 6.0]
         plotlog = 0        
     elif varnum==10:
         minmax = [0.1, 10.0]      # DIA
@@ -61,7 +62,7 @@ if __name__ == "__main__":
         minmax = [0.00001, 0.1]   # CYA
         plotlog = 1
     elif varnum==21:
-        minmax = [260.0, 450.0]      # OXY
+        minmax = [300.0, 500.0]      # OXY
         plotlog = 0
     elif varnum==23:
         minmax = [6.8 ,  8.2]      # pH
@@ -70,7 +71,10 @@ if __name__ == "__main__":
         minmax = [0.1, 10.0]      # CHL
         plotlog = 1
     elif varnum==25:
-        minmax = [0, 4]           # TE
+	if month == '05':
+          minmax = [0, 6]           # TE
+	else:
+	  minmax = [0,4]
         plotlog = 0
     elif varnum==26:
         minmax = [0, 1]           # PFT
