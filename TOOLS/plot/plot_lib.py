@@ -3746,3 +3746,17 @@ def unique_tuples2(a, tol=0):
     unique_list = [a[i] for i in unique_indices]
     return unique_list, unique_indices
 
+def calc_rmse(data1, data2):
+  # calculate rmse between data1 and data2 and ignore possible NaN values
+  if isinstance(data1, list):
+    data1 = np.array(data1)
+  if isinstance(data2, list):
+    data2 = np.array(data2)
+
+  mask = ~np.isnan(data1) & ~np.isnan(data2) # Create a mask to ignore NaN values in y_true
+  squared_diff = (data1[mask] - data2[mask]) ** 2
+  mse = np.mean(squared_diff)
+  rmse = np.sqrt(mse)
+
+  return rmse
+
