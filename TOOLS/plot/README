@@ -1,14 +1,63 @@
 Information on different python plot scripts 
 
 1. Maps 
+   - plot_da_field
+   - plot_diff
+   - plot_obs_cmems
 2. Timeseries
    - with Satellite obs
    - with insitu obs
-3. Validation 
+   - Hovmöller 
+3. Validation (.xlsx files give information on )
    - RMSe (Satellite & insitu)
+   - Insitu data 'preprocessing'
+   - Insitu data information 
 
 1. MAPS 
 - plot_da_field.py
     Plots the map of one experiment on a specified day (for any variable)
 - plot_diff.py
     Plots the map of the difference of two experiments on a specified day (for any variable)
+- plot_obs_cmems.py 
+    Plots satellite observations on map for CHL or Temp on one specified day
+
+2. Timeseries
+- plot_hovmoller.py
+    Creates a hovmoeller plot in a given timerange for one specified variable 
+- plot_timeseries_da(_loop).py
+    Plots the timeseries of specified variables for specified experiments at a given insitu station location. 
+    In case of Temp and CHL it also plots the corresponding satellite observations. 
+    If *_loop.py is used, then one can plot multiple variables without having to rerun the file all the time. 
+
+3. Validation 
+- preprocessing_ICES.py 
+    Needs to be run FIRST if one wants to use ICES data. It saves a .pkl file containing all the data that has been observed 
+    in the period of January-May2015 around midnight for one specified variable (more details on this can be found in the 
+    corresponding function in plot_lib: read_insitu_vali_ICES) 
+- preprocessing_INSITU.py
+    Needs to be run FIRST if one wants to use CMEMS insitu data. It saves a .pkl file containing all the data that has been
+    observed in the period of Jan-May2015 around midnight for one specified variable (more details on this can be found in 
+    the corresponding function in plot_lib: read_insitu_vali_CMEMS). 
+    ATTENTION: For oxygen there are two variable names, once DOXY and the other DOX1 (they have different units but that is 
+    accounted for in the read function by a rule of thumb for unit converstion). Therefore, one needs to change in plot_lib 
+    the varstr between DOXY and DOX1, then rename (one with DOXY and the other with DOX1) and then run preprocessing_OXY_merge.py to combine them  
+- preprocessing_OXY_merge.py
+    Only for oxygen this needs to be run after preprocessing_INSITU.py to merge the two .pkl files
+- plot_insitu_data.py
+    Plots information on ICES data on map for a specific variable to show available stations in a given range. Can plot: data, month/day/hour of observation 
+- plot_insitu_profile.py
+    Plots the profile observation from ICES for a specific day on a specified variable
+- plot_insitu_rmse_map.py
+    Calculates the RMSe over entire time span at each CMEMS insitu validation station for the specified variable and plots it on a map. 
+    One can also plot the number of observations used to calculate the RMSe on a map. This option can be turned on/off in the beginning.
+- plot_rmse_*exp.py
+    Plots the timeseries of the *number of experiments and free run for a specified variable.
+    ATTENTION: One first needs to create the netcdf files using the .F90 scripts in TOOLS/rmse/
+- plot_station_location.py
+    Plots the location of a given lat/lon as a squared scatter on the map. Used to show the location of an insitu station 
+- plot_ts_insitu_cmems.py 
+    Plots the timeseries of specified experiments for given variable at a specific lat/lon location of a CMEMS insitu station.
+    One can specify the depth at which the station has data and that is then plotted together with the model estimate at that depth. 
+- uni_coords.py
+    This is a function that returns the unique coordinates in a .pkl file and can save them in another .pkl file. This is not necessary 
+    for any of the used plot functions though. 
