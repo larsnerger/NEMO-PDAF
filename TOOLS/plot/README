@@ -1,0 +1,14 @@
+Information on different python plot scripts 
+
+1. Maps 
+2. Timeseries
+   - with Satellite obs
+   - with insitu obs
+3. Validation 
+   - RMSe (Satellite & insitu)
+
+1. MAPS 
+- plot_da_field.py
+    Plots the map of one experiment on a specified day (for any variable)
+- plot_diff.py
+    Plots the map of the difference of two experiments on a specified day (for any variable)
