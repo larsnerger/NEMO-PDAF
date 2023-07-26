@@ -644,7 +644,7 @@ def get_mobs_cmems_chl(year, month, day, forana, path, datatype, chltype, log, e
 
 
 
-def get_cmems_sst(year, month, day, time, datatype, ssttype):
+def get_cmems_sst(year, month, day, time, datatype, noba):
 
     basedir = base_dir()
 
@@ -659,7 +659,7 @@ def get_cmems_sst(year, month, day, time, datatype, ssttype):
     if day < 10:
         day = '0'+str(day)
 
-    if ssttype=='L3S':
+    if datatype=='L3S':
         print '/scratch/usr/hzfblner/SEAMLESS/observations/SST_L3S_2015/sst_'+datatype+'_'+str(year)+str(month)+'.nc'
         ncid   = NetCDFFile('/scratch/usr/hzfblner/SEAMLESS/observations/SST_L3S_2015/sst_'+datatype+'_'+str(year)+str(month)+'.nc')
         sst_coarse = ncid.variables['sea_surface_temperature'][int(day)-1,:,:]
@@ -955,7 +955,7 @@ def read_station_idx_obs(varnum, year, months, istation, station, dist):
         _, lat_o, lon_o = get_cmems_chl(year, month, day, 'am', datatype_obs, log)
     else:
         # SST
-        datatype_obs= 'REP_L4'
+        #datatype_obs= 'REP_L4'
 	datatype_obs = 'L3S'
         _, lat_o, lon_o = get_cmems_sst(year, month, day, 'am', datatype_obs, noba)
 
@@ -1482,7 +1482,7 @@ def read_station_series_obs(varnum, year, months, istation, strstation, dist):
             data_o, lat_o, lon_o = get_cmems_chl(year, month, day, 'am', datatype_obs, log)
         else:
             # SST
-            datatype_obs= 'REP_L4'
+            #datatype_obs= 'REP_L4'
 	    datatype_obs = 'L3S'
             data_o, lat_o, lon_o = get_cmems_sst(year, month, day, 'am', datatype_obs, noba)
 
