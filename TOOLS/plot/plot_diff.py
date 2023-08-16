@@ -23,28 +23,17 @@ import cmocean
 
 
 if __name__ == "__main__":
-    coupled = 'strong'	# Coupled: Weak/Strong
-    coupled = 'fine_cmems'	# Coupled: Weak/Strong
-    coupled = ''
-#    coupled = 'fine_cmems_int'	# Coupled: Weak/Strong
-#    coupled = 'fine'	# Coupled: Weak/Strong
+    title = 'CHL strongly'
     depth  = '0'	# Depth level
     year   = 2015       # Year
-    month  = '04'       # Month has to be string and two digits i.e '05' and '10'
-    day    = '01'	      # Day has to be double digits
+    month  = '03'       # Month has to be string and two digits i.e '05' and '10'
+    day    = '03'	      # Day has to be double digits
     ampm   = '00'	     # am or pm (string)  - not relevant for NEMO
     assim  = 'Fcst'     # Fcst (background/forecast), Ana (analysis)
-    #assim  = 'Ana'     # Fcst (background/forecast), Ana (analysis)
     assim2  = 'Free'     # Free (freerun), Fcst (background/forecast), Ana (analysis)
-    #assim2 = 'Fcst'     # Free (freerun), Fcst (background/forecast), Ana (analysis)
-    #assim2 = 'Ana'     # Free (freerun), Fcst (background/forecast), Ana (analysis)
     domain = 'ba'       # Domain to plot: 'no' for both domains or 'ku' for fine only
-    minmax = [10.0,10.0]      # max/max plotted values - set min=max for automatic
-#    minmax = [-3.0,3.0]      # max/max plotted values - set min=max for automatic
-    minmax = [-10.0,10.0]      # max/max plotted values - set min=max for automatic
-#    minmax = [260.0,430.0]      # max/max plotted values - set min=max for automatic
-    #minmax = [-1,100.0]      # max/max plotted values - set min=max for automatic
-    save = 0
+    minmax = [-20.0,20.0]      # max/max plotted values - set min=max for automatic
+    save = 1
 
     varnum = 21	 	# Variable number from the var_names routine.
                         # Quick ref: 1=z, 2=TEM, 3=SAL, 4=uvel, 5=vvel, 6=NH4, 7=NO3, 8=PO4, 
@@ -119,12 +108,6 @@ if __name__ == "__main__":
     print 'filename', fname
     
     strcmap = 'coolwarm'   # colormap
-    #strcmap = 'terrain'
-    #strcmap = 'jet'
-#    strcmap = 'viridis'
-    #strcmap = 'gist_earth'
-#    strcmap = 'gist_ncar_r'
-    #strcmap = cmocean.cm.thermal
     if varnum == 2:
       strcmap='seismic'
     elif varnum == 21:
@@ -132,7 +115,6 @@ if __name__ == "__main__":
 
     plotcb = 1
     plotlog = 0
-    title = 'Difference: Forecast-Free'
     plot_map(data_coarse, lat1, lon1, varnum, domain, \
              strcmap, minmax, save, title, fname, plotlog, plotcb)
 
