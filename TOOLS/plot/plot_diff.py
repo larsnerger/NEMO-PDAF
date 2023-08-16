@@ -97,12 +97,13 @@ if __name__ == "__main__":
     #### Plotting
 
     # Set plot title
-    if assim2=='Ana' or assim2=='Fcst':
-       title='Assimiliation increment for '+str(Variable)+' on '+str(year)+'-'+str(month)+'-'+str(day)
-    elif assim2=='Free' and assim=='Fcst':
-       title='Difference forecast-free for '+str(Variable)+' on '+str(year)+'-'+str(month)+'-'+str(day)
-    elif assim2=='Free' and assim=='Ana':
-       title='Difference analysis-free for '+str(Variable)+' on '+str(year)+'-'+str(month)+'-'+str(day)
+    if 'title' not in locals():
+      if assim2=='Ana' or assim2=='Fcst':
+         title='Assimiliation increment for '+str(Variable)+' on '+str(year)+'-'+str(month)+'-'+str(day)
+      elif assim2=='Free' and assim=='Fcst':
+         title='Difference forecast-free for '+str(Variable)+' on '+str(year)+'-'+str(month)+'-'+str(day)
+      elif assim2=='Free' and assim=='Ana':
+         title='Difference analysis-free for '+str(Variable)+' on '+str(year)+'-'+str(month)+'-'+str(day)
     # Set file name
     fname= str(MAT_VAR)+'_'+model_run+'_'+assim+'-'+assim2+'_'+str(year)+str(month)+str(day)+\
 			'_'+domain+'.png'
