@@ -23,18 +23,18 @@ import cmocean
 
 
 if __name__ == "__main__":
-    title = 'CHL strongly'
+    title = 'CHL weakly + SST strongly'
     depth  = '0'	# Depth level
     year   = 2015       # Year
-    month  = '03'       # Month has to be string and two digits i.e '05' and '10'
-    day    = '03'	      # Day has to be double digits
+    month  = '05'       # Month has to be string and two digits i.e '05' and '10'
+    day    = '29'	      # Day has to be double digits
     ampm   = '00'	     # am or pm (string)  - not relevant for NEMO
     assim  = 'Fcst'     # Fcst (background/forecast), Ana (analysis)
     assim2  = 'Free'     # Free (freerun), Fcst (background/forecast), Ana (analysis)
     domain = 'ba'       # Domain to plot: 'no' for both domains or 'ku' for fine only
     minmax = [-20.0,20.0]      # max/max plotted values - set min=max for automatic
     save = 1
-
+    plotcb = 0         # plot colorbar (0-no, 1-yes)
     varnum = 21	 	# Variable number from the var_names routine.
                         # Quick ref: 1=z, 2=TEM, 3=SAL, 4=uvel, 5=vvel, 6=NH4, 7=NO3, 8=PO4, 
                         #            9=SIL, 10=DIA, 11=FLA, 12=CYA, 13=MEZ, 14=MIZ, 15=DET,
@@ -115,7 +115,6 @@ if __name__ == "__main__":
     elif varnum == 21:
       strcmap = 'cmo.delta'
 
-    plotcb = 1
     plotlog = 0
     plot_map(data_coarse, lat1, lon1, varnum, domain, \
              strcmap, minmax, save, title, fname, plotlog, plotcb)
