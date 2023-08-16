@@ -44,6 +44,7 @@ if __name__ == "__main__":
     ######################################################
 
     asml = 1
+    coupled = 'weakly' #irrelevant variable but needs to be specified
     full_path = get_exp_path(coupled, '2015', '2', '01', '00', asml)
     model_run = extractBetween(full_path, 'exp/', '/DA/')
     print 'Model run = ', model_run
