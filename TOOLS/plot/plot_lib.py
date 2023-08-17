@@ -2884,10 +2884,10 @@ def plot_map(data_coarse, lat_c, lon_c, varnum, domain, \
     if vmin < 0.0:
         if freeclim==1:
             cs1 = m.contourf(x, y, data_coarse, cmap=cmap, vmin=vmin, vmax=vmax, \
-                             levels=clev, norm=MidpointNormalize(midpoint=0.0))
+                             levels=clev)#, norm=MidpointNormalize(midpoint=0.0))
         else:
-            cs1 = m.pcolor(x, y, data_coarse, cmap=cmap, vmin=vmin, vmax=vmax, \
-                           norm=MidpointNormalize(midpoint=0.0))
+            cs1 = m.pcolor(x, y, data_coarse, cmap=cmap, vmin=vmin, vmax=vmax)#, \
+                           #norm=MidpointNormalize(midpoint=0.0))
     else:
 #        if freeclim==1:
 #            cs1 = m.contourf(x, y, data_coarse, cmap=cmap, vmin=vmin, vmax=vmax, levels=clev)
@@ -2899,7 +2899,7 @@ def plot_map(data_coarse, lat_c, lon_c, varnum, domain, \
            cs1 = m.pcolor(x, y, data_coarse, cmap=cmap, vmin=vmin, vmax=vmax)
 
     # Save/Show Map
-    plt.title(title,fontsize=16)
+    plt.title(title,fontsize=18)
     if plotcb==1:
         #    tick_locator = ticker.MaxNLocator(nbins=5)
         cbar = m.colorbar(cs1)
@@ -3901,3 +3901,14 @@ def extractAfter(string, delimiter):
     else:
         return ""
 
+def generate_date_range(tstart, tend):
+    start_date = datetime.strptime(tstart, '%Y%m%d')
+    end_date = datetime.strptime(tend, '%Y%m%d')
+    date_list = []
+    
+    current_date = start_date
+    while current_date <= end_date:
+        date_list.append(current_date.strftime('%Y%m%d'))
+        current_date += timedelta(days=1)
+    
+    return date_list
