@@ -14,7 +14,7 @@ from scipy import stats
 import xlrd
 import numpy.ma as ma
 import os 
-import datetime
+from datetime import datetime, timedelta
 
 def stations(station):
 
@@ -45,7 +45,7 @@ def stations(station):
             noba = 'no'
     
     # DarsserS is not in .xlsx file above
-    if station == 'DarsserS':
+    if station == 'DarsserS' or station == 'Darsser Sill':
       lat = 54.70 
       lon = 12.70 
       noba = 'ba'
@@ -1624,9 +1624,12 @@ def read_model_path(variable, grid_area, year, month, day, time_stamp, depth, DA
     timestr = str(year)+str(month)+str(day)
 
     print path+str(letter)+'_'+timestr+'.nc'
-    if DA_switch == 1 or DA_switch==2 or DA_switch==11 or DA_switch==12 : # Background or analysis
+    if 'NORDIC' in path: 
+        nc_coarse = NetCDFFile(path)
+    else:
+      if DA_switch == 1 or DA_switch==2 or DA_switch==11 or DA_switch==12 : # Background or analysis
         nc_coarse = NetCDFFile(path+str(letter)+'_'+timestr+'.nc')
-    elif DA_switch == 0: # Free Ens
+      elif DA_switch == 0: # Free Ens
         nc_coarse = NetCDFFile(path+str(letter)+'_'+timestr+'.nc')
 
     # Set file index to read
@@ -2899,6 +2902,7 @@ def plot_map(data_coarse, lat_c, lon_c, varnum, domain, \
            cs1 = m.pcolor(x, y, data_coarse, cmap=cmap, vmin=vmin, vmax=vmax)
 
     # Save/Show Map
+    #plt.title(title,fontsize=22)
     plt.title(title,fontsize=18)
     if plotcb==1:
         #    tick_locator = ticker.MaxNLocator(nbins=5)
