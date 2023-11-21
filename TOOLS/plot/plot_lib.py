@@ -1077,7 +1077,7 @@ def read_station_series_path(varnum, grid_area, year, time_stamp, depth, DA_swit
     varstr, mat_var, variable, var_unit = var_names(varnum)
     print 'istation1', istation
     # Station station name and indices
-    station, station_idx, station_coords =  read_station_idx(varnum, grid_area, year, time_stamp, depth, DA_switch, coupled, z_mean, z_integral, z1, z2, months, istation, strstation, dist)
+    station, station_idx, station_coords =  read_station_idx(varnum, grid_area, year, time_stamp, depth, DA_switch, coupled, z_mean, z_integral, z1, z2, [3], istation, strstation, dist)
 
     lon_min = station_idx[1]-dist
     lon_max = station_idx[1]+dist+1
@@ -1102,9 +1102,27 @@ def read_station_series_path(varnum, grid_area, year, time_stamp, depth, DA_swit
         month = str(months[imonth])
 
       for iday in range(ndays):
-
+	if 'NORDIC' in path:
+	  ystr = str(year)
+	  if month < 10:
+	    mstr = '0'+str(month)
+	  else: 
+	    mstr = str(month) 
+	  if iday+1 < 10: 
+	    dstr = '0'+str(iday+1)
+	    print 'dstr = ', dstr
+	    print 'str(iday+1) = ', str(iday+1)
+	    print 'iday+1 = ', iday+1
+	  else: 
+	    dstr = str(iday+1)
+	  datestr = ystr + mstr + dstr
+	  print 'datestr = ', datestr
+          full_path = path.replace('ymd', datestr)
+	  print 'full_path = ', full_path
+        else: 
+	  full_path = path
         day = iday+1
-        data_mod, mod_keys = read_model_path(varstr, grid_area, year, month, day, time_stamp, depth, DA_switch, coupled, z_mean, z_integral, z1, z2, path)
+        data_mod, mod_keys = read_model_path(varstr, grid_area, year, month, day, time_stamp, depth, DA_switch, coupled, z_mean, z_integral, z1, z2, full_path)
 
         # set coordinates
         lat = mod_keys['lat'][:]
@@ -1195,8 +1213,8 @@ def read_latlon_series(varnum, grid_area, year, time_stamp, depth, DA_switch, co
         month = str(months[imonth])
 
       for iday in range(ndays):
-
-        day = iday+1
+        
+ 	day = iday+1
 
         data_mod, mod_keys = read_model(varstr, grid_area, year, month, day, time_stamp, depth, DA_switch, coupled, z_mean, z_integral, z1, z2)
 
@@ -1623,10 +1641,11 @@ def read_model_path(variable, grid_area, year, month, day, time_stamp, depth, DA
     # Set file name including path
     timestr = str(year)+str(month)+str(day)
 
-    print path+str(letter)+'_'+timestr+'.nc'
     if 'NORDIC' in path: 
+        print path
         nc_coarse = NetCDFFile(path)
     else:
+      print path+str(letter)+'_'+timestr+'.nc'
       if DA_switch == 1 or DA_switch==2 or DA_switch==11 or DA_switch==12 : # Background or analysis
         nc_coarse = NetCDFFile(path+str(letter)+'_'+timestr+'.nc')
       elif DA_switch == 0: # Free Ens
@@ -1641,6 +1660,7 @@ def read_model_path(variable, grid_area, year, month, day, time_stamp, depth, DA
     elif DA_switch == 0: #Free Ens
         DA_step = 0
     print 'DA_step', DA_step
+    
     nc_coarse_keys = ['nav_lon', 'nav_lat', 'nav_lev', str(variable)]
 
     # Coarse Data
@@ -1649,7 +1669,10 @@ def read_model_path(variable, grid_area, year, month, day, time_stamp, depth, DA
     if grid_area == 'all' or grid_area == 'coarse':
         coarse_keys['lon'] = nc_coarse.variables['nav_lon'][:]
         coarse_keys['lat'] = nc_coarse.variables['nav_lat'][:]
-        coarse_keys['lev'] = nc_coarse.variables['nav_lev'][:]
+        if 'NORDIC' in path: 
+          coarse_keys['lev'] = nc_coarse.variables['deptht'][:]
+	else: 
+          coarse_keys['lev'] = nc_coarse.variables['nav_lev'][:]
         numdim =  nc_coarse.variables[str(variable)].ndim
         if numdim == 4:
             if z_mean == 0 and z_integral == 0:
@@ -1755,6 +1778,73 @@ def read_model_var(variable, grid_area, year, month, day, time_stamp, depth, DA_
 
     return data_coarse, coarse_keys
 
+
+def read_model_var_path(variable, grid_area, year, month, day, time_stamp, depth, DA_switch, coupled, z_mean, z_integral, z1, z2, path):
+
+    if day < 10:
+        day = '0'+str(day)
+    else:
+        day = str(day)
+
+    letter = 'variance' #load_data(variable)
+    print 'Read variable:', variable
+
+    if depth != '0':
+      print 'Depth level '+depth
+
+    # Set Scale factor
+    scale = 1.0
+
+    # Set file name including path
+    timestr = str(year)+str(month)+str(day)
+
+    print path+str(letter)+'_'+timestr+'.nc'
+    if DA_switch == 1 or DA_switch==2 or DA_switch==11 or DA_switch==12 : # Background or analysis
+        nc_coarse = NetCDFFile(path+str(letter)+'_'+timestr+'.nc')
+    elif DA_switch == 0: # Free Ens
+        nc_coarse = NetCDFFile(path+str(letter)+'_'+timestr+'.nc')
+
+    # Set file index to read
+    #    0: forecast, 1: analysis
+    if DA_switch == 1: #Background
+        DA_step =0
+    elif DA_switch == 2: #Analysis
+        DA_step =1
+    elif DA_switch == 0: #Free Ens
+        DA_step = 0
+    print 'DA_step', DA_step
+    nc_coarse_keys = ['nav_lon', 'nav_lat', str(variable)]
+
+    # Coarse Data
+    coarse_keys = {}
+    data_coarse = {}
+    if grid_area == 'all' or grid_area == 'coarse':
+        coarse_keys['lon'] = nc_coarse.variables['nav_lon'][:]
+        coarse_keys['lat'] = nc_coarse.variables['nav_lat'][:]
+
+        numdim =  nc_coarse.variables[str(variable)].ndim
+        if numdim == 4:
+            if z_mean == 0 and z_integral == 0:
+                data_coarse = nc_coarse.variables[str(variable)][DA_step,depth,:,:]
+            elif z_mean == 1 and z_integral ==0:
+                data_coarse_pre = nc_coarse.variables[str(variable)][DA_step,:,:,:]
+                data_coarse = vertical_mean_4D(data_coarse_pre, z1, z2)
+            elif z_mean == 0 and z_integral ==1:
+                data_coarse_pre = nc_coarse.variables[str(variable)][DA_step,:,:,:]
+                data_coarse = vertical_integral_4D(data_coarse_pre, z1, z2)
+            else:
+                print 'Wrong z_mean or z_integral'
+                exit()
+        elif numdim == 3:
+            if str(variable)=='SST_inst':
+                data_coarse = nc_coarse.variables[str(variable)][DA_step,:,:]
+            else:
+                data_coarse = nc_coarse.variables[str(variable)][depth,:,:]
+
+        # Rescale data
+        data_coarse = data_coarse * scale
+
+    return data_coarse, coarse_keys
 
 # Read from file with hourly output
 def read_model_hr(variable, grid_area, year, month, day, time_stamp, hour, depth, DA_switch, coupled):
