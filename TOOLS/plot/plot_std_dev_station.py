@@ -23,7 +23,7 @@ import cmocean
 
 if __name__ == "__main__":
     coupled = ''
-    depth  = '0'	# Depth 
+    depth  = '0'	# Depth (Arkona bottom = 21)
     year   = 2015       # Year
     month  = '03'       # Month has to be string and two digits i.e '05' and '10'
     day    = '03'	# Day has to be double digits
@@ -48,7 +48,7 @@ if __name__ == "__main__":
     z1=0         # upper Z boundary (for z_mean and z_integral)
     z2=5         # lower Z boundary (for z_mean and z_integral)
 
-    varnum_range = range(1,27)	
+    varnum_range = [27] #range(1,25)	
 			# Variable number from the var_names routine.
                         # Quick ref: 1=z, 2=TEM, 3=SAL, 4=uvel, 5=vvel, 6=NH4, 7=NO3, 8=PO4, 
                         #            9=SIL, 10=DIA, 11=FLA, 12=CYA, 13=MEZ, 14=MIZ, 15=DET,
@@ -79,15 +79,15 @@ if __name__ == "__main__":
       loopcnt = 0
       data_list = []
       conc_list = []
+      assim_list = []
+      free_list = []
 
       months = [1]
       station, station_idx, station_coords, noba =  read_station_idx_obs(varnum, year, months, istation, station, dist)
-      print station_coords
       model_idx = get_model_idx(station_coords[0], station_coords[1], dist)
 
       # Determine tick localizations and labels
       freeday = [datetime.strptime(date_str, '%Y%m%d').timetuple().tm_yday for date_str in date_range]
-      print freeday
       months_free = range(2,13)
       tickloc = []
       tickloc_min = []
@@ -110,6 +110,7 @@ if __name__ == "__main__":
         if rel_conc:
           conc_data = read_latlon_day_path(varnum, 'coarse', d[0:4], '00', depth, DA_type, coupled, z_mean, z_integral, z1, z2, d[4:6], \
                       d[6:8], model_idx, dist, path, 0) # function
+          conc_list.append(conc_data)
         assim1_data = np.sqrt(assim1_data)
         if ref_free == 1: 
           path_free = '/scratch/projects/hbk00095/exp/free_N30/DA/'
@@ -117,9 +118,11 @@ if __name__ == "__main__":
                       d[6:8], model_idx, dist, path_free, 1) # function
           free_data = np.sqrt(free_data)
           print assim1_data, free_data
+          assim_list.append(assim1_data)
+          free_list.append(free_data)
   	  assim1_data = assim1_data - free_data
           if rel_conc: 
-	    assim1_data = assim1_data/conc_data
+	    assim1_data = assim1_data/np.abs(conc_data)
         data_list.append(assim1_data)
 
       mean_list.append(np.nanmean(data_list))
@@ -131,7 +134,10 @@ if __name__ == "__main__":
         if rel_conc == 0: 
           fname= str(varstr)+'_stddev_'+station+'_'+assim1+'-free.png'
 	elif rel_conc == 1:
-          fname= str(varstr)+'_stddev_'+station+'_'+assim1+'-free-div-conc.png'
+          if depth != '0':
+            fname= str(varstr)+'_stddev_'+station+'_'+depth+'_'+assim1+'-free-div-conc.png'
+          else:
+            fname= str(varstr)+'_stddev_'+station+'_'+assim1+'-free-div-conc.png'
       print ('File '+fname)
 
       fig, ax = plt.subplots(figsize=(8,3))
@@ -143,11 +149,18 @@ if __name__ == "__main__":
       ax.tick_params(axis='x', which='minor', tick1On=False, tick2On=False)
       ax.xaxis.set_minor_formatter(ticker.FixedFormatter(months_str))
       plt.legend()
-      plt.title(Variable)
+      if station == 'ArkonaWR' and depth == '21':
+        plt.title('Bottom '+Variable)
+      else:
+        plt.title(Variable)
       plt.ylabel(var_unit)
 
       if save == 1:
         plt.savefig(fname, dpi=300)
+
+    print 'assim std', assim_list
+    print 'free std', free_list 
+    print 'concentration', conc_list
 
     'MEAN STD DEV'
     for t in range(0,len(mean_list)):
