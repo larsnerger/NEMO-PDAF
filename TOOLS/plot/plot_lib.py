@@ -620,7 +620,8 @@ def get_mobs_cmems_chl(year, month, day, forana, path, datatype, chltype, log, e
 
     if ens==0:
        print path+'/chl_'+chltype+'_mobs_'+datatype+'_'+str(year)+str(month)+'.nc'
-       ncid   = NetCDFFile(path+'/chl_'+chltype+'_mobs_'+datatype+'_'+str(year)+str(month)+'.nc')
+       #ncid   = NetCDFFile(path+'/chl_'+chltype+'_mobs_'+datatype+'_'+str(year)+str(month)+'.nc')
+       ncid   = NetCDFFile(path+'/chl_'+chltype+'_mobs_'+str(year)+str(month)+'.nc')
     else:
         if ens < 10:
             ensstr = '00'+str(ens)
@@ -974,7 +975,7 @@ def read_station_idx_obs(varnum, year, months, istation, station, dist):
 
 
 
-def read_station_series(varnum, grid_area, year, time_stamp, depth, DA_switch, coupled, z_mean, z_integral, z1, z2, months, istation, strstation, dist):
+def read_station_series(varnum, grid_area, year, time_stamp, depth, DA_switch, coupled, z_mean, z_integral, z1, z2, months, istation, strstation, dist, var=0):
 
     # Get day of year
     DoY = day_of_year(months[0], 1)
@@ -1013,7 +1014,8 @@ def read_station_series(varnum, grid_area, year, time_stamp, depth, DA_switch, c
 
         day = iday+1
 
-        data_mod, mod_keys = read_model(varstr, grid_area, year, month, day, time_stamp, depth, DA_switch, coupled, z_mean, z_integral, z1, z2)
+#        data_mod, mod_keys = read_model(varstr, grid_area, year, month, day, time_stamp, depth, DA_switch, coupled, z_mean, z_integral, z1, z2)
+        modval, mod_keys = read_model_range(varstr, grid_area, year, month, day, time_stamp, depth, DA_switch, coupled, z_mean, z_integral, z1, z2, lon_min, lon_max, lat_min, lat_max, var)
 
         # set coordinates
         lat = mod_keys['lat'][:]
@@ -1026,12 +1028,10 @@ def read_station_series(varnum, grid_area, year, time_stamp, depth, DA_switch, c
 
         if day==1:
             print 'check observations within ', dist, ' grid points around location ', station
-            print 'longitude range: ', lon[lon_min], lon[lon_max]
-            print 'longitude range: ', lat[lat_min], lat[lat_max]
 
 	if depth == ':':
-          modval= np.zeros((len(dep_temp), range_lon, range_lat))
-          modval = data_mod[:,lat_min:lat_max, lon_min:lon_max]	
+          #modval= np.zeros((len(dep_temp), range_lon, range_lat))
+          #modval = data_mod[:,lat_min:lat_max, lon_min:lon_max]	
           mean_mobs= np.zeros(len(dep_temp))
           cnt_mean = np.zeros(len(dep_temp))
           for d in range(len(modval)):
@@ -1043,8 +1043,8 @@ def read_station_series(varnum, grid_area, year, time_stamp, depth, DA_switch, c
             if cnt_mean[d]>0:
               mean_mobs[d] = mean_mobs[d] / cnt_mean[d]
 	else:
-          modval= np.zeros((range_lon, range_lat))
-          modval = data_mod[lat_min:lat_max, lon_min:lon_max]
+          #modval= np.zeros((range_lon, range_lat))
+          #modval = data_mod[lat_min:lat_max, lon_min:lon_max]
           mean_mobs= 0.0
           cnt_mean = 0
           for i in range(len(modval[:,0])):
@@ -1067,7 +1067,7 @@ def read_station_series(varnum, grid_area, year, time_stamp, depth, DA_switch, c
     else: 
       return modmean, modday
 
-def read_station_series_path(varnum, grid_area, year, time_stamp, depth, DA_switch, coupled, z_mean, z_integral, z1, z2, months, istation, strstation, dist, path):
+def read_station_series_path(varnum, grid_area, year, time_stamp, depth, DA_switch, coupled, z_mean, z_integral, z1, z2, months, istation, strstation, dist, path, var=0):
 
     # Get day of year
     DoY = day_of_year(months[0], 1)
@@ -1122,12 +1122,16 @@ def read_station_series_path(varnum, grid_area, year, time_stamp, depth, DA_swit
         else: 
 	  full_path = path
         day = iday+1
-        data_mod, mod_keys = read_model_path(varstr, grid_area, year, month, day, time_stamp, depth, DA_switch, coupled, z_mean, z_integral, z1, z2, full_path)
-
+        if var == 0:
+          modval, mod_keys = read_model_path(varstr, grid_area, year, month, day, time_stamp, depth, DA_switch, coupled, \
+				z_mean, z_integral, z1, z2, full_path, lat_min, lat_max, lon_min, lon_max)
+	elif var == 1:
+          modval, mod_keys = read_model_var_path(varstr, grid_area, year, month, day, time_stamp, depth, DA_switch, coupled, \
+				z_mean, z_integral, z1, z2, full_path, lat_min, lat_max, lon_min, lon_max)
+    
         # set coordinates
         lat = mod_keys['lat'][:]
         lon = mod_keys['lon'][:]
-
         dep_temp = mod_keys['lev'][:]
         if iday == 0:
           dep = dep_temp
@@ -1138,13 +1142,6 @@ def read_station_series_path(varnum, grid_area, year, time_stamp, depth, DA_swit
             print 'check observations within ', dist, ' grid points around location ', station
             print 'longitude range: ', lon[lon_min], lon[lon_max]
             print 'latitude range: ', lat[lat_min], lat[lat_max]
-
-        if depth==':':
-          modval= np.zeros((len(dep_temp), range_lon, range_lat))
-          modval = data_mod[:,lat_min:lat_max, lon_min:lon_max]
-        else:
-          modval= np.zeros((range_lon, range_lat))
-          modval = data_mod[lat_min:lat_max, lon_min:lon_max]
 
         if depth==':':
           mean_mobs= np.zeros(len(dep_temp))
@@ -1370,7 +1367,7 @@ def read_latlon_day(varnum, grid_area, year, time_stamp, depth, DA_switch, coupl
     else:
       return modmean
 
-def read_latlon_day_path(varnum, grid_area, year, time_stamp, depth, DA_switch, coupled, z_mean, z_integral, z1, z2, month, day, model_idx, dist, path):
+def read_latlon_day_path(varnum, grid_area, year, time_stamp, depth, DA_switch, coupled, z_mean, z_integral, z1, z2, month, day, model_idx, dist, path, var=0):
 
     # if month and day input is number convert to string
     if not isinstance(month, str):
@@ -1397,7 +1394,9 @@ def read_latlon_day_path(varnum, grid_area, year, time_stamp, depth, DA_switch, 
     modmean = []
     modday = []
 
-    data_mod, mod_keys = read_model_path(varstr, grid_area, year, month, day, time_stamp, depth, DA_switch, coupled, z_mean, z_integral, z1, z2, path)
+    data_mod, mod_keys = read_model_path(varstr, grid_area, year, month, day, time_stamp, depth, DA_switch, coupled, z_mean, z_integral, z1, z2, path, \
+				lat_min, lat_max, lon_min, lon_max, var)
+    modval = data_mod
 
     # set coordinates
     lat = mod_keys['lat'][:]
@@ -1414,12 +1413,12 @@ def read_latlon_day_path(varnum, grid_area, year, time_stamp, depth, DA_switch, 
         if isinstance(lat[lat_min, lon_min], np.ma.core.MaskedConstant):
           print lat[lat_min:lat_max, lon_min:lon_max]
           print 'latitude range first real value: ', np.ma.min(lat[lat_min:lat_max, lon_min:lon_max]), np.max(lat[lat_min:lat_max, lon_min:lon_max])
-    if depth==':':
-      modval= np.zeros((len(dep), range_lat, range_lon))
-      modval = data_mod[:,lat_min:lat_max, lon_min:lon_max]
-    else:
-      modval= np.zeros((range_lat, range_lon))
-      modval = data_mod[lat_min:lat_max, lon_min:lon_max]
+#    if depth==':':
+#      modval= np.zeros((len(dep), range_lat, range_lon))
+#      modval = data_mod[:,lat_min:lat_max, lon_min:lon_max]
+#    else:
+#      modval= np.zeros((range_lat, range_lon))
+#      modval = data_mod[lat_min:lat_max, lon_min:lon_max]
 
     if depth==':':
       mean_mobs= np.zeros(len(dep))
@@ -1619,14 +1618,102 @@ def read_model(variable, grid_area, year, month, day, time_stamp, depth, DA_swit
 
     return data_coarse, coarse_keys
 
-def read_model_path(variable, grid_area, year, month, day, time_stamp, depth, DA_switch, coupled, z_mean, z_integral, z1, z2, path):
+def read_model_range(variable, grid_area, year, month, day, time_stamp, depth, DA_switch, coupled, z_mean, z_integral, z1, z2, lonmin, lonmax, latmin, latmax, var=0):
 
     if day < 10:
         day = '0'+str(day)
     else:
         day = str(day)
 
-    letter = 'state' #load_data(variable)
+    if var == 0: 
+      letter = 'state' #load_data(variable)
+    elif var == 1:
+      letter = 'variance' #load_data(variable)
+    #print 'Read variable:', variable
+
+    if depth != '0':
+      print 'Depth level '+depth
+
+    # Set Scale factor
+    scale = 1.0
+
+    # Get paths for assimilation experiment and free run
+    #if day=='01':
+    if DA_switch==1 or DA_switch==2 or DA_switch==11 or DA_switch==12:
+       path = get_exp_path(coupled, year, month, day, time_stamp, 1)
+    elif DA_switch==0:
+       path = get_exp_path(coupled, year, month, day, time_stamp, 0)
+
+    if variable == 'PFT' or variable == 'TE':
+      path = path.replace('DA','Post_DA')
+    # Set file name including path
+    timestr = str(year)+str(month)+str(day)
+
+    print path+str(letter)+'_'+timestr+'.nc'
+    if DA_switch == 1 or DA_switch==2 or DA_switch==11 or DA_switch==12 : # Background or analysis
+        nc_coarse = NetCDFFile(path+str(letter)+'_'+timestr+'.nc')
+    elif DA_switch == 0: # Free Ens
+        nc_coarse = NetCDFFile(path+str(letter)+'_'+timestr+'.nc')
+
+    # Set file index to read
+    #    0: forecast, 1: analysis
+    if DA_switch == 1: #Background
+        DA_step =0
+    elif DA_switch == 2: #Analysis
+        DA_step =1
+    elif DA_switch == 0: #Free Ens
+        DA_step = 0
+#    print 'DA_step', DA_step
+    nc_coarse_keys = ['nav_lon', 'nav_lat', 'nav_lev', str(variable)]
+
+    # Coarse Data
+    coarse_keys = {}
+    data_coarse = {}
+    if grid_area == 'all' or grid_area == 'coarse':
+        coarse_keys['lon'] = nc_coarse.variables['nav_lon'][latmin:latmax,lonmin:lonmax]
+        coarse_keys['lat'] = nc_coarse.variables['nav_lat'][latmin:latmax,lonmin:lonmax]
+	coarse_keys['lev'] = nc_coarse.variables['nav_lev'][:]
+
+        numdim =  nc_coarse.variables[str(variable)].ndim
+        if numdim == 4:
+            if z_mean == 0 and z_integral == 0:
+                if depth != ':':
+                  data_coarse = nc_coarse.variables[str(variable)][DA_step,depth,latmin:latmax,lonmin:lonmax]
+		elif depth == ':':
+                  data_coarse = nc_coarse.variables[str(variable)][DA_step,:,latmin:latmax,lonmin:lonmax]
+            elif z_mean == 1 and z_integral ==0:
+                data_coarse_pre = nc_coarse.variables[str(variable)][DA_step,:,latmin:latmax,lonmin:lonmax]
+                data_coarse = vertical_mean_4D(data_coarse_pre, z1, z2)
+            elif z_mean == 0 and z_integral ==1:
+                data_coarse_pre = nc_coarse.variables[str(variable)][DA_step,:,latmin:latmax,lonmin:lonmax]
+                data_coarse = vertical_integral_4D(data_coarse_pre, z1, z2)
+            else:
+                print 'Wrong z_mean or z_integral'
+                exit()
+        elif numdim == 3:
+            if str(variable)=='SST_inst':
+                data_coarse = nc_coarse.variables[str(variable)][DA_step,latmin:latmax,lonmin:lonmax]
+            else:
+                data_coarse = nc_coarse.variables[str(variable)][depth,latmin:latmax,lonmin:lonmax]
+
+        # Rescale data
+        data_coarse = data_coarse * scale
+
+    return data_coarse, coarse_keys
+
+
+
+def read_model_path(variable, grid_area, year, month, day, time_stamp, depth, DA_switch, coupled, z_mean, z_integral, z1, z2, path, latmin=0, latmax=0, lonmin=0, lonmax=0, var=0):
+
+    if day < 10:
+        day = '0'+str(day)
+    else:
+        day = str(day)
+
+    if var == 0:
+      letter = 'state' #load_data(variable)
+    elif var == 1: 
+      letter = 'variance'
     print 'Read variable:', variable
 
     if depth != '0':
@@ -1677,26 +1764,47 @@ def read_model_path(variable, grid_area, year, month, day, time_stamp, depth, DA
         if numdim == 4:
             if z_mean == 0 and z_integral == 0:
                 if depth==':':
-                  data_coarse = nc_coarse.variables[str(variable)][DA_step,:,:,:]
+                  if latmin==0 and latmax==0 and lonmin==0 and lonmax==0:
+                    data_coarse = nc_coarse.variables[str(variable)][DA_step,:,:,:]
+                  else:
+		    data_coarse = nc_coarse.variables[str(variable)][DA_step,:,latmin:latmax,lonmin:lonmax]
                 else:
-                  data_coarse = nc_coarse.variables[str(variable)][DA_step,depth,:,:]
+                  if latmin==0 and latmax==0 and lonmin==0 and lonmax==0:
+                    data_coarse = nc_coarse.variables[str(variable)][DA_step,depth,:,:]
+		  else:
+                    data_coarse = nc_coarse.variables[str(variable)][DA_step,depth,latmin:latmax,lonmin:lonmax]
             elif z_mean == 1 and z_integral ==0:
-                data_coarse_pre = nc_coarse.variables[str(variable)][DA_step,:,:,:]
+                if latmin==0 and latmax==0 and lonmin==0 and lonmax==0:
+                  data_coarse_pre = nc_coarse.variables[str(variable)][DA_step,:,:,:]
+		else:
+                  data_coarse_pre = nc_coarse.variables[str(variable)][DA_step,:,latmin:latmax,lonmin:lonmax]
                 data_coarse = vertical_mean_4D(data_coarse_pre, z1, z2)
             elif z_mean == 0 and z_integral ==1:
-                data_coarse_pre = nc_coarse.variables[str(variable)][DA_step,:,:,:]
+                if latmin==0 and latmax==0 and lonmin==0 and lonmax==0:
+                  data_coarse_pre = nc_coarse.variables[str(variable)][DA_step,:,:,:]
+                else:
+		  data_coarse_pre = nc_coarse.variables[str(variable)][DA_step,:,latmin:latmax,lonmin:lonmax]
                 data_coarse = vertical_integral_4D(data_coarse_pre, z1, z2)
             else:
                 print 'Wrong z_mean or z_integral'
                 exit()
         elif numdim == 3:
             if str(variable)=='SST_inst':
-                data_coarse = nc_coarse.variables[str(variable)][DA_step,:,:]
+                if latmin==0 and latmax==0 and lonmin==0 and lonmax==0:
+                  data_coarse = nc_coarse.variables[str(variable)][DA_step,:,:]
+		else:
+                  data_coarse = nc_coarse.variables[str(variable)][DA_step,latmin:latmax,lonmin:lonmax]
             else:
                 if depth==':':
-                  data_coarse = nc_coarse.variables[str(variable)][:,:,:]
+                  if latmin==0 and latmax==0 and lonmin==0 and lonmax==0:
+                    data_coarse = nc_coarse.variables[str(variable)][:,:,:]
+	          else: 
+                    data_coarse = nc_coarse.variables[str(variable)][:,latmin:latmax,lonmin:lonmax]
                 else:
-                  data_coarse = nc_coarse.variables[str(variable)][depth,:,:]
+                  if latmin==0 and latmax==0 and lonmin==0 and lonmax==0:
+                    data_coarse = nc_coarse.variables[str(variable)][depth,:,:]
+		  else: 
+                    data_coarse = nc_coarse.variables[str(variable)][depth,latmin:latmax,lonmin:lonmax]
 
 
         # Rescale data
@@ -1779,7 +1887,7 @@ def read_model_var(variable, grid_area, year, month, day, time_stamp, depth, DA_
     return data_coarse, coarse_keys
 
 
-def read_model_var_path(variable, grid_area, year, month, day, time_stamp, depth, DA_switch, coupled, z_mean, z_integral, z1, z2, path):
+def read_model_var_path(variable, grid_area, year, month, day, time_stamp, depth, DA_switch, coupled, z_mean, z_integral, z1, z2, path, latmin=0, lonmin=0, latmax=0, lonmax=0):
 
     if day < 10:
         day = '0'+str(day)
@@ -1813,7 +1921,7 @@ def read_model_var_path(variable, grid_area, year, month, day, time_stamp, depth
     elif DA_switch == 0: #Free Ens
         DA_step = 0
     print 'DA_step', DA_step
-    nc_coarse_keys = ['nav_lon', 'nav_lat', str(variable)]
+    nc_coarse_keys = ['nav_lon', 'nav_lat', 'nav_lev', str(variable)]
 
     # Coarse Data
     coarse_keys = {}
@@ -1821,25 +1929,41 @@ def read_model_var_path(variable, grid_area, year, month, day, time_stamp, depth
     if grid_area == 'all' or grid_area == 'coarse':
         coarse_keys['lon'] = nc_coarse.variables['nav_lon'][:]
         coarse_keys['lat'] = nc_coarse.variables['nav_lat'][:]
+        coarse_keys['lev'] = nc_coarse.variables['nav_lev'][:]
 
         numdim =  nc_coarse.variables[str(variable)].ndim
         if numdim == 4:
             if z_mean == 0 and z_integral == 0:
-                data_coarse = nc_coarse.variables[str(variable)][DA_step,depth,:,:]
+                if latmin==0 and latmax==0 and lonmin==0 and lonmax==0:
+                  data_coarse = nc_coarse.variables[str(variable)][DA_step,depth,:,:]
+                else:
+                  data_coarse = nc_coarse.variables[str(variable)][DA_step,depth,latmin:latmax,lonmin:lonmax]
             elif z_mean == 1 and z_integral ==0:
-                data_coarse_pre = nc_coarse.variables[str(variable)][DA_step,:,:,:]
+                if latmin==0 and latmax==0 and lonmin==0 and lonmax==0:
+                  data_coarse_pre = nc_coarse.variables[str(variable)][DA_step,:,:,:]
+		else:
+                  data_coarse_pre = nc_coarse.variables[str(variable)][DA_step,:,latmin:latmax,lonmin:lonmax]
                 data_coarse = vertical_mean_4D(data_coarse_pre, z1, z2)
             elif z_mean == 0 and z_integral ==1:
-                data_coarse_pre = nc_coarse.variables[str(variable)][DA_step,:,:,:]
+                if latmin==0 and latmax==0 and lonmin==0 and lonmax==0:
+                  data_coarse_pre = nc_coarse.variables[str(variable)][DA_step,:,:,:]
+		else:
+                  data_coarse_pre = nc_coarse.variables[str(variable)][DA_step,:,latmin:latmax,lonmin:lonmax]
                 data_coarse = vertical_integral_4D(data_coarse_pre, z1, z2)
             else:
                 print 'Wrong z_mean or z_integral'
                 exit()
         elif numdim == 3:
             if str(variable)=='SST_inst':
-                data_coarse = nc_coarse.variables[str(variable)][DA_step,:,:]
+                if latmin==0 and latmax==0 and lonmin==0 and lonmax==0:
+                  data_coarse = nc_coarse.variables[str(variable)][DA_step,:,:]
+                else:
+                  data_coarse = nc_coarse.variables[str(variable)][DA_step,latmin:latmax,lonmin:lonmax]
             else:
-                data_coarse = nc_coarse.variables[str(variable)][depth,:,:]
+                if latmin==0 and latmax==0 and lonmin==0 and lonmax==0:
+                  data_coarse = nc_coarse.variables[str(variable)][depth,:,:]
+		else:
+                  data_coarse = nc_coarse.variables[str(variable)][depth,latmin:latmax,lonmin:lonmax]
 
         # Rescale data
         data_coarse = data_coarse * scale
@@ -3502,15 +3626,15 @@ def vertical_integral_4D(data_coarse_pre, z1, z2):
         print data_coarse_pre1.shape
         data_coarse_pre2=np.array(data_coarse_pre1)
         data_coarse_pre3=ma.masked_where(data_coarse_pre2>1000000, data_coarse_pre2)
-        print data_coarse_pre3[:,100,100]
+        #print data_coarse_pre3[:,100,100]
         data_coarse_pre4=np.ma.MaskedArray(data_coarse_pre3, mask=np.isnan(data_coarse_pre3))
-        print data_coarse_pre4[:,100,100]
+        #print data_coarse_pre4[:,100,100]
         for i in (range(id2-id1+1)):
-            print i,data_coarse_pre4[i,100,100],cell[id1+i]
+            #print i,data_coarse_pre4[i,100,100],cell[id1+i]
             data_coarse_pre4[i,:,:]=cell[id1+i]*data_coarse_pre4[i,:,:]
-            print i,data_coarse_pre4[i,100,100]
+            #print i,data_coarse_pre4[i,100,100]
         data_coarse=np.nansum(data_coarse_pre4,axis=0)
-	print data_coarse[100,100]
+	#print data_coarse[100,100]
     return data_coarse
 
 def get_model_idx(lat_stat, lon_stat, dist):
@@ -3650,7 +3774,7 @@ def read_insitu_vali_ICES(var_num, path_data):
 
     return year, month, day, hour, minute, lon, lat, depth, data, data_qv
 
-def read_insitu_vali_CMEMS(varnum, data_path):
+def read_insitu_vali_CMEMS(varnum, data_path, month_range, hour_range):
   # Read insitu data for specific variable
   if varnum == 1: #z
     varstr = 'SLEV' # water surface height above a specific datum
@@ -3722,16 +3846,20 @@ def read_insitu_vali_CMEMS(varnum, data_path):
           lon = np.array(nc.variables['LONGITUDE'][:])
           time = np.array(nc.variables['TIME'][:])
           depth = np.array(nc.variables['DEPH'][:])
-          ref_date = datetime.datetime(1950,1,1,0,0,0)
-          deltas = [datetime.timedelta(days=f) for f in time]
+          ref_date = datetime(1950,1,1,0,0,0)
+          #ref_date = datetime.datetime(1950,1,1,0,0,0)
+          deltas = [timedelta(days=f) for f in time]
+          #deltas = [datetime.timedelta(days=f) for f in time]
           time_dt = ref_date + np.array(deltas)
           # select only relevent timespan
           notnan_mask = ~np.isnan(data) & (data>-999).astype(bool)
           year_mask = np.array([date.year == 2015 for date in time_dt])
-          month_mask = np.array([date.month in [2,3,4,5] for date in time_dt])
+          month_mask = np.array([date.month in month_range for date in time_dt])
+          #month_mask = np.array([date.month in [2,3,4,5] for date in time_dt])
           lat_mask = (lat>50).astype(bool) & (lat<66).astype(bool)
           lon_mask = (lon>-4).astype(bool) & (lon<31).astype(bool)
-          hour_mask = np.array([date.hour in [22,23,0,24,1,2] for date in time_dt])
+          #hour_mask = np.array([date.hour in [22,23,0,24,1,2] for date in time_dt])
+          hour_mask = np.array([date.hour in hour_range for date in time_dt])
           if len(data.shape)>1:
             combined_mask = year_mask & month_mask & hour_mask & lat_mask & lon_mask
             if np.any(combined_mask):
