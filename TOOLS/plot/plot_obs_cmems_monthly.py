@@ -20,13 +20,13 @@ import cmocean
 if __name__ == "__main__":
     # Pick a date:
     title = 'Satellite observations'
-    tstart = '20150430' # start day (in format: 'yyyymmdd')
-    tend = '20150430'   # end day (in format: 'yyyymmdd')
+    tstart = '20150701' # start day (in format: 'yyyymmdd')
+    tend = '20150731'   # end day (in format: 'yyyymmdd')
     ampm   = 'am'	# am or pm (string)
     domain = 'ba'       # Domain to plot: 'no' for both domain or 'ku' for fine only
-    plotcb=0            # Whether to plot the colorbar
+    plotcb = 1            # Whether to plot the colorbar
     save   = 1          # (1) save file
-    varnum = 24 	# Variable number from the var_names routine: 2-SST, 24-CHL
+    varnum = 2 	# Variable number from the var_names routine: 2-SST, 24-CHL
     ssttype='L3S'        # Choose SST observation type: 'L4' or 'L3S'
     chltype='ba'        # Choose CHL observation data set: 'ba' or 'no'
 
@@ -41,6 +41,12 @@ if __name__ == "__main__":
 	  minmax = [-1, 10]
 	elif tstart[4:6] == '05':
 	  minmax = [-1, 14]
+	elif tstart[4:6] == '07':
+	  minmax = [11, 21]
+	elif tstart[4:6] == '09':
+	  minmax = [12, 18.5]
+	elif tstart[4:6] == '11':
+	  minmax = [0.5, 13]
     else:
         minmax = [0.1, 10.0]        # max/max plotted values - set min=max for automatic
         plotlog=1
