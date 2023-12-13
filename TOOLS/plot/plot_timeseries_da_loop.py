@@ -28,26 +28,27 @@ if __name__ == "__main__":
   day    = '03'	# Day has to be double digits
   ampm   = '00'	# am or pm (string)
   dist = 10           # Grid point distance to check around central location 
-  station = 'ArkonaWR' # Set station name according to the XLSX file
+  station = 'ArkonaWR' # 'ArkonaWR' 'DarsserS'; Set station name according to the XLSX file
   istation = 0        # (0) use 'station', (1) Arkona, (2) Baltic Proper, (3) Bothnian Sea
   exp = 'LESTKF'
   
   plot_fcst = 1      # 0 - analysis, 1 - forecast
   plot_ana = 0       # if only assim1 is to be plotted (all others are out-commented), then one can additionally plot analysis to forecast
-  assim1 = 'sstL3_strongly_N30'    # DA-run1 - exp name as in project folder
-  assim2 = 'chl_strongly_N30'    # DA-run2 (can be out-commented)
-  assim3 = 'sst_weakly_N30'    # DA-run3 (can be out-commented)
-  assim4 = 'chl_weakly_N30'    # DA-run4 (can be out-commented) 
+  assim1 = 'chl_weakly_sstL3_strongly_N30'    # DA-run1 - exp name as in project folder
+  #assim2 = 'sst_N30'    # DA-run2 (can be out-commented)
+  #assim3 = 'chl_weakly_sstL3_strongly_N30'    # DA-run3 (can be out-commented)
+  #assim4 = 'chl_strongly_sstL3_strongly_N30'    # DA-run4 (can be out-commented) 
+  #assim5 = 'chl_weakly_sstL3_weakly_N30' #DA-run5 (can be out-commented)
 
   plotlog = 0
   plotcb = 1          # Whether to show the colorbar
 
-  months_free = [1, 2, 3, 4, 5] #, 2, 3, 4, 5]
-  months_obs = [1, 2, 3, 4, 5] #, 3] #, 4, 5]
-  months_da = [2, 3, 4, 5] #, 2, 3] #3, 4, 5]
+  months_free = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+  months_obs = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+  months_da = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
     
   z_mean=0     #0(no vertical mean)
-  z_integral=0 #(0 for no vertical integral; 1 for vertical integral)
+  z_integral=0 #(0 for no vertical integral; 1 for vertical integral) - for PP = 1 but this is also secured for in the code below 
   z1=0         # upper Z boundary (for z_mean and z_integral)
   z2=5         # lower Z boundary (for z_mean and z_integral)
   save = 1
@@ -59,10 +60,16 @@ if __name__ == "__main__":
                         #            16=DETs, 17=FE, 18=LDON, 19=DIC, 20=ALK, 21=OXY, 22=pCO2, 
                         #            23=PH, 24=CHL, 25=TE, 26=PFT, 27=PP
 
-  for varnum in range(2,25):
+  for varnum in range(2, 3):
 
 
     ######################################################
+
+    # PP needs to be given over integral 
+    if varnum == 27: 
+      z_integal = 1 
+    else: 
+      z_integral = 0
 
     varstr, mat_var, Variable, var_unit = var_names(varnum)
     MAT_VAR = mat_var.upper()
@@ -74,7 +81,6 @@ if __name__ == "__main__":
 
     DAtype=0
     freemean, freeday = read_station_series(varnum, 'coarse', year, ampm, depth, DAtype, dotcoupled, z_mean, z_integral, z1, z2, months_free, istation, station, dist)
-
     if plot_fcst == 1: 
       DAtype=1
     else: 
@@ -83,27 +89,24 @@ if __name__ == "__main__":
     basedir_pro = '/scratch/projects/hbk00095/exp/'
     basedir_work = '/scratch/usr/hbxsovli/SEAMLESS/runfolders/'
     if varnum == 25 or varnum == 26:
-      path1 = basedir+assim1+'/Post_DA/'
+      path1 = basedir_pro+assim1+'/Post_DA/'
     else:
-      #path1 = basedir_pro + assim1 + '/DA/'
-      path1 = basedir_work + assim1 + '/' + assim1 + '/DA/'
+      path1 = basedir_pro + assim1 + '/DA/'
+      #path1 = basedir_work + assim1 + '/' + assim1 + '/DA/'
     assimmean1, assimday1 = read_station_series_path(varnum, 'coarse', year, ampm, depth, DAtype, dotcoupled, z_mean, z_integral, z1, z2, months_da, istation, station, dist, path1)
     assimmean1 = np.array(assimmean1)
     if 'assim2' in locals(): 
       print '\n \n \n ----------------------------------------------------------------------------------------------------'
       if varnum == 26 or varnum == 25:
-        path2 = basedir+assim2+'/Post_DA/'
+        path2 = basedir_pro+assim2+'/Post_DA/'
       else:
-        #path2 = basedir_pro + assim2 + '/DA/'
-        path2 = basedir_work + assim2 + '/' + assim2 + '/DA/'
+        path2 = basedir_pro + assim2 + '/DA/'
+        #path2 = basedir_work + assim2 + '/' + assim2 + '/DA/'
       assimmean2, assimday2 = read_station_series_path(varnum, 'coarse', year, ampm, depth, DAtype, dotcoupled, z_mean, z_integral, z1, z2, months_da, istation, station, dist, path2)
       assimmean2 = np.array(assimmean2)
-    else: 
-      print '\n \n \n ----------------------------------------------------------------------------------------------------'
-      print 'NO'
     if 'assim3' in locals(): 
       if varnum == 26 or varnum == 25:
-        path3 = basedir+assim3+'/Post_DA/'
+        path3 = basedir_pro+assim3+'/Post_DA/'
       else:
         path3 = basedir_pro + assim3 + '/DA/'
         #path3 = basedir_work + assim3 + '/' + assim3 + '/DA/'
@@ -111,13 +114,19 @@ if __name__ == "__main__":
       assimmean3 = np.array(assimmean3)
     if 'assim4' in locals(): 
       if varnum == 26 or varnum == 25:
-        path4 = basedir+assim4+'/Post_DA/'
+        path4 = basedir_pro+assim4+'/Post_DA/'
       else:
         path4 = basedir_pro + assim4 + '/DA/'
         #path4 = basedir_work + assim4 + '/' + assim4 + '/DA/'
       assimmean4, assimday4 = read_station_series_path(varnum, 'coarse', year, ampm, depth, DAtype, dotcoupled, z_mean, z_integral, z1, z2, months_da, istation, station, dist, path4)
       assimmean4 = np.array(assimmean4)
-
+    if 'assim5' in locals():
+      if varnum == 26 or varnum == 25: 
+	path5 = basedir_pro+assim5+'/Post_DA/'
+      else: 
+        path5 = basedir_pro+assim5+'/DA/'
+      assimmean5, assimday5 = read_station_series_path(varnum, 'coarse', year, ampm, depth, DAtype, dotcoupled, z_mean, z_integral, z1, z2, months_da, istation, station, dist, path5)
+      assimmean5 = np.array(assimmean5)
 
 
     if varnum==2 or varnum==24:
@@ -141,6 +150,8 @@ if __name__ == "__main__":
         obsmean_temp = obsmean[obs_mask]
         # obs & model 
         model_mask = np.in1d(freeday_temp, obsday_temp)
+        print 'len free', len(freemean_temp[model_mask])
+        print 'len assim', len(assimmean1[model_mask])
         rmse_free = calc_rmse(obsmean_temp, freemean_temp[model_mask])
         rmse_assim1 = calc_rmse(obsmean_temp, assimmean1[model_mask]) 
         print '\n ---------- RMSE -----------'
@@ -155,6 +166,9 @@ if __name__ == "__main__":
         if 'assim4' in locals(): 
           rmse_assim4 = calc_rmse(obsmean_temp, assimmean4[model_mask])
           print assim4, ': ', rmse_assim4
+        if 'assim5' in locals(): 
+          rmse_assim5 = calc_rmse(obsmean_temp, assimmean5[model_mask])
+          print assim5, ': ', rmse_assim5
 
 
     #### Plotting
@@ -166,7 +180,7 @@ if __name__ == "__main__":
     tickloc.append(loc)
     months_str = []
     for i in range(len(months_free)):
-        _, _, mstr, days_in_mon = month_names(i+months_free[0])
+        _, mstr, _, days_in_mon = month_names(i+months_free[0])
         loc = loc + days_in_mon
         tickloc.append(loc)
         tickloc_min.append(tickloc[i]+days_in_mon/2)
@@ -182,20 +196,23 @@ if __name__ == "__main__":
         fig, ax = plt.subplots(figsize=(8,3))
         plt.plot(freeday, freemean, 'b',label='FREE')
         #plt.plot(assimday1, assimmean1,'#bbbb00',label=assim1)
-        plt.plot(assimday1, assimmean1,'#bbbb00',label='SST strongly')
+        plt.plot(assimday1, assimmean1, color='k', label='CHL w + SST s')
         if 'assim2' in locals(): 
           #plt.plot(assimday2, assimmean2,'g',label=assim2)
-          plt.plot(assimday2, assimmean2,'g',label='CHL strongly')
+          plt.plot(assimday2, assimmean2,'g',label='SST s')
         if 'assim3' in locals():
           #plt.plot(assimday3, assimmean3,'k',label=assim3)
-          plt.plot(assimday3, assimmean3,'k',label='SST weakly')
+          plt.plot(assimday3, assimmean3,'k',label='CHL w + SST s')
         if 'assim4' in locals():
           #plt.plot(assimday4, assimmean4,'k',label=assim4)
-          plt.plot(assimday4, assimmean4,'y',label='CHL weakly')
+          plt.plot(assimday4, assimmean4,'darkviolet',label='CHL s + SST s')
+        if 'assim5' in locals():
+          #plt.plot(assimday5, assimmean5,'k',label=assim5)
+          plt.plot(assimday5, assimmean5,'saddlebrown',linestyle='--',label='CHL w + SST w')
         if plot_ana==1:
             plt.plot(anaday, anamean,'k',label='analysis')
         if varnum==2 or varnum==24:
-            plt.plot(obsday, obsmean,'r+',label='obs')
+            plt.scatter(obsday, obsmean,color='r',marker='+',label='obs')
         plt.ylabel(Variable+' ('+var_unit+')')
         plt.xlim(tickloc[0],tickloc[-1])
         if varnum == 11 or varnum == 13 or varnum == 9 or varnum == 8:
