@@ -182,7 +182,7 @@ if __name__ == "__main__":
         assimstr = 'free run'
 
       if ens_cnt % 6 == 0: # new subplot  
-        fname = 'all_par_ens/' + varstr+'_ens'+ensstr+'_'+tstart+'-'+tend+'.png'
+        fname = varstr+'_ens'+ensstr+'_'+tstart+'-'+tend+'.png'
         # Create a figure with 3x2 subplots
         varstr, mat_var, Variable, var_unit = var_names(varnum)
 
