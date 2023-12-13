@@ -47,8 +47,8 @@ if __name__ == "__main__":
     path_exp = '/scratch/projects/hbk00095/exp/free_N30/obsgrid'
 #    exp = 'sst-chl_Tonly_N30'
 #    path_exp = '/scratch/projects/hbk00095/exp/sst-chl_Tonly_N30/obsgrid'
-    exp = 'fcst_initMay1_N30'
-    path_exp = '/scratch/projects/hbk00095/exp/fcst_initMay1_N30/obsgrid'
+    #exp = 'fcst_initMay1_N30'
+    #path_exp = '/scratch/projects/hbk00095/exp/fcst_initMay1_N30/obsgrid'
 
 
  
