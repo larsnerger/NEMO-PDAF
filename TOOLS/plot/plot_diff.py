@@ -23,7 +23,7 @@ import cmocean
 
 
 if __name__ == "__main__":
-    title = 'CHL weakly + SST strongly'
+    title = 'CHL strongly + SST strongly'
     depth  = '0'	# Depth level
     year   = 2015       # Year
     month  = '05'       # Month has to be string and two digits i.e '05' and '10'
