@@ -20,13 +20,13 @@ import cmocean
 if __name__ == "__main__":
     # Pick a date:
     year   = 2015       # for year 2012 we plot NOAA SST data, for >=2017 Sentinel 3a
-    month  = '04'       # Month has to be string and two digits i.e '05' and '10'
-    day    = 01	        # Day 
+    month  = '05'       # Month has to be string and two digits i.e '05' and '10'
+    day    = 1	        # Day 
     ampm   = 'am'	# am or pm (string)
     domain = 'ba'       # Domain to plot: 'no' for both domain or 'ku' for fine only
     plotcb=0            # Whether to plot the colorbar
     save   = 1          # (1) save file
-    varnum = 24 	# Variable number from the var_names routine: 2-SST, 24-CHL
+    varnum = 24   	# Variable number from the var_names routine: 2-SST, 24-CHL
     ssttype='L3S'        # Choose SST observation type: 'L4' or 'L3S'
     chltype='ba'        # Choose CHL observation data set: 'ba' or 'no'
 
@@ -120,7 +120,7 @@ if __name__ == "__main__":
         fname= 'Obs_'+str(MAT_VAR)+'-'+chltype+'_'+str(year)+str(month)+nullstr+str(day)+'_'+domain+'.png'
 
     print('File: '+ fname)
-
+    title = 'Satellite observations'
     plot_map(data, lat, lon, varnum, domain, \
              strcmap, minmax, save, title, fname, plotlog, plotcb)
 
