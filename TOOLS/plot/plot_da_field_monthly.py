@@ -21,37 +21,44 @@ from datetime import datetime
 
 
 if __name__ == "__main__":
-    title = 'CHL strongly'
-    tstart = '20150201' # start day (in format: 'yyyymmdd')
-    tend = '20150215'   # end day (in format: 'yyyymmdd')
+    title = 'CHLw + SSTs'
+    #title = 'Free'
+    tstart = '20151101' # start day (in format: 'yyyymmdd')
+    tend = '20151130'   # end day (in format: 'yyyymmdd')
     coupled = ''
     depth  = '0'	# Depth
     ampm   = '00'	# am or pm (string)
     assim  = 'Fcst'     # Free (freerun), Fcst (background/forecast), Ana (analysis)
     domain = 'ba'       # Domain to plot: 'no' for both domains or 'ba' for Baltic, 'Ar' for Arkona
     exp = 'lestkf'
-    plotcb = 0          # Whether to show the colorbar
+    plotcb = 1          # Whether to show the colorbar
     z_mean=0     #0(no vertical mean)
     z_integral=0 #(0 for no vertical integral; 1 for vertical integral)
     z1=0         # upper Z boundary (for z_mean and z_integral)
     z2=5         # lower Z boundary (for z_mean and z_integral)
     save = 1
 
-    varnum = 26  	# Variable number from the var_names routine.
+    varnum = 23  	# Variable number from the var_names routine.
                         # Quick ref: 1=z, 2=TEM, 3=SAL, 4=uvel, 5=vvel, 6=NH4, 7=NO3, 8=PO4, 
                         #            9=SIL, 10=DIA, 11=FLA, 12=CYA, 13=MEZ, 14=MIZ, 15=DET,
                         #            16=DETs, 17=FE, 18=LDON, 19=DIC, 20=ALK, 21=OXY, 22=pCO2, 
                         #            23=PH, 24=CHL, 25=TE, 26=PFT, 27=PP
 
     if varnum==2:
-        if month == '05' and day == '29':
-          minmax = [-1, 17.0]
-        elif month == '05' and day == '01':
-          minmax = [-1, 13.0]
-        elif month == '04' and day == '01':
-          minmax = [-1, 7]
-        elif month == '03' and day == '03':
+        if tstart[4:6] == '02':
           minmax = [-1, 6.0]
+        elif tstart[4:6] == '03':
+          minmax = [-1, 6.0]
+        elif tstart[4:6] == '04':
+          minmax = [-1, 10.0]
+        elif tstart[4:6] == '05':
+          minmax = [-1, 14.0]
+        elif tstart[4:6] == '07':
+	  minmax = [11, 21]
+        elif tstart[4:6] == '09':
+	  minmax = [12, 18.5]
+        elif tstart[4:6] == '11':
+	  minmax = [0.5, 13]
         plotlog = 0        
     elif varnum==10:
         minmax = [0.1, 10.0]      # DIA
@@ -65,6 +72,8 @@ if __name__ == "__main__":
     elif varnum==21:
         minmax = [300.0, 500.0]      # OXY
         plotlog = 0
+        minmax = [250,400]
+    #    minmax = [250, 850]
     elif varnum==23:
         minmax = [6.8 ,  8.2]      # pH
         plotlog = 0
@@ -72,8 +81,12 @@ if __name__ == "__main__":
         minmax = [0.1, 10.0]      # CHL
         plotlog = 1
     elif varnum==25:
-	if month == '05':
+	if tstart[4:6] == '05':
           minmax = [0, 6]           # TE
+        elif tstart[4:6] == '07':
+	  minmax = [0, 5.5]
+        elif tstart[4:6] == '11':
+	  minmax = [0, 5]
 	else:
 	  minmax = [0,4]
         plotlog = 0
@@ -86,14 +99,7 @@ if __name__ == "__main__":
 
     ######################################################
 
-    start_date = datetime.strptime(tstart, '%Y%m%d')
-    end_date = datetime.strptime(tend, '%Y%m%d')
-    ndays = end_date - start_date
-    ndays = ndays.days + 1
-    print 'ndays = ', ndays
-
     date_range = generate_date_range(tstart, tend)
-    print 'date_range = ', date_range
 
     loopcnt = 0
     data_list = []
@@ -184,7 +190,15 @@ if __name__ == "__main__":
     else:
         strcmap = 'gist_ncar_r'
 
+    if 'minmax' not in locals():
+      dmin = abs(np.min(data_mean))
+      dmax = abs(np.max(data_mean))
+      #tmax = np.max([dmin, dmax]) 
+      #minmax = [-tmax, tmax]
+      minmax = [dmin, dmax]
     
+    print fname 
+
     #title = str(Variable)+' on '+str(year)+'-'+str(month)+'-'+str(day)
     #title = 'SST_DA'
     # plot_map(data_coarse, data_fine, lat1, lon1, lat_f, lon_f, varnum, domain, \
