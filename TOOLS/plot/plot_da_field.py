@@ -20,23 +20,24 @@ import cmocean
 
 
 if __name__ == "__main__":
+    title = 'CHL strongly + SST strongly'
     coupled = ''
     depth  = '0'	# Depth
     year   = 2015       # Year
-    month  = '03'       # Month has to be string and two digits i.e '05' and '10'
-    day    = '10'	# Day has to be double digits
+    month  = '05'       # Month has to be string and two digits i.e '05' and '10'
+    day    = '29'	# Day has to be double digits
     ampm   = '00'	# am or pm (string)
-    assim  = 'Free'     # Free (freerun), Fcst (background/forecast), Ana (analysis)
-    domain = 'no'       # Domain to plot: 'no' for both domains or 'ba' for Baltic, 'Ar' for Arkona
+    assim  = 'Fcst'     # Free (freerun), Fcst (background/forecast), Ana (analysis)
+    domain = 'ba'       # Domain to plot: 'no' for both domains or 'ba' for Baltic, 'Ar' for Arkona
     exp = 'lestkf'
-    plotcb = 1          # Whether to show the colorbar
+    plotcb = 0          # Whether to show the colorbar
     z_mean=0     #0(no vertical mean)
     z_integral=0 #(0 for no vertical integral; 1 for vertical integral)
     z1=0         # upper Z boundary (for z_mean and z_integral)
     z2=5         # lower Z boundary (for z_mean and z_integral)
-    save = 0
+    save = 1
 
-    varnum = 2	 	# Variable number from the var_names routine.
+    varnum = 21  	# Variable number from the var_names routine.
                         # Quick ref: 1=z, 2=TEM, 3=SAL, 4=uvel, 5=vvel, 6=NH4, 7=NO3, 8=PO4, 
                         #            9=SIL, 10=DIA, 11=FLA, 12=CYA, 13=MEZ, 14=MIZ, 15=DET,
                         #            16=DETs, 17=FE, 18=LDON, 19=DIC, 20=ALK, 21=OXY, 22=pCO2, 
@@ -48,7 +49,7 @@ if __name__ == "__main__":
         elif month == '05' and day == '01':
           minmax = [-1, 13.0]
         elif month == '04' and day == '01':
-          minmax = [-1, 7.0]
+          minmax = [-1, 7]
         elif month == '03' and day == '03':
           minmax = [-1, 6.0]
         plotlog = 0        
@@ -88,7 +89,10 @@ if __name__ == "__main__":
     if assim == 'Free': asml = 0
     else: asml = 1
     full_path = get_exp_path(coupled, '2015', '2', '01', '00', asml)
-    model_run = extractBetween(full_path, 'exp/', '/DA/')
+    if 'runfolder' in full_path: 
+      model_run = extractBetween(full_path, '_N30/', '/DA/')
+    else: 
+      model_run = extractBetween(full_path, 'exp/', '/DA/')
     print 'Model run = ', model_run
 
     varstr, mat_var, Variable, var_unit = var_names(varnum)
@@ -141,7 +145,7 @@ if __name__ == "__main__":
 
     print "Prepare for plotting"
     # Set plot title
-    title=str(Variable)+' - '+assimstr+' on '+str(year)+'-'+str(month)+'-'+str(day)
+    #title=str(Variable)+' - '+assimstr+' on '+str(year)+'-'+str(month)+'-'+str(day)
 
     # Set file name
     if assim=='Free':
@@ -152,7 +156,6 @@ if __name__ == "__main__":
       fname= str(MAT_VAR)+'_'+exp+'_'+str(assim)+'_'+domain+'_'+\
                str(year)+str(month)+str(day)+'.png'
       fname = varstr+'_'+model_run+'_'+str(assim)+'_'+str(year)+'-'+str(month)+'-'+str(day)+'.png'
-    print 'filename', fname
     
     if varnum==2:     # TEMP
         strcmap = 'coolwarm' #cmocean.cm.thermal
@@ -176,10 +179,10 @@ if __name__ == "__main__":
         strcmap = 'gist_ncar_r'
 
     
-    title = str(Variable)+' on '+str(year)+'-'+str(month)+'-'+str(day)
-    title = 'SST_DA'
-plot_map(data_coarse, data_fine, lat1, lon1, lat_f, lon_f, varnum, domain, \
-     #        strcmap, minmax, save, title, fname)
+    #title = str(Variable)+' on '+str(year)+'-'+str(month)+'-'+str(day)
+    #title = 'SST_DA'
+    # plot_map(data_coarse, data_fine, lat1, lon1, lat_f, lon_f, varnum, domain, \
+    #        strcmap, minmax, save, title, fname)
     plot_map(data_coarse, lat1, lon1, varnum, domain, \
              strcmap, minmax, save, title, fname, plotlog, plotcb)
 
