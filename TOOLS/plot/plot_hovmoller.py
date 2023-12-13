@@ -22,24 +22,26 @@ import cmocean
 
 
 if __name__ == "__main__":
-    runname = 'chl+sstL3'
+    #runname = 'chl_weakly_sstL3_strongly'
+    #title_str = 'CHLw + SSTs'
+    runname = 'free'
+    title_str = 'Free'
     coupled = ''
     t_start = '20150201'
-    t_end = '20150531'
+    t_end = '20151231'
     dist = 10           # Grid point distance to check around central location 
     station = 'ArkonaWR' # Set station name according to the XLSX file
     istation = 0        # (0) use 'station', (1) Arkona, (2) Baltic Proper, (3) Bothnian Sea
-    plotlog = 0
     plotcb = 1          # Whether to show the colorbar
     max_depth = 45      # entire depth ranges till ~700m but most places dont have data after around maybe 70m
     #months_da = [1, 2, 3] #3, 4, 5]
-    plot_ffa = 'fcst' # 'free', 'fcst' or 'ana'
+    plot_ffa = 'free' # 'free', 'fcst' or 'ana'
     z_mean=0     #0(no vertical mean)
     z_integral=0 #(0 for no vertical integral; 1 for vertical integral)
     z1=0         # upper Z boundary (for z_mean and z_integral)
     z2=5         # lower Z boundary (for z_mean and z_integral)
     save = 1
-    #minmax = [0.8, 2] # can be out-commented if cbar axis should be set automatically
+    minmax = [0.1, 10] # can be out-commented if cbar axis should be set automatically
 
     varnum = 24	 	# Variable number from the var_names routine.
                         # Quick ref: 1=z, 2=TEM, 3=SAL, 4=uvel, 5=vvel, 6=NH4, 7=NO3, 8=PO4, 
@@ -50,7 +52,7 @@ if __name__ == "__main__":
     ######################################################
     
     # colormap based on variable 
-
+    plotlog = 0
     if varnum==2:     # Temperature
         strcmap = 'coolwarm' 
     elif varnum==10:
@@ -65,6 +67,7 @@ if __name__ == "__main__":
         strcmap = 'gist_ncar_r'
     elif varnum==24:     # Chlorophyll
         strcmap = cmocean.cm.thermal
+	plotlog = 1
     elif varnum==25:   # TE
         strcmap = cmocean.cm.dense
     elif varnum==26:   # PFT
@@ -118,13 +121,14 @@ if __name__ == "__main__":
     data_mean = [row[0:depth_cut] for row in data_mean] # delete all data at depths > max_depth
 
     # Determine tick localizations and labels
+    print 'TEST data_day[0]=', data_day[0]
     tickloc = []
     tickloc_min = []
     loc = data_day[0]
     tickloc.append(loc)
     months_str = []
     for i in range(len(months_free)):
-        _, _, mstr, days_in_mon = month_names(i+months_free[0])
+        _, mstr, _, days_in_mon = month_names(i+months_free[0])
     #    print 'CAUTION hardcoded in plot_hovmoeller days_in_mon=14 and mstr'
     #	days_in_mon = 14
         if t_start=='20150501':
@@ -153,7 +157,10 @@ if __name__ == "__main__":
     if plotcb == 1: 
       cbar = fig.colorbar(im)
       cbar.set_label(var_unit)
-    levels1 = [1.2, 2.0, 5.0]
+    if varnum == 24:
+      levels1 = [1.2, 2.0, 5.0]
+    elif varnum == 2: 
+      levels1 = [4.0, 6.0, 8.0, 10.0]
     #levels1 = [6.0, 6.5, 7.0, 7.5, 8.0, 8.5]
     #levels1 = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0]#, 7.0, 8.0]
     #levels1 = [0.5, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0]
@@ -164,14 +171,18 @@ if __name__ == "__main__":
     plt.clabel(contour1, inline=True, fontsize=10, fmt='%.1f')
     #contour2 = ax.contour(X, Y, transpose(data_mean), levels2, colors='black') # add contour lines
     #plt.clabel(contour2, inline=True, fontsize=10, fmt='%.2f')
-    if plot_ffa == 'free':
-      ax.set_title(Variable + ' for Free run')
-    elif plot_ffa == 'fcst':
-      ax.set_title(Variable + ' for DA - Forecast')
-    elif plot_ffa == 'ana':
-      ax.set_title(Variable + ' for DA - Analysis')
+    if 'title_str' not in locals():
+      if plot_ffa == 'free':
+        ax.set_title(Variable + ' for Free run')
+      elif plot_ffa == 'fcst':
+        ax.set_title(Variable + ' for DA - Forecast')
+      elif plot_ffa == 'ana':
+        ax.set_title(Variable + ' for DA - Analysis')
+    else: 
+      ax.set_title(title_str, fontsize=16)
     ax.set_ylabel('depth [m]')
     ax.set_yticks(yticks)
+    xlims = plt.xlim()
     plt.xlim(tickloc[0],tickloc[-1])
     ax.xaxis.set_major_locator(ticker.FixedLocator(tickloc))
     ax.xaxis.set_minor_locator(ticker.FixedLocator(tickloc_min))
