@@ -61,14 +61,14 @@ program obsgrid
 ! *********************
 
   ! First and last month of experiment
-  firstmonth = 1
-  lastmonth = 12
+  firstmonth = 2
+  lastmonth = 5
 
 
   ! *** Model settings
 
   ! Name of experiment
-  exp = 'free_N30'
+  exp = 'chl_strongly_N30'
 
   ! Path to data assimilation output files
   path_m = '/scratch/projects/hbk00095/exp/'//trim(exp)//'/DA'
@@ -81,7 +81,7 @@ program obsgrid
   ! *** Observation settings
 
   ! Choose observation type: L4 or L3S
-  obstype = 'L4'
+  obstype = 'L3S'
 
   ! Path to and name stub of observation files, and name of variable
   if (trim(obstype)=='L4') then
