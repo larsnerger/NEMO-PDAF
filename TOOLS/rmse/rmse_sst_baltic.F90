@@ -82,7 +82,7 @@ program rmse
   ! *** Observation settings
 
   ! Choose observation type: L4 or L3S
-  obstype = 'L4'
+  obstype = 'L3S'
 
   ! Path to and name stub of observation files, and name of variable
   if (trim(obstype)=='L4') then
