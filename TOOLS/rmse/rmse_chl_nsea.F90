@@ -24,10 +24,12 @@ program rmse
   integer :: startv(4), countv(4)               ! Index arrays for reading from nc file
   integer :: startv3(3), countv3(3)               ! Index arrays for reading from nc file
   integer :: firstmonth, lastmonth, nmonths
+  integer :: firstday, lastday, dayone, daylast
   integer :: months(12), years(12)
   integer :: idays(12)
   integer :: jpiglo, jpjglo
   integer :: maxstep
+  real(8) :: limcoords(3)
 
   real(8), allocatable :: field_m(:,:)
   real(8), allocatable :: field_o(:,:)
@@ -49,6 +51,7 @@ program rmse
   character(len=50) :: exp, mfile, varname_m, ofile, file_o_stub, varname_o
   character(len=2) :: mstr, dstr
   character(len=4) :: ystr
+  character(len=4) :: exptype
 
   logical :: first = .true.
 
@@ -70,20 +73,30 @@ program rmse
 
   ! First and last month of experiment
   firstmonth = 1
-  lastmonth = 12
+  lastmonth = 5 !firstmonth+1
 
+  ! For free forecasts: Start day of first month and end day in last month
+  firstday = 1
+  lastday = 0  ! set=0 to ignore
 
   ! *** Whether to use log concentrations
-  log_conc = .false.
+  log_conc = .true.
+!  log_conc = .false.
 
 
   ! *** Model settings
 
+  ! Type of experiment
+  exptype = 'free'   ! 'fcst', 'free', 'asml'
+
   ! Name of experiment
   exp = 'free_N30'
+!  exp = 'chl_weakly_sstL3_strongly_N30'
+!  exp = 'fcst_CHLw+SSTs_May16'
 
   ! Path to data assimilation output files
   path_m = '/scratch/projects/hbk00095/exp/'//trim(exp)//'/DA'
+!  path_m = '/scratch-emmy/usr/hbknerge/SEAMLESS/run/'//trim(exp)//'/fcst/DA'
   
   ! Name model variable
   varname_m = 'CHL'
@@ -94,6 +107,7 @@ program rmse
   ! Name of output file
   if (log_conc) logstr='_log'
   file_rms = 'rms_chl_no_'//trim(exp)//trim(logstr)//'.nc'
+  file_rms = 'rms_chl_no'//trim(logstr)//'.nc'
 
 
   ! *** Observation settings
@@ -114,7 +128,7 @@ program rmse
 
 
   ! Number of steps to process - for free run set maxstep=1, otherwise =2
-  if (trim(exp)=='free_N30') then
+  if (trim(exptype)=='fcst' .or. trim(exptype)=='free') then
      maxstep = 1
   else
      maxstep = 2
@@ -136,8 +150,18 @@ program rmse
   write (*,'(5x,a,1x,a)') 'write RMSEs and mean errors into file ', trim(file_rms)
   if (log_conc) write (*,'(5x,a)') '--- Use LOG10 of concentrations'
 
+  ! Define limiting coordinates for Baltic Sea
+  limcoords(1) = 57.0    ! north/south limit in Skagerrak
+  limcoords(2) = 9.4     ! east/west limit over Denmark; use outh of limcoords(1) for 'no'
+  limcoords(3) = 15.0    ! east/west limit over Sweden; use north of limcoords(1) for 'ba'
+
   ! Definitions for months
   ndays_m = (/31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31/)
+  if (trim(exptype)=='fcst' .or. trim(exptype)=='free') then
+     ! Setting for free forecasts starting on firstday and ending on lastday of lastmonth
+     ndays_m(firstmonth) = ndays_m(firstmonth)-firstday+1
+     if (lastday>0) ndays_m(lastmonth) = lastday
+  endif
   months = (/1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 /)
   years = (/2015, 2015, 2015, 2015, 2015, 2015, 2015, 2015, 2015, 2015, 2015, 2015 /)
 
@@ -159,6 +183,7 @@ program rmse
   do mcnt = 1, firstmonth-1
      iday = iday + ndays_m(mcnt)
   end do
+  iday = iday + firstday - 1
   write (*,*) 'Start computation at day of year', iday
 
 
@@ -184,6 +209,12 @@ program rmse
 
 ! *** Start loop computing the timeseries of RMSEs and biases ***
 
+  ! Initialize first and last day of first month, consider value of firstday
+  dayone = firstday 
+  daylast = ndays_m(firstmonth) + firstday - 1
+  write (*,*) 'run first month for days', dayone, daylast
+
+  ! Initialize array counter
   cnt = 1
 
   mloop: do mcnt = firstmonth, lastmonth
@@ -234,9 +265,13 @@ program rmse
 
      ! *** Loop over days of the month
 
-     dloop: do day = 1, ndays_m(month)
+     dloop: do day = dayone, daylast
 
         write (dstr, '(i2.2)') day
+
+        ! Reset initial and last day of following month
+        dayone = 1
+        daylast = ndays_m(month+1)
 
         ! *** Read observations ***
 
@@ -249,11 +284,12 @@ program rmse
         countv3(3) = 1
         call check( nf90_get_var(oncid, varid_o, field_o, start=startv3, count=countv3) )
 
+
         ! *** Read model ***
 
         file_m = trim(path_m)//'/'//'state_'//ystr//mstr//dstr//'.nc'
 
-        if (day==1) then
+        if (day==firstday) then
            write (*, '(8x,a,a,a)') 'Read model ', trim(varname_m), ' from file:'
            write (*, '(10x,a)') trim(file_m)
         end if
@@ -364,7 +400,10 @@ program rmse
 
                     do i = 1, dim_olon
 
-                       if (lon_o(i) >= wlon .and. lon_o(i) <= elon) then
+!                       if (lon_o(i) >= wlon .and. lon_o(i) <= elon) then
+                          ! North Sea (exclude Baltic except Skagerrak/Kattegat north of limcoords(1))
+                    if (lon_o(i) >= wlon .and. ((lon_o(i) <= limcoords(3) .and. lat_o(j)>limcoords(1)) &
+                         .or. lon_o(i) <= limcoords(2))) then
 
                           i_index = floor((lon_o(i) - wlon) / dlon) + 1
                           if (i_index > dim_mlon) i_index = dim_mlon
@@ -447,7 +486,7 @@ program rmse
            means(cnt, 2) = means(cnt, 1)
         end if
 
-        if (day==1) write (*,'(2x,a3,2x,a8,4a12)') &
+        if (day==firstday) write (*,'(2x,a3,2x,a8,4a12)') &
              'day', 'npoints', 'rmse(f)', 'rmse(a)', 'bias(f)', 'bias(a)'
 
         write (*,'(1x,i3,1x,i9,1x,4f12.4)') day, counter, rmses(cnt,:), means(cnt,:)

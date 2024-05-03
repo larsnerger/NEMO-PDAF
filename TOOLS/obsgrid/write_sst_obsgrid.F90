@@ -17,14 +17,17 @@ program obsgrid
   integer :: fileid, maskncid
   integer :: dimid_day, dimid_mon, dimid_2, dimids(4)
   integer :: id_mon, id_days
-  integer :: wfileid
+  integer :: wfileid, cntday, ndays_write
+  integer :: writeday(1)
   integer :: wdimids(3)
-  integer :: id_mobs_f, id_mobs_a, lonid_mobs, latid_mobs
+  integer :: id_mobs_f, id_mobs_a, lonid_mobs, latid_mobs, dayid_mobs
   integer :: dim_olat, dim_olon                 ! Observation grid dimensions read from file
   integer :: dim_mlat, dim_mlon                 ! Model grid dimensions read from file
   integer :: startv(4), countv(4)               ! Index arrays for reading from nc file
   integer :: startv3(3), countv3(3)               ! Index arrays for reading from nc file
+  integer :: startv1(1), countv1(1)               ! Index arrays for reading from nc file
   integer :: firstmonth, lastmonth, nmonths
+  integer :: firstday, lastday, dayone, daylast
   integer :: months(12), years(12)
   integer :: idays(12)
   integer :: jpiglo, jpjglo
@@ -44,11 +47,12 @@ program obsgrid
   character(len=200) :: path_o, file_o
   character(len=200) :: path_m, file_m
   character(len=200) :: path_mask, file_mask
-  character(len=200) :: path_mobs, file_mobs
+  character(len=200) :: path_mobs, file_mobs, outfile
   character(len=50) :: exp, mfile, varname_m, ofile, file_o_stub, varname_o
   character(len=2) :: mstr, dstr
   character(len=4) :: ystr
   character(len=3) :: obstype
+  character(len=4) :: exptype
 
   logical :: first = .true.
 
@@ -61,21 +65,39 @@ program obsgrid
 ! *********************
 
   ! First and last month of experiment
+<<<<<<< HEAD
+  firstmonth = 5
+  lastmonth = firstmonth+1
+
+  ! For free forecasts: Start day of first month and end day in last month
+  firstday = 16
+  lastday = 5 ! set=0 to ignore
+=======
   firstmonth = 2
   lastmonth = 5
+>>>>>>> 703d557cf73f276eab30c1556c0a78c2d60d00a0
 
 
   ! *** Model settings
 
+  ! Type of experiment
+  exptype = 'fcst'   ! 'fcst', 'free', 'asml'
+
   ! Name of experiment
+<<<<<<< HEAD
+  exp = 'free_N30'
+  exp = 'chl_weakly_sstL3_strongly_N30'
+  exp = 'fcst_CHLw+SSTs_May16'
+=======
   exp = 'chl_strongly_N30'
+>>>>>>> 703d557cf73f276eab30c1556c0a78c2d60d00a0
 
   ! Path to data assimilation output files
   path_m = '/scratch/projects/hbk00095/exp/'//trim(exp)//'/DA'
+!  path_m = '/scratch-emmy/usr/hbknerge/SEAMLESS/run/'//trim(exp)//'/fcst/DA'
   
   ! Name model variable
   varname_m = 'votemper'
-
 
 
   ! *** Observation settings
@@ -113,7 +135,7 @@ program obsgrid
 
 
   ! Number of steps to process - for free run set maxstep=1, otherwise =2
-  if (trim(exp)=='free_N30') then
+  if (trim(exptype)=='fcst' .or. trim(exptype)=='free') then
      maxstep = 1
   else
      maxstep = 2
@@ -132,10 +154,15 @@ program obsgrid
   write (*,'(10x,a)') '* Generate surface CHL on observation grid of CMEMS SST    *'
   write (*,'(10x,a)') '************************************************************'
 
-  write (*,'(5x,a,1x,a)') 'write mapped field into file ', trim(file_mobs)//'_'//trim(exp)
+  write (*,'(5x,a,1x,a)') 'write mapped field into file ', trim(file_mobs) !//'_'//trim(exp)
 
   ! Definitions for months
   ndays_m = (/31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31/)
+  if (trim(exptype)=='fcst' .or. trim(exptype)=='free') then
+     ! Setting for free forecasts starting on firstday and ending on lastday of lastmonth
+     ndays_m(firstmonth) = ndays_m(firstmonth)-firstday+1
+     if (lastday>0) ndays_m(lastmonth) = lastday
+  endif
   months = (/1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 /)
   years = (/2015, 2015, 2015, 2015, 2015, 2015, 2015, 2015, 2015, 2015, 2015, 2015 /)
 
@@ -155,6 +182,7 @@ program obsgrid
   do mcnt = 1, firstmonth-1
      iday = iday + ndays_m(mcnt)
   end do
+  iday = iday + firstday - 1
   write (*,*) 'Start processing at day of year', iday
 
 
@@ -180,6 +208,12 @@ program obsgrid
 
 ! *** Start loop computing the timeseries ***
 
+  ! Initialize first and last day of first month, consider value of firstday
+  dayone = firstday 
+  daylast = ndays_m(firstmonth) + firstday - 1
+  write (*,*) 'run first month for days', dayone, daylast
+
+  ! Initialize array counter
   cnt = 1
 
   mloop: do mcnt = firstmonth, lastmonth
@@ -189,6 +223,9 @@ program obsgrid
 
      write (ystr, '(i4.4)') year
      write (mstr, '(i2.2)') month
+
+     ! Set full name of output file
+     outfile = trim(path_mobs)//'/'//trim(file_mobs)//'_'//ystr//mstr//'.nc'
 
      write (*,*) 'Project onto observation grid for month, year', month, year
 
@@ -232,16 +269,24 @@ program obsgrid
 
      ! *** Create file to store observed model state ***
 
-     call check( NF90_CREATE(trim(path_mobs)//'/'//trim(file_mobs)//'_'//trim(exp)//'_'//ystr//mstr//'.nc', NF90_NETCDF4, wfileid) )
+     ! Define number of days in file
+     if (firstday/=1 .and. month==firstmonth) then
+        ndays_write = ndays_m(month) + firstday-1
+     else
+        ndays_write = ndays_m(month)
+     end if
+
+     call check( NF90_CREATE(outfile, NF90_NETCDF4, wfileid) )
      call check( NF90_PUT_ATT(wfileid,NF90_GLOBAL,'title', &
           'Observed model state for chlorophyll') )
 
      ! Define dimensions
      call check( NF90_DEF_DIM(wfileid,'lon',dim_olon,wdimids(1)) )
      call check( NF90_DEF_DIM(wfileid,'lat',dim_olat,wdimids(2)) )
-     call check( NF90_DEF_DIM(wfileid,'time',ndays_m(month),wdimids(3)) )
+     call check( NF90_DEF_DIM(wfileid,'time',ndays_write,wdimids(3)) )
 
      ! define variables
+     call check( NF90_DEF_VAR(wfileid,'day',NF90_INT,wdimids(3),dayid_mobs) )
      call check( NF90_DEF_VAR(wfileid,'lat',NF90_FLOAT,wdimids(2),latid_mobs) )
      call check( NF90_def_var_deflate(wfileid, latid_mobs, 0, 1, 1) )
      call check( NF90_DEF_VAR(wfileid,'lon',NF90_FLOAT,wdimids(1),lonid_mobs) )
@@ -269,9 +314,17 @@ program obsgrid
 
      ! *** Loop over days of the month
 
-     dloop: do day = 1, ndays_m(month)
+     cntday = 0
+     dloop: do day = dayone, daylast
 
         write (dstr, '(i2.2)') day
+
+        ! Reset initial and last day of following month
+        dayone = 1
+        daylast = ndays_m(month+1)
+
+        ! Index of day in file
+        cntday = cntday+1
 
         ! *** Read observations ***
 
@@ -296,7 +349,7 @@ program obsgrid
 
         file_m = trim(path_m)//'/'//'state_'//ystr//mstr//dstr//'.nc'
 
-        if (day==1) then
+        if (day==firstday) then
            write (*, '(8x,a,a,a)') 'Read model ', trim(varname_m), ' from file:'
            write (*, '(10x,a)') trim(file_m)
         end if
@@ -410,10 +463,16 @@ program obsgrid
               end if
            end do ! j
 
+           ! Write day of month
+           startv1(1) = cntday
+           countv1(1) = 1
+           writeday(1) = day
+           call check( nf90_put_var(wfileid, dayid_mobs, writeday, startv1, countv1))
+
            ! Write observed model field on observation grid
            startv3(1) = 1 ! lon
            startv3(2) = 1 ! lat
-           startv3(3) = day ! time
+           startv3(3) = cntday ! time
            countv3(1) = dim_olon
            countv3(2) = dim_olat
            countv3(3) = 1

@@ -51,73 +51,71 @@ program rmse
   character(len=50) :: exp, mfile, varname_m, ofile, file_o_stub, varname_o
   character(len=2) :: mstr, dstr
   character(len=4) :: ystr
+  character(len=3) :: obstype
   character(len=4) :: exptype
 
   logical :: first = .true.
 
-! Variables particular for CHL observations
-  logical :: apply_minchl   ! Whether to set too low, but valid model values to minimum
-  integer :: cntmin
-  real(8) :: minchl         ! Minimum CHL limit for model state
-  logical :: log_conc=.false.  ! Whether to compute RMSEs for logarithmic concentrations
-  character(len=4) :: logstr = ''   ! String in file name for log concentrations
+! Variables particular for SST observations
+  integer, allocatable :: ifield_o(:,:)         ! Integer value read from observation file
 
 
 ! *********************
 ! *** Configuration ***
 ! *********************
 
-  ! Allowed minimum Chlorophyll value
-  minchl = 0.00001
-  apply_minchl = .false.
-
   ! First and last month of experiment
-  firstmonth = 5
-  lastmonth = firstmonth !+1
+  firstmonth = 1
+  lastmonth = 5 !firstmonth+1
 
   ! For free forecasts: Start day of first month and end day in last month
   firstday = 1
-  lastday = 21  ! set=0 to ignore
-
-  ! *** Whether to use log concentrations
-  log_conc = .true.
-  log_conc = .false.
+  lastday = 0  ! set=0 to ignore
 
 
   ! *** Model settings
 
   ! Type of experiment
-  exptype = 'fcst'   ! 'fcst', 'free', 'asml'
+  exptype = 'free'   ! 'fcst', 'free', 'asml'
 
   ! Name of experiment
   exp = 'free_N30'
-  exp = 'chl_weakly_sstL3_strongly_N30'
-  exp = 'fcst_CHLw+SSTs_May1'
+!  exp = 'chl_weakly_sstL3_strongly_N30'
+!  exp = 'fcst_CHLw+SSTs_May16'
 
   ! Path to data assimilation output files
   path_m = '/scratch/projects/hbk00095/exp/'//trim(exp)//'/DA'
 !  path_m = '/scratch-emmy/usr/hbknerge/SEAMLESS/run/'//trim(exp)//'/fcst/DA'
   
   ! Name model variable
-  varname_m = 'CHL'
+  varname_m = 'votemper'
+
+
+  ! *** Observation settings
+
+  ! Choose observation type: L4 or L3S
+  obstype = 'L3S'
+
+  ! Path to and name stub of observation files, and name of variable
+  if (trim(obstype)=='L4') then
+     path_o = '/scratch/usr/hzfblner/SEAMLESS/observations/SST_2015'
+     file_o_stub = 'sst_REP_L4_'
+     varname_o = 'analysed_sst'
+  else
+     path_o = '/scratch/usr/hzfblner/SEAMLESS/observations/SST_L3S_2015'
+     file_o_stub = 'sst_L3S_'
+     varname_o = 'sea_surface_temperature'
+  end if
+
+  ! Set missing value for observations
+  missing_value_obs = -10.0
 
 
   ! *** Output settings
 
   ! Name of output file
-  if (log_conc) logstr='_log'
-  file_rms = 'rms_chl_ba_'//trim(exp)//trim(logstr)//'.nc'
-  file_rms = 'rms_chl_ba'//trim(logstr)//'.nc'
-
-
-  ! *** Observation settings
-
-  ! Path to and name stub of observation files
-  path_o = '/scratch/usr/hzfblner/SEAMLESS/observations/CHL_BA_2015'
-  file_o_stub = 'chl_ba_MY_'
-
-  ! Name of observation variable
-  varname_o = 'CHL'
+  file_rms = 'rms_sst_'//trim(obstype)//'_'//trim(exp)//'.nc'
+  file_rms = 'rms_sst_'//trim(obstype)//'_no.nc'
 
 
   ! *** Specification of mask file
@@ -143,12 +141,11 @@ program rmse
   ! set first timer
   call timeit(1,'new')
 
-  write (*,'(10x,a)') '************************************'
-  write (*,'(10x,a)') '*     RMSE for CMEMS CHL Baltic    *'
-  write (*,'(10x,a)') '************************************'
+  write (*,'(10x,a)') '******************************************'
+  write (*,'(10x,a)') '*     RMSE for CMEMS SST in North Sea    *'
+  write (*,'(10x,a)') '******************************************'
 
   write (*,'(5x,a,1x,a)') 'write RMSEs and mean errors into file ', trim(file_rms)
-  if (log_conc) write (*,'(5x,a)') '--- Use LOG10 of concentrations'
 
   ! Define limiting coordinates for Baltic Sea
   limcoords(1) = 57.0    ! north/south limit in Skagerrak
@@ -244,6 +241,7 @@ program rmse
         call check( nf90_Inquire_dimension(oncid, dimid, len=dim_olon) )
 
         ! Allocate arrays
+        allocate(ifield_o(dim_olon, dim_olat))
         allocate(field_o(dim_olon, dim_olat))
         allocate(lon_o(dim_olon), lat_o(dim_olat))
 
@@ -260,10 +258,6 @@ program rmse
 
      ! Get variable IDs
      call check( nf90_inq_varid(oncid, trim(varname_o), varid_o) )
-     call check( nf90_get_att(oncid, varid_o, 'missing_value', missing_value_obs) )
-
-
-     ! *** Loop over days of the month
 
      dloop: do day = dayone, daylast
 
@@ -276,13 +270,21 @@ program rmse
         ! *** Read observations ***
 
         ! Read observed field
+        ! SSTs are in deg C but have to be scaled by sst_scale (1/100).
         startv3(1) = 1 ! lon
         startv3(2) = 1 ! lat
         startv3(3) = day ! time
         countv3(1) = dim_olon
         countv3(2) = dim_olat
         countv3(3) = 1
-        call check( nf90_get_var(oncid, varid_o, field_o, start=startv3, count=countv3) )
+        call check( nf90_get_var(oncid, varid_o, ifield_o, start=startv3, count=countv3) )
+
+        ! Scale SST and store as real
+        do j = 1, dim_olat
+           do i = 1, dim_olon
+              field_o(i,j) = real(ifield_o(i, j), 8) * 0.01_8
+           end do
+        end do
 
 
         ! *** Read model ***
@@ -347,6 +349,10 @@ program rmse
            wlon = lon_m(1)
            elon = lon_m(dim_mlon-1)
 
+           if (first) then
+              write (*,'(a,f10.2)') 'North Sea: Set eastern coordinate limit to', limcoords(2),' degrees East'
+           end if
+
         end if
 
         ! Get variable IDs and read data
@@ -366,20 +372,6 @@ program rmse
            countv(4) = 1
            call check( nf90_get_var(ncid, varid_m, field_m, start=startv, count=countv) )
 
-           ! Reset chl values below the limit
-           if (apply_minchl) then
-              cntmin = 0
-              do j = 1, dim_mlat
-                 do i = 1, dim_mlon
-                    if (abs(field_m(i,j)-missing_value)>0.1 .and. field_m(i,j)<minchl) then
-                       field_m(i,j)=minchl
-                       cntmin=cntmin+1
-                    endif
-                 end do
-              end do
-              write (*,*) 'number of corrected CHL values', cntmin
-           end if
-
            ! Compute RMSE
 
            ! Initialize counters and sums
@@ -390,77 +382,38 @@ program rmse
 
            ! Loop through observation grid
 
-           If (log_conc) then
-              do j = 1, dim_olat
+           do j = 1, dim_olat
            
-                 if (lat_o(j) <= nlat .and. lat_o(j) >= slat) then
+              if (lat_o(j) <= nlat .and. lat_o(j) >= slat) then
 
-                    j_index = floor((lat_o(j) - slat) / dlat) + 1
-                    if (j_index > dim_mlat) j_index = dim_mlat
+                 j_index = floor((lat_o(j) - slat) / dlat) + 1
+                 if (j_index > dim_mlat) j_index = dim_mlat
 
-                    do i = 1, dim_olon
+                 do i = 1, dim_olon
 
-!                       if (lon_o(i) >= wlon .and. lon_o(i) <= elon) then
-                       ! Baltic Sea (exclude Skagerrak/Kattegat and all west of Denmark)
-                       if (((lon_o(i) >= limcoords(2) .and. lat_o(j)<=limcoords(1)) .or. &
-                            lon_o(i) >= limcoords(3)) .and. lon_o(i) <= elon) then
+                    ! North Sea (exclude Baltic except Skagerrak/Kattegat north of limcoords(1))
+                    if (lon_o(i) >= wlon .and. ((lon_o(i) <= limcoords(3) .and. lat_o(j)>limcoords(1)) &
+                         .or. lon_o(i) <= limcoords(2))) then
 
-                          i_index = floor((lon_o(i) - wlon) / dlon) + 1
-                          if (i_index > dim_mlon) i_index = dim_mlon
+                       i_index = floor((lon_o(i) - wlon) / dlon) + 1
+                       if (i_index > dim_mlon) i_index = dim_mlon
 
-                          cnt0 = cnt0+1
-                          if (abs(tmask(i_index, j_index, 1, 1) - missing_value) > 0.1 &
-                               .and. field_o(i, j) > missing_value_obs) then
+                       cnt0 = cnt0+1
+                       if (abs(tmask(i_index, j_index, 1, 1) - missing_value) > 0.1 &
+                            .and. field_o(i, j) > missing_value_obs) then
 
-                             if (field_o(i,j)>0.0 .and. field_m(i_index, j_index)>0.0) then
-                                diff = log10(field_o(i,j))- log10(field_m(i_index, j_index))
-                                diff_squared = diff * diff
-                                ssum = ssum + diff_squared
-                                diff_ssum = diff_ssum + diff
-                                counter = counter+1
-                             end if
-
-                          end if
+                          diff = field_o(i,j) - field_m(i_index, j_index)
+                          diff_squared = diff * diff
+                          ssum = ssum + diff_squared
+                          diff_ssum = diff_ssum + diff
+                          counter = counter+1
 
                        end if
-                    end do ! i
-                 end if
-              end do ! j
 
-           else
-              do j = 1, dim_olat
-           
-                 if (lat_o(j) <= nlat .and. lat_o(j) >= slat) then
-
-                    j_index = floor((lat_o(j) - slat) / dlat) + 1
-                    if (j_index > dim_mlat) j_index = dim_mlat
-
-                    do i = 1, dim_olon
-
-                       if (lon_o(i) >= wlon .and. lon_o(i) <= elon) then
-
-                          i_index = floor((lon_o(i) - wlon) / dlon) + 1
-                          if (i_index > dim_mlon) i_index = dim_mlon
-
-                          cnt0 = cnt0+1
-                          if (abs(tmask(i_index, j_index, 1, 1) - missing_value) > 0.1 &
-                               .and. field_o(i, j) > missing_value_obs) then
-
-                             if (field_o(i,j)>0.0 .and. field_m(i_index, j_index)>0.0) then
-                                diff = field_o(i,j) - field_m(i_index, j_index)
-                                diff_squared = diff * diff
-                                ssum = ssum + diff_squared
-                                diff_ssum = diff_ssum + diff
-                                counter = counter+1
-                             end if
-
-                          end if
-
-                       end if
-                    end do ! i
-                 end if
-              end do ! j
-           end if
+                    end if
+                 end do ! i
+              end if
+           end do ! j
 
            if (counter > 0) then
               mean_of_difference_squared = ssum / real(counter, 8)
