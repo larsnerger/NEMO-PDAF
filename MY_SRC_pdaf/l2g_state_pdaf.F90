@@ -12,7 +12,8 @@ subroutine l2g_state_pdaf(step, domain_p_all, dim_l, state_l, dim_p, state_p)
 
   use mod_kind_pdaf
   use mod_assimilation_pdaf, &
-       only: id_lstate_in_pstate, type_sweep, isweep, cda_phy, cda_bio
+       only: id_lstate_in_pstate, type_sweep, isweep, cda_phy, cda_bio, &
+       depths_l
   use mod_statevector_pdaf, &
        only: n_fields, sfields, sfields_l
   use mod_nemo_pdaf, &
@@ -31,6 +32,7 @@ use mod_parallel_pdaf, only: mype_filter
 ! *** local variables *** 
   integer :: i, ifield           ! Counters
   logical :: update_cda          ! Whether to perform strongly-coupled DA update
+  real(pwp) :: vweight           ! Weight for vertical localization
 
 
 ! **************************************************
@@ -56,11 +58,38 @@ use mod_parallel_pdaf, only: mype_filter
 
      ! Update fields which are active and fulfill the CDA criteria
      if (sfields(ifield)%update .and. update_cda) then
-        do i = sfields_l(ifield)%off+1, sfields_l(ifield)%off + sfields_l(ifield)%dim
-           state_p(id_lstate_in_pstate(i)) = state_l(i)
-        end do
+        if (sfields(ifield)%vloc) then
+           do i = sfields_l(ifield)%off+1, sfields_l(ifield)%off + sfields_l(ifield)%dim
+              ! Get weight for vertical localization
+              CALL vertweight(depths_l(i), sfields(ifield)%vloc_limit, vweight)
+
+              state_p(id_lstate_in_pstate(i)) = vweight * state_l(i)
+           end do
+        else
+           do i = sfields_l(ifield)%off+1, sfields_l(ifield)%off + sfields_l(ifield)%dim
+              state_p(id_lstate_in_pstate(i)) = state_l(i)
+           end do
+        end if
      end if
 
   end do
 
 end subroutine l2g_state_pdaf
+
+
+subroutine vertweight(depth, depth_limit, weight)
+
+  use mod_kind_pdaf
+
+  implicit none
+
+  real(pwp), intent(in)  :: depth         ! Depth of the grid point
+  real(pwp), intent(in)  :: depth_limit   ! Limiting depth
+  real(pwp), intent(out) :: weight        ! Weight
+
+
+  ! *** Compute localization weight for depth ***
+
+  weight = max(1.0 - depth / depth_limit, 0.0)
+
+end subroutine vertweight

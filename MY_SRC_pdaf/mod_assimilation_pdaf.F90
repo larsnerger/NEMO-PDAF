@@ -38,6 +38,10 @@ module mod_assimilation_pdaf
   integer :: step_null = 0       !< initial time step of assimilation
   logical :: restart = .false.   !< Whether to restart the data assimilation from previous run
 
+  real, allocatable :: depths_l(:) !< Depth of element in local state vector
+
+!$OMP THREADPRIVATE(depths_l)
+
 ! *** Below are the generic variables used for configuring PDAF ***
 ! *** Their values are set in init_PDAF                         ***
 
@@ -182,7 +186,9 @@ module mod_assimilation_pdaf
   real(pwp) :: pf_noise_amp !< Noise amplitude (>=0.0, only used if pf_noise_type>0)
 
   logical :: perturb_params = .false.   !< Whether to perturb ERGOM parameters
+  logical :: scale_params = .false.     !< Whether to apply scaling factor to ERGOM parameters
   real(pwp) :: stddev_params = 0.125    !< Relatibe stddev to perturb ERGOM parameters lognormally
+  integer :: type_pscale=1       !< Type of parameter scaling
 
 ! For coupled DA
   character(len=6) :: cda_phy = 'weak'  !< Perform 'weak'ly or 'strong'ly coupled DA with physics data
@@ -237,6 +243,8 @@ contains
          only: jpi, jpj, jpk, calc_date, lwp, numout
     use mod_iau_pdaf, &
          only: update_asm_step_pdaf
+
+    implicit none
 
 ! *** Arguments ***
     integer, intent(in) :: kt  ! time step

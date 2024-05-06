@@ -1,7 +1,7 @@
-!> Building the Statevector
+!> Building the state vector
 !!
 !! This module provides variables & routines for
-!! building the state vector.
+!! defining the state vector.
 !!
 !! The module contains three routines
 !! - **init_id** - initialize the array `id`
@@ -9,21 +9,18 @@
 !! - **setup_statevector** - generic routine controlling the initialization
 !!
 !! The declarations of **id** and **sfields** as well as the
-!! routines **init_id** and **init_sfields** usually need to be
-!! adapted to a particular modeling case.
+!! routines **init_id** and **init_sfields** might need to be
+!! adapted to a particular modeling case. However, for most
+!! parts also the configruation using the namelist is possible.
 !!
 module mod_statevector_pdaf
 
   use mod_kind_pdaf
-#if defined key_top
-  use mod_nemo_pdaf, &
-       only: jptra
-#endif
 
   implicit none
   save
 
-  !---- `field_ids` and `state_field` need to be adapted for a DA case -----
+  !---- `field_ids` and `state_field` can be adapted for a DA case -----
 
   ! Declare Fortran type holding the indices of model fields in the state vector
   ! This can be extended to any number of fields - it serves to give each field a name
@@ -48,6 +45,8 @@ module mod_statevector_pdaf
      integer :: off = 0                    !< Offset of field in state vector
      integer :: jptrc = 0                  !< index of the tracer in nemo tracer variable
      logical :: update = .false.           !< Whether to update this variable in the analysis step
+     logical :: vloc = .false.             !< Whether to apply vertical localization
+     real(pwp) :: vloc_limit = 100.0       !< Limit depth for vertical localization
      character(len=3) :: type = ''         !< Type of field (phy/bio)
      character(len=10) :: variable = ''    !< Name of field
      character(len=20) :: name_incr = ''   !< Name of field in increment file
@@ -80,6 +79,12 @@ module mod_statevector_pdaf
   logical :: sv_uvel = .false.             !< Whether to include u-velocity in state vector
   logical :: sv_vvel = .false.             !< Whether to include v-velocity in state vector
 
+  ! Control whether to apply assimilation increment to a variable
+  logical :: update_temp  = .false.     !< Whether to update NEMO physics after analysis step
+  logical :: update_salt  = .false.     !< Whether to update NEMO physics after analysis step
+  logical :: update_vel   = .false.     !< Whether to update NEMO physics after analysis step
+  logical :: update_ssh   = .false.     !< Whether to update NEMO physics after analysis step
+
   ! Variables for biogeochemistry
   integer :: n_trc = 0                     !< number of tracer fields
   integer :: n_bgc_prog = 0                !< number of active prognostic tracer fields
@@ -91,12 +96,50 @@ module mod_statevector_pdaf
   logical, allocatable :: sv_bgc_prog(:) !< Whether to include BGC in state vector
   logical, allocatable :: sv_bgc_diag(:) !< Whether to include diagnostic BGC variables
 
+  ! Control whether to apply assimilation increment to a variable group
+  logical :: update_phyto = .false.     !< Whether to update phytoplankton variables of ERGOM (DIA, FLA, CYA)
+  logical :: update_zoo   = .false.     !< Whether to update zooplankton variables of ERGOM (MIZ, MEZ)
+  logical :: update_det   = .false.     !< Whether to update detritus variables of ERGOM (DET, DETs)
+  logical :: update_nut   = .false.     !< Whether to update nutrient variables of ERGOM (NH4, NO3, PO4, FE)
+  logical :: update_other = .false.     !< Whether to update non-phytoplankton variables of ERGOM
+  logical :: update_diag  = .false.     !< Whether to update diagnostic variables of ERGOM
+
+  ! Control whether a single BGC variable is updated
+  logical :: update_NH4  = .false.     !< Whether to update variable NH4
+  logical :: update_NO3  = .false.     !< Whether to update variable NO3
+  logical :: update_PO4  = .false.     !< Whether to update variable PO4
+  logical :: update_SIL  = .false.     !< Whether to update variable SIL
+  logical :: update_DIA  = .false.     !< Whether to update variable DIA
+  logical :: update_FLA  = .false.     !< Whether to update variable FLA
+  logical :: update_CYA  = .false.     !< Whether to update variable CYA
+  logical :: update_MEZ  = .false.     !< Whether to update variable MEZ
+  logical :: update_MIZ  = .false.     !< Whether to update variable MIZ
+  logical :: update_DET1 = .false.     !< Whether to update variable DET
+  logical :: update_DETs = .false.     !< Whether to update variable DETs
+  logical :: update_FE   = .false.     !< Whether to update variable FE
+  logical :: update_LDON = .false.     !< Whether to update variable LDON
+  logical :: update_DIC  = .false.     !< Whether to update variable DIC
+  logical :: update_ALK  = .false.     !< Whether to update variable ALK
+  logical :: update_OXY  = .false.     !< Whether to update variable OXY
+  logical :: update_CHL  = .false.     !< Whether to update diagnostic variable CHL
+  logical :: update_PCO2 = .false.     !< Whether to update diagnostic variable PCO2
+  logical :: update_PH   = .false.     !< Whether to update diagnostic variable PH
+  logical :: update_PP   = .false.     !< Whether to update diagnostic variable PP
+
+  ! Control vertical localization in groups
+  logical :: vloc_phys = .false.       !< Whether physics variables use vertical localization
+  logical :: vloc_bgc  = .false.       !< Whether ERGOM variables use vertical localization
+  real(pwp) :: vloc_depth_phys         !< vertcial localization depth of physics variables
+  real(pwp) :: vloc_depth_bgc          !< vertcial localization depth of ERGOM variables
+
+
   ! Helper variables to point to particular fields
   integer :: id_chl=0          !< Index of chlorophyll field in state vector
   integer :: id_dia=0          !< Index of diatom field in state vector
   integer :: id_fla=0          !< Index of flagellate field in state vector
   integer :: id_cya=0          !< Index of cyanobacteria field in state vector
   integer :: id_netpp=0        !< Index of net primary production in state vector
+
 
   !---- The next variables usually do not need editing -----
 
@@ -118,23 +161,16 @@ module mod_statevector_pdaf
   integer :: n_fields          !< number of fields in state vector
   integer :: n_fields_covar=0  !< number of fields to read from covariance matrix file
 
-  logical :: update_temp  = .false.     !< Whether to update NEMO physics after analysis step
-  logical :: update_salt  = .false.     !< Whether to update NEMO physics after analysis step
-  logical :: update_vel   = .false.     !< Whether to update NEMO physics after analysis step
-  logical :: update_ssh   = .false.     !< Whether to update NEMO physics after analysis step
-  logical :: update_phyto = .false.     !< Whether to update phytoplankton variables of ERGOM (DIA, FLA, CYA)
-  logical :: update_zoo   = .false.     !< Whether to update zooplankton variables of ERGOM (MIZ, MEZ)
-  logical :: update_det   = .false.     !< Whether to update detritus variables of ERGOM (DET, DETs)
-  logical :: update_nut   = .false.     !< Whether to update nutrient variables of ERGOM (NH4, NO3, PO4, FE)
-  logical :: update_oxy   = .false.     !< Whether to update oxygen variable of ERGOM
-  logical :: update_other = .false.     !< Whether to update non-phytoplankton variables of ERGOM
-  logical :: update_diag  = .false.     !< Whether to update diagnostic variables of ERGOM
-
 contains
 
 !> This routine initializes the array id
 !!
   subroutine init_id(nfields)
+
+#if defined key_top
+  use mod_nemo_pdaf, &
+       only: jptra
+#endif
 
     implicit none
 
@@ -168,7 +204,8 @@ contains
     sv_bgc_diag(:) = .false.
 #endif
 
-    ! Namelist to define active parts of state vector
+! *** Read namelist file for state vector setup
+
 #if defined key_top
     namelist /state_vector/ screen, n_fields_covar, &
          sv_temp, sv_salt, sv_ssh, sv_uvel, sv_vvel, &
@@ -177,9 +214,6 @@ contains
     namelist /state_vector/ screen, n_fields_covar, &
          sv_temp, sv_salt, sv_ssh, sv_uvel, sv_vvel
 #endif
-
-
-! *** Read namelist file for state vector setup
 
     open (500,file='namelist_cfg.pdaf')
     read (500,NML=state_vector)
@@ -257,8 +291,8 @@ contains
 ! *** Local variables ***
     integer :: id_var            ! Index of a variable in state vector
 #if defined key_top
-    integer :: id_bgc_prog           ! Counter
-    integer :: id_bgc_diag           ! Counter
+    integer :: id_bgc_prog       ! Counter
+    integer :: id_bgc_diag       ! Counter
 #endif
 
     namelist /sfields_nml/ sfields
@@ -268,7 +302,6 @@ contains
     id_var = id%ssh
     if (id_var>0) then
        sfields(id_var)%ndims = 2
-       sfields(id_var)%dim = sdim2d
        sfields(id_var)%variable = 'SSH_inst'
        sfields(id_var)%name_incr = 'bckineta'
        sfields(id_var)%name_rest_n = 'sshn'
@@ -287,7 +320,6 @@ contains
     id_var = id%temp
     if (id_var>0) then
        sfields(id_var)%ndims = 3
-       sfields(id_var)%dim = sdim3d
        sfields(id_var)%variable = 'votemper'
        sfields(id_var)%name_incr = 'bckint'
        sfields(id_var)%name_rest_n = 'tn'
@@ -299,13 +331,16 @@ contains
        sfields(id_var)%transform = 0
        sfields(id_var)%trafo_shift = 0.0
        if (update_temp) sfields(id_var)%update = .true.
+       if (vloc_phys) then
+          sfields(id_var)%vloc = .true.
+          sfields(id_var)%vloc_limit = vloc_depth_phys
+       end if
     endif
 
     ! Salinity
     id_var = id%salt
     if (id_var>0) then
        sfields(id_var)%ndims = 3
-       sfields(id_var)%dim = sdim3d
        sfields(id_var)%variable = 'vosaline'
        sfields(id_var)%name_incr = 'bckins'
        sfields(id_var)%name_rest_n = 'sn'
@@ -320,13 +355,16 @@ contains
        sfields(id_var)%min_limit = 0.000001
        sfields(id_var)%max_limit = 36.0
        if (update_salt) sfields(id_var)%update = .true.
+       if (vloc_phys) then
+          sfields(id_var)%vloc = .true.
+          sfields(id_var)%vloc_limit = vloc_depth_phys
+       end if
     endif
 
     ! U-velocity
     id_var = id%uvel
     if (id_var>0) then
        sfields(id_var)%ndims = 3
-       sfields(id_var)%dim = sdim3d
        sfields(id_var)%variable = 'uos'
        sfields(id_var)%name_incr = 'bckinu'
        sfields(id_var)%name_rest_n = 'un'
@@ -338,13 +376,16 @@ contains
        sfields(id_var)%transform = 0
        sfields(id_var)%trafo_shift = 0.0
        if (update_vel) sfields(id_var)%update = .true.
+       if (vloc_phys) then
+          sfields(id_var)%vloc = .true.
+          sfields(id_var)%vloc_limit = vloc_depth_phys
+       end if
     endif
 
     ! V-velocity
     id_var = id%vvel
     if (id_var>0) then
        sfields(id_var)%ndims = 3
-       sfields(id_var)%dim = sdim3d
        sfields(id_var)%variable = 'vos'
        sfields(id_var)%name_incr = 'bckinv'
        sfields(id_var)%name_rest_n = 'vn'
@@ -356,15 +397,57 @@ contains
        sfields(id_var)%transform = 0
        sfields(id_var)%trafo_shift = 0.0
        if (update_vel) sfields(id_var)%update = .true.
+       if (vloc_phys) then
+          sfields(id_var)%vloc = .true.
+          sfields(id_var)%vloc_limit = vloc_depth_phys
+       end if
     endif
 
 #if defined key_top
+
+    ! Activate variable groups 
+    if (update_phyto) then
+       update_DIA = .true.
+       update_FLA = .true.
+       update_CYA = .true.
+    end if
+
+    if (update_zoo) then
+       update_MEZ = .true.
+       update_MIZ = .true.
+    end if
+
+    if (update_det) then
+       update_DET1 = .true.
+       update_DETs = .true.
+    end if
+
+    if (update_nut) then
+       update_NH4 = .true.
+       update_NO3 = .true.
+       update_PO4 = .true.
+       update_SIL = .true.
+       update_FE  = .true.
+    end if
+
+    if (update_other) then
+       update_LDON = .true.
+       update_DIC  = .true.
+       update_ALK  = .true.
+    end if
+
+    if (update_diag) then
+       update_CHL = .true.
+       update_PCO2 = .true.
+       update_PH = .true.
+       update_PP = .true.
+    end if
+
     ! BGC
     do id_bgc_prog = 1, jpbgc_prog
       if (sv_bgc_prog(id_bgc_prog)) then
         id_var=id%bgc_prog(id_bgc_prog)
         sfields(id_var)%ndims = 3
-        sfields(id_var)%dim = sdim3d
         sfields(id_var)%jptrc = id_bgc_prog
         sfields(id_var)%file = 'NORDIC_1d_ERGOM_T_'
         sfields(id_var)%rst_file = 'restart_trc_in.nc'
@@ -374,6 +457,10 @@ contains
         sfields(id_var)%min_limit = 0.00000001_pwp
         sfields(id_var)%trafo_shift = 0.0
         sfields(id_var)%ensscale = 0.5
+        if (vloc_bgc) then
+           sfields(id_var)%vloc = .true.
+           sfields(id_var)%vloc_limit = vloc_depth_bgc
+        end if
 
         select case (id_bgc_prog)
         case (1)
@@ -382,28 +469,28 @@ contains
           sfields(id_var)%name_rest_n = 'TRNNH4'
           sfields(id_var)%name_rest_b = 'TRBNH4'
           sfields(id_var)%unit = 'mmol m-3'
-          if (update_nut) sfields(id_var)%update = .true.
+          if (update_NH4) sfields(id_var)%update = .true.
         case (2)
           sfields(id_var)%variable = 'NO3'
           sfields(id_var)%name_incr = ''
           sfields(id_var)%name_rest_n = 'TRNNO3'
           sfields(id_var)%name_rest_b = 'TRBNO3'
           sfields(id_var)%unit = 'mmol m-3'
-          if (update_nut) sfields(id_var)%update = .true.
+          if (update_NO3) sfields(id_var)%update = .true.
         case (3)
           sfields(id_var)%variable = 'PO4'
           sfields(id_var)%name_incr = ''
           sfields(id_var)%name_rest_n = 'TRNPO4'
           sfields(id_var)%name_rest_b = 'TRBPO4'
           sfields(id_var)%unit = 'mmol m-3'
-          if (update_nut) sfields(id_var)%update = .true.
+          if (update_PO4) sfields(id_var)%update = .true.
         case (4)
           sfields(id_var)%variable = 'SIL'
           sfields(id_var)%name_incr = ''
           sfields(id_var)%name_rest_n = 'TRNSIL'
           sfields(id_var)%name_rest_b = 'TRBSIL'
           sfields(id_var)%unit = 'mmol m-3'
-          if (update_nut) sfields(id_var)%update = .true.
+          if (update_SIL) sfields(id_var)%update = .true.
         case (5)
           sfields(id_var)%variable = 'DIA'
           sfields(id_var)%name_incr = 'bckindia'
@@ -411,7 +498,7 @@ contains
           sfields(id_var)%name_rest_b = 'TRBDIA'
           sfields(id_var)%unit = 'mmol m-3'
           id_dia = id_var
-          if (update_phyto) sfields(id_var)%update = .true.
+          if (update_DIA) sfields(id_var)%update = .true.
         case (6)
           sfields(id_var)%variable = 'FLA'
           sfields(id_var)%name_incr = 'bckinfla'
@@ -419,7 +506,7 @@ contains
           sfields(id_var)%name_rest_b = 'TRBFLA'
           sfields(id_var)%unit = 'mmol m-3'
           id_fla = id_var
-          if (update_phyto) sfields(id_var)%update = .true.
+          if (update_FLA) sfields(id_var)%update = .true.
         case (7)
           sfields(id_var)%variable = 'CYA'
           sfields(id_var)%name_incr = 'bckincya'
@@ -427,63 +514,63 @@ contains
           sfields(id_var)%name_rest_b = 'TRBCYA'
           sfields(id_var)%unit = 'mmol m-3'
           id_cya = id_var
-          if (update_phyto) sfields(id_var)%update = .true.
+          if (update_CYA) sfields(id_var)%update = .true.
         case (8)
           sfields(id_var)%variable = 'MEZ'
           !sfields(id_var)%name_incr = ''
           sfields(id_var)%name_rest_n = 'TRNMEZ'
           sfields(id_var)%name_rest_b = 'TRBMEZ'
           sfields(id_var)%unit = 'mmol m-3'
-          if (update_zoo) sfields(id_var)%update = .true.
+          if (update_MEZ) sfields(id_var)%update = .true.
         case (9)
           sfields(id_var)%variable = 'MIZ'
           !sfields(id_var)%name_incr = ''
           sfields(id_var)%name_rest_n = 'TRNMIZ'
           sfields(id_var)%name_rest_b = 'TRBMIZ'
           sfields(id_var)%unit = 'mmol m-3'
-          if (update_zoo) sfields(id_var)%update = .true.
+          if (update_MIZ) sfields(id_var)%update = .true.
         case (10)
           sfields(id_var)%variable = 'DET'
           !sfields(id_var)%name_incr = ''
           sfields(id_var)%name_rest_n = 'TRNDET'
           sfields(id_var)%name_rest_b = 'TRBDET'
           sfields(id_var)%unit = 'mmol m-3'
-          if (update_det) sfields(id_var)%update = .true.
+          if (update_DET1) sfields(id_var)%update = .true.
         case (11)
           sfields(id_var)%variable = 'DETs'
           !sfields(id_var)%name_incr = ''
           sfields(id_var)%name_rest_n = 'TRNDETs'
           sfields(id_var)%name_rest_b = 'TRBDETs'
           sfields(id_var)%unit = 'mmol m-3'
-          if (update_det) sfields(id_var)%update = .true.
+          if (update_DETs) sfields(id_var)%update = .true.
         case (12)
           sfields(id_var)%variable = 'FE'
           !sfields(id_var)%name_incr = ''
           sfields(id_var)%name_rest_n = 'TRNFE'
           sfields(id_var)%name_rest_b = 'TRBFE'
           sfields(id_var)%unit = 'mmol m-3'
-          if (update_nut) sfields(id_var)%update = .true.
+          if (update_FE) sfields(id_var)%update = .true.
         case (13)
           sfields(id_var)%variable = 'LDON'
           !sfields(id_var)%name_incr = ''
           sfields(id_var)%name_rest_n = 'TRNLDON'
           sfields(id_var)%name_rest_b = 'TRBLDON'
           sfields(id_var)%unit = 'mmol m-3'
-          if (update_other) sfields(id_var)%update = .true.
+          if (update_LDON) sfields(id_var)%update = .true.
         case (14)
           sfields(id_var)%variable = 'DIC'
           !sfields(id_var)%name_incr = ''
           sfields(id_var)%name_rest_n = 'TRNDIC'
           sfields(id_var)%name_rest_b = 'TRBDIC'
           sfields(id_var)%unit = 'mmol m-3'
-          if (update_other) sfields(id_var)%update = .true.
+          if (update_DIC) sfields(id_var)%update = .true.
         case (15)
           sfields(id_var)%variable = 'ALK'
           !sfields(id_var)%name_incr = ''
           sfields(id_var)%name_rest_n = 'TRNALK'
           sfields(id_var)%name_rest_b = 'TRBALK'
           sfields(id_var)%unit = 'mmol m-3'
-          if (update_other) sfields(id_var)%update = .true.
+          if (update_ALK) sfields(id_var)%update = .true.
         case (16)
           sfields(id_var)%variable = 'OXY'
           sfields(id_var)%name_incr = 'bckinoxy'
@@ -492,7 +579,7 @@ contains
           sfields(id_var)%unit = 'mmol m-3'
           sfields(id_var)%transform = 0     ! Oxy will not be transformed
           sfields(id_var)%limit = 0         ! No limits for Oxy
-          if (update_oxy) sfields(id_var)%update = .true.
+          if (update_OXY) sfields(id_var)%update = .true.
         end select
       end if
     end do
@@ -503,31 +590,37 @@ contains
       if (sv_bgc_diag(id_bgc_diag)) then
         id_var=id%bgc_diag(id_bgc_diag)
         sfields(id_var)%ndims = 3
-        sfields(id_var)%dim = sdim3d
         sfields(id_var)%jptrc = id_bgc_diag
         sfields(id_var)%file = 'NORDIC_1d_ERGOM_T_'
         sfields(id_var)%type = 'bio'
         sfields(id_var)%transform = 0
         sfields(id_var)%trafo_shift = 0.0
-        if (update_diag) sfields(id_var)%update = .true.
+        if (vloc_bgc) then
+           sfields(id_var)%vloc = .true.
+           sfields(id_var)%vloc_limit = vloc_depth_bgc
+        end if
 
         select case (id_bgc_diag)
         case (1)
            sfields(id_var)%variable = 'PCO2'
            sfields(id_var)%unit = 'micro atm'
+           if (update_PCO2) sfields(id_var)%update = .true.
         case (2)
            sfields(id_var)%variable = 'PH'
            sfields(id_var)%unit = '-'
+           if (update_PH) sfields(id_var)%update = .true.
         case (3)
            id_chl = id_var        ! Store ID of chlorophyll to be used in observation module
            sfields(id_var)%variable = 'CHL'
            sfields(id_var)%unit = 'mg m-3'
            ! Set log-transform if prognostic chlorophyll are transformed
            if (sfields(id%bgc_prog(1))%transform==2) sfields(id_var)%transform = 2   ! log-transform
+           if (update_CHL) sfields(id_var)%update = .true.
         case (4)
            id_netpp = id_var      ! Store ID of NETPP to be used in observation module
            sfields(id_var)%variable = 'PP'
            sfields(id_var)%unit = 'microgC m-3* -d'
+           if (update_PP) sfields(id_var)%update = .true.
         end select
       end if
     end do
@@ -603,14 +696,15 @@ contains
     if (mype==0) then
        write (*,'(/a,2x,a)') 'NEMO-PDAF', '*** Setup of state vector ***'
        write (*,'(a,5x,a,i5)') 'NEMO-PDAF', '--- Number of fields in state vector:', n_fields
-       write (*,'(a,a4,3x,a2,3x,a8,6x,a5,7x,a3,7x,a6,4x,a6)') &
-            'NEMO-PDAF','pe','ID', 'variable', 'ndims', 'dim', 'offset', 'update'
+       write (*,'(a,a4,3x,a2,3x,a8,6x,a5,7x,a3,7x,a6,4x,a6,a6)') &
+            'NEMO-PDAF','pe','ID', 'variable', 'ndims', 'dim', 'offset', 'update', 'vloc'
     end if
 
     if (mype==0 .or. (task_id==1 .and. screen>2)) then
        do i = 1, n_fields
-          write (*,'(a, i4, i5,3x,a10,2x,i5,3x,i10,3x,i10,4x,l)') 'NEMO-PDAF', &
-               mype, i, sfields(i)%variable, sfields(i)%ndims, sfields(i)%dim, sfields(i)%off, sfields(i)%update
+          write (*,'(a, i4, i5,3x,a10,2x,i5,3x,i10,3x,i10,4x,l,6x,l)') 'NEMO-PDAF', &
+               mype, i, sfields(i)%variable, sfields(i)%ndims, sfields(i)%dim, sfields(i)%off, &
+               sfields(i)%update, sfields(i)%vloc
        end do
     end if
 

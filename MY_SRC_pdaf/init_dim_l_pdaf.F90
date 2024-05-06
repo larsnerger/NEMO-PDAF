@@ -1,16 +1,13 @@
 !> Set dimension of local model state
 !!
-!! The routine is called by PDAF during
-!! the analysis step in the loop over all local
-!! analysis domains. It has to set
-!! The routine set the dimension of the local
-!! model state on the current analysis
-!! domain, the corrdinates of this domain, and
-!! initializes the index arrays for the local
-!! state vector and the mapping between global
-!! to local state vectors.
-!!
-!! This code is for NEMO-PDAF
+!! The routine is called by PDAF during the
+!! analysis step in the loop over all local
+!! analysis domains. It has to set the dimension
+!! of the local model state on the current analysis
+!! domain. In addition, the coordinates of this
+!! domain are stored and the index arrays for the
+!! local state vector and the mapping between global
+!! to local state vectors are initialized.
 !! 
 !! - Called from: `PDAFomi_assimilate_local`/`mod_assimilation_pdaf`
 !!
@@ -18,13 +15,15 @@ subroutine init_dim_l_pdaf(step, domain_p_all, dim_l)
 
   use mod_kind_pdaf
   use mod_assimilation_pdaf, &
-       only: domain_coords, dim_state_p, id_lstate_in_pstate, isweep
+       only: domain_coords, dim_state_p, id_lstate_in_pstate, isweep, &
+       depths_l
   use mod_statevector_pdaf, &
        only: n_fields, sfields, sfields_l
   use mod_nemo_pdaf, &
        only: lons, lats, use_wet_state, nwet, wet_pts, &
-       sdim2d, deg2rad
-
+       sdim2d, deg2rad, depths=>gdept_1d
+    use mod_parallel_pdaf, &
+         only: mype_filter
   implicit none
 
 ! *** Arguments ***
@@ -105,6 +104,8 @@ subroutine init_dim_l_pdaf(step, domain_p_all, dim_l)
   ! Allocate array
   if (allocated(id_lstate_in_pstate)) deallocate(id_lstate_in_pstate)
   allocate(id_lstate_in_pstate(dim_l))
+  if (allocated(depths_l)) deallocate(depths_l)
+  allocate(depths_l(dim_l))
 
   cnt = 0
 
@@ -120,10 +121,14 @@ subroutine init_dim_l_pdaf(step, domain_p_all, dim_l)
            do i = 1, wet_pts(3,domain_p)
               cnt = cnt + 1
               id_lstate_in_pstate(cnt) = id_surf + (i-1)*nwet
+
+              ! Initi depths for vertical localization (subtract depth of first layer to ensure weight=1 at surface)
+              depths_l(cnt) = depths(i) - depths(1)
            enddo
         else
            cnt = cnt + 1
            id_lstate_in_pstate(cnt) = id_surf
+           depths_l(cnt) = depths(1) - depths(1)
         end if
 
      elseif (use_wet_state==2) then
@@ -132,12 +137,15 @@ subroutine init_dim_l_pdaf(step, domain_p_all, dim_l)
         if (sfields(ifield)%ndims==2) then
            cnt = cnt  + 1
            id_lstate_in_pstate(cnt) = domain_p + sfields(ifield)%off
+           depths_l(cnt) = depths(1) - depths(1)
         else
            id_surf = wet_pts(5, domain_p) + sfields(ifield)%off
 
            do i = 1, wet_pts(3,domain_p)
               cnt = cnt  + 1
               id_lstate_in_pstate(cnt) = id_surf + i - 1
+
+              depths_l(cnt) = depths(i) - depths(1)
            enddo
         end if
 
@@ -149,10 +157,13 @@ subroutine init_dim_l_pdaf(step, domain_p_all, dim_l)
         if (sfields(ifield)%ndims==2) then
            cnt = cnt + 1
            id_lstate_in_pstate(cnt) = id_surf
+           depths_l(cnt) = depths(1) - depths(1)
         else
            do i = 1, wet_pts(3,domain_p)
               cnt = cnt + 1
               id_lstate_in_pstate(cnt) = id_surf + (i-1)*sdim2d
+
+              depths_l(cnt) = depths(i) - depths(1)
            enddo
         end if
      end if

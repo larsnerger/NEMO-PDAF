@@ -1,11 +1,9 @@
-!> Distributing the statevector variables, computing the
+!> Distributing the state vector variables, computing the
 !> statevector increments
 !!
-!! This routine either initializes the full fields of
-!! the model from the statevector of PDAF (first timestep),
-!! or computes the statevector increments (all other timesteps).
-!! For all other timesteps, the increments are added to the
-!! model during the NEMO timestepping routine. See `mod_iau_pdaf` for details.
+!! This routine initializes statevector increments.
+!! The increments are added to the model during the 
+!! NEMO timestepping routine using NEMO's ASM module
 !!
 !! The routine is executed by each process that is
 !! participating in the model integrations.
@@ -26,16 +24,16 @@ subroutine distribute_state_pdaf(dim_p, state_p)
        jp_tem, jp_sal, lbc_lnk, lbc_lnk_multi, &
        sshb, tsb, ub, vb, &
        sshn, tsn, un, vn
-#if defined key_top
-  use mod_statevector_pdaf, &
-       only: jpbgc_prog, jpbgc_diag, sv_bgc_prog, sv_bgc_diag
-  use mod_nemo_pdaf, &
-       only: trb, trn, xph, xpco2, xchl, xnetpp
-#endif
   use mod_aux_pdaf, &
        only: state2field, transform_field_mv
   use mod_iau_pdaf, &
        only: update_bkginc_pdaf
+#if defined key_top
+  use mod_statevector_pdaf, &
+       only: jpbgc_prog, sv_bgc_prog, jpbgc_diag, sv_bgc_diag
+  use mod_nemo_pdaf, &
+       only: trb, trn, xph, xpco2, xchl, xnetpp
+#endif
 
   implicit none
 

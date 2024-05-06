@@ -3,7 +3,8 @@ module mod_nemo_pdaf
   use mod_kind_pdaf
 
   ! Include variables from NEMO
-  ! user routines should only include from mod_nemo_pdaf not from NEMO modules
+  ! User routines should only include from mod_nemo_pdaf not from NEMO modules
+  ! The only exception is `mod_iau_pdaf` which also directly includes from NEMO
   use par_oce, &
        only: jpi, jpj, jpk, jpiglo, jpjglo, &
        jp_tem, jp_sal
@@ -70,7 +71,7 @@ module mod_nemo_pdaf
   character(len=80)   :: file_dims         ! File name NEMO file holding dimensions
 
 ! Constants for coordinate calculations
-  real(8), parameter  :: pi     = 3.14159265358979323846_pwp
+  real(8), parameter  :: pi = 3.14159265358979323846_pwp   ! Pi
   real :: deg2rad = pi / 180.0_pwp      ! Conversion from degrees to radian
 
 
@@ -92,9 +93,9 @@ contains
 
     implicit none
 
-    integer :: i, j, k
-    integer :: cnt, cnt_all, cnt_layers
-    real(pwp) :: lim_coords(2,2)      ! Limiting coordinates of sub-domain
+    integer :: i, j, k                    ! Counters
+    integer :: cnt, cnt_all, cnt_layers   ! Counters
+    real(pwp) :: lim_coords(2,2)          ! Limiting coordinates of sub-domain
 
 ! *** set dimension of 2d and 3d fields in state vector ***
 

@@ -1,11 +1,11 @@
-!>Restrict a model state to a local analysis domain
+!> Restrict a model state to a local analysis domain
 !!
 !! The routine is called during the loop over all
-!! local analysis domains in `PDAF_X_update`
+!! local analysis domains in `PDAFomi_assimilate_local`
 !! before the analysis on a single local analysis
-!! domain. It has to initialize elements of the
-!! state vector for the local analysis domains from
-!! the PE-local full state vector.
+!! domain is computed. It has to initialize elements
+!! of the state vector for the local analysis domains
+!! from the process full state vector.
 !!
 subroutine g2l_state_pdaf(step, domain_p, dim_p, state_p, dim_l, state_l)
 

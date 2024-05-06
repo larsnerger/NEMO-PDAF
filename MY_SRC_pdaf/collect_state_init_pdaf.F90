@@ -24,7 +24,7 @@ subroutine collect_state_init_pdaf(dim_p, state_p)
 #if defined key_top
   use mod_statevector_pdaf, &
        only: n_trc, n_bgc_diag, n_bgc_diag, &
-       jpbgc_prog, jpbgc_diag, sv_bgc_diag, sv_bgc_diag
+       jpbgc_prog, jpbgc_diag, sv_bgc_prog, sv_bgc_diag
   use mod_nemo_pdaf, &
        only: trb, trn, sshn, tsn, un, vn, &
        xph, xpco2, xchl, xnetpp
@@ -91,10 +91,10 @@ subroutine collect_state_init_pdaf(dim_p, state_p)
 #if defined key_top
   ! BGC
   do i = 1, jpbgc_prog
-     if (sv_bgc_diag(i)) then
-        call field2state(trn(1+i0:ni_p+i0, 1+j0:nj_p+j0, 1:nk_p, sfields(id%bgc_diag(i))%jptrc), &
+     if (sv_bgc_prog(i)) then
+        call field2state(trn(1+i0:ni_p+i0, 1+j0:nj_p+j0, 1:nk_p, sfields(id%bgc_prog(i))%jptrc), &
              state_p, &
-             sfields(id%bgc_diag(i))%off, sfields(id%bgc_diag(i))%ndims)
+             sfields(id%bgc_prog(i))%off, sfields(id%bgc_prog(i))%ndims)
      end if
   end do
 

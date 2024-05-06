@@ -156,8 +156,8 @@ contains
          only: mype_ens
     use mod_assimilation_pdaf, &
          only: filtertype, subtype, type_trans, type_sqrt, &
-         locweight, perturb_params, stddev_params, &
-         screen, dim_ens, ensscale, delt_obs, &
+         locweight, perturb_params, stddev_params, scale_params, &
+         type_pscale, screen, dim_ens, ensscale, delt_obs, &
          type_forget, forget, &
          type_ens_init, type_central_state, ens_restart, &
          type_hyb, hyb_gamma, hyb_kappa, cda_phy, cda_bio
@@ -168,7 +168,12 @@ contains
     use mod_statevector_pdaf, &
          only: update_ssh, update_temp, update_salt, update_vel, &
          update_phyto, update_zoo, update_det, update_nut, &
-         update_oxy, update_other, update_diag
+         update_other, update_diag, update_OXY, &
+         update_NH4, update_NO3, update_PO4, update_SIL, update_DIA, &
+         update_FLA, update_CYA, update_MEZ, update_MIZ, update_DET1, &
+         update_DETS, update_FE, update_LDON, update_DIC, update_ALK, &
+         update_CHL, update_PCO2, update_PH, update_PP, &
+         vloc_phys, vloc_bgc, vloc_depth_phys, vloc_depth_bgc
     use mod_iau_pdaf, &
          only: do_asmiau, do_bgciau, steps_asmiau, steps_bgciau, &
          shape_asmiau, shape_bgciau, iter_divdmp
@@ -195,7 +200,8 @@ contains
          screen, filtertype, subtype, type_trans, type_sqrt, &
          type_forget, forget, locweight, delt_obs, save_var, &
          save_state, save_ens_sngl, ids_write, verbose_io, sgldbl_io, &
-         perturb_params, stddev_params, type_hyb, hyb_gamma, hyb_kappa
+         perturb_params, stddev_params, scale_params, type_pscale, &
+         type_hyb, hyb_gamma, hyb_kappa
 
     namelist /init_nml/ &
          type_ens_init, type_central_state, ensscale, ens_restart, &
@@ -204,9 +210,14 @@ contains
     namelist /update_nml/ &
          update_ssh, update_temp, update_salt, update_vel, &
          update_phyto, update_zoo, update_det, update_nut, &
-         update_oxy, update_other, update_diag, &
+         update_other, update_diag, update_oxy, &
+         update_NH4, update_NO3, update_PO4, update_SIL, update_DIA, &
+         update_FLA, update_CYA, update_MEZ, update_MIZ, update_DET1, &
+         update_DETS, update_FE, update_LDON, update_DIC, update_ALK, &
+         update_CHL, update_PCO2, update_PH, update_PP, &
          do_asmiau, do_bgciau, steps_asmiau, steps_bgciau, &
          shape_asmiau, shape_bgciau, iter_divdmp, &
+         vloc_phys, vloc_bgc, vloc_depth_phys, vloc_depth_bgc, &
          cda_phy, cda_bio
 
     namelist /obs_ssh_mgrid_nml/ &
@@ -233,7 +244,7 @@ contains
     ! ***   Initialize PDAF parameters from namelist   ***
     ! ****************************************************
 
-    ! Initialize array of singel field IDs for which ensemble could be written
+    ! Initialize array of single field IDs for which ensemble could be written
     ids_write = 0
 
     nmlfile = 'namelist_cfg.pdaf'
@@ -304,13 +315,13 @@ contains
        write (*, '(a,5x,a,l)') 'NEMO-PDAF','update_salt     ', update_salt
        write (*, '(a,5x,a,l)') 'NEMO-PDAF','update_vel      ', update_vel
 #if defined key_top
-       write (*, '(a,5x,a,l)') 'NEMO-PDAF','update_phyto    ', update_phyto
-       write (*, '(a,5x,a,l)') 'NEMO-PDAF','update_zoo      ', update_zoo
-       write (*, '(a,5x,a,l)') 'NEMO-PDAF','update_det      ', update_det
-       write (*, '(a,5x,a,l)') 'NEMO-PDAF','update_nut      ', update_nut
-       write (*, '(a,5x,a,l)') 'NEMO-PDAF','update_oxy      ', update_oxy
-       write (*, '(a,5x,a,l)') 'NEMO-PDAF','update_other    ', update_other
-       write (*, '(a,5x,a,l)') 'NEMO-PDAF','update_diag     ', update_diag
+!        write (*, '(a,5x,a,l)') 'NEMO-PDAF','update_phyto    ', update_phyto
+!        write (*, '(a,5x,a,l)') 'NEMO-PDAF','update_zoo      ', update_zoo
+!        write (*, '(a,5x,a,l)') 'NEMO-PDAF','update_det      ', update_det
+!        write (*, '(a,5x,a,l)') 'NEMO-PDAF','update_nut      ', update_nut
+!        write (*, '(a,5x,a,l)') 'NEMO-PDAF','update_oxy      ', update_oxy
+!        write (*, '(a,5x,a,l)') 'NEMO-PDAF','update_other    ', update_other
+!        write (*, '(a,5x,a,l)') 'NEMO-PDAF','update_diag     ', update_diag
        write (*, '(a,5x,a,6x,a)')'NEMO-PDAF','cda_phy         ', trim(cda_phy)
        write (*, '(a,5x,a,6x,a)')'NEMO-PDAF','cda_bio         ', trim(cda_bio)
 #endif

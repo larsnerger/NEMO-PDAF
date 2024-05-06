@@ -55,8 +55,8 @@ contains
          only: dim_state, dim_state_p, screen, filtertype, subtype, dim_ens, &
          incremental, type_forget, forget, rank_analysis_enkf, &
          type_trans, type_sqrt, delt_obs, locweight, type_ens_init, &
-         type_central_state, perturb_params, stddev_params, &
-         type_hyb, hyb_gamma, hyb_kappa, n_sweeps, type_sweep, &
+         type_central_state, perturb_params, stddev_params, scale_params, &
+         type_pscale, type_hyb, hyb_gamma, hyb_kappa, n_sweeps, type_sweep, &
          cda_phy, cda_bio
     use mod_iau_pdaf, &
          only: asm_inc_init_pdaf
@@ -179,7 +179,7 @@ contains
     type_central_state = 1    ! Type of central state of ensemble
        !    (0) mean of model snapshots
        !    (1) read from file
-       !    (2) use collect_state
+       !    (2) from NEMO field on model task using collect_state_pdaf 
 
 
     ! *********************************************************************
@@ -311,7 +311,11 @@ contains
 ! *** Perturb ERGOM parameters ***
 ! ********************************
 
-    if (perturb_params) call param_perturb(stddev_params)
+    if (perturb_params) then
+       call param_perturb(stddev_params)
+    elseif (scale_params) then
+       call param_scale(stddev_params, type_pscale)
+    end if
 
 
 ! *****************************************************

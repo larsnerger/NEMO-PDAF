@@ -1,4 +1,4 @@
-!> Distributing the statevector variables
+!> Distributing the state vector variables at initial time
 !!
 !! This routine initializes the full fields of the
 !! model from the statevector of PDAF (first timestep).
@@ -22,16 +22,16 @@ subroutine distribute_state_init_pdaf(dim_p, state_p)
        jp_tem, jp_sal, neuler, lbc_lnk, lbc_lnk_multi, &
        sshb, tsb, ub, vb, &
        sshn, tsn, un, vn
+  use mod_assimilation_pdaf, &
+       only: ens_restart
+  use mod_aux_pdaf, &
+       only: state2field, transform_field_mv
 #if defined key_top
   use mod_statevector_pdaf, &
        only: jpbgc_prog, sv_bgc_prog
   use mod_nemo_pdaf, &
        only: trb, trn
 #endif
-  use mod_assimilation_pdaf, &
-       only: ens_restart
-  use mod_aux_pdaf, &
-       only: state2field, transform_field_mv
 
   implicit none
 
@@ -45,13 +45,10 @@ subroutine distribute_state_init_pdaf(dim_p, state_p)
   integer :: verbose      ! Control verbosity
 
 
-! ************************************
-! Distribute state vector 2d variables
-! ************************************
+! ***********************************
+! *** Apply field transformations ***
+! ***********************************
 
-  ! Note: The loop limits account for the halo offsets i0 and j0
-
-  ! Aply field transformations
   if (mype_ens==0) then
      verbose = 1
   else
@@ -59,6 +56,13 @@ subroutine distribute_state_init_pdaf(dim_p, state_p)
   end if
 
   call transform_field_mv(2, state_p, 0, verbose) !21
+
+
+! ********************************************
+! *** Distribute state vector 2d variables ***
+! ********************************************
+
+  ! Note: The loop limits account for the halo offsets i0 and j0
 
   coldstart: if (.not. ens_restart) then
 
@@ -128,8 +132,8 @@ subroutine distribute_state_init_pdaf(dim_p, state_p)
         vb = vn
      end if
 
-     ! BGC
 #if defined key_top
+     ! BGC
      do i = 1, jpbgc_prog
         if (sv_bgc_prog(i)) then
            id_var=id%bgc_prog(i)
@@ -142,8 +146,6 @@ subroutine distribute_state_init_pdaf(dim_p, state_p)
            trb(:, :, :, sfields(id_var)%jptrc) = trn(:, :, :, sfields(id_var)%jptrc)
         end if
      end do
-
-     ! Note: Diagnostic variables are not distributed!
 #endif
 
      ! Set Euler step
