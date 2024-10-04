@@ -24,9 +24,7 @@ module nemo_pdaf
        jp_tem, jp_sal
   use dom_oce, &
        only: glamt, gphit, nimpp, njmpp, gdept_1d, &
-       ndastp, neuler, tmask, umask, vmask
-  use step, &
-       only: Nbb, Nnn, Nrhs
+       ndastp, l_1st_euler, tmask, umask, vmask
   use oce, &
        only: ssh, ts, uu, vv
   use in_out_manager, &
@@ -47,11 +45,15 @@ module nemo_pdaf
 
   implicit none
 
+  integer :: Nbb, Nnn, Nrhs
+
+  ! *** NEmo grid dimensions - generic names following naming scheme of NEMO 4.0
+  integer :: nldi, nldj                 ! first inner index in i/j direction of sub-domain
+  integer :: nlei, nlej                 ! last inner index in i/j direction of sub-domain
+
 #if defined PDAF_OFFLINE
   ! *** NEMO model variables - they used in the offline mode
   integer :: jpiglo, jpjglo, jpk        ! Global NEMO grid dimensions
-  integer :: nldi, nldj                 ! first inner index in i/j direction of sub-domain
-  integer :: nlei, nlej                 ! last inner index in i/j direction of sub-domain
   integer :: nimpp, njmpp               ! start i,j of subdomain including halo
 
   real(pwp), allocatable :: glamt(:,:)       ! Longitudes
@@ -139,24 +141,37 @@ contains
     integer :: nwet_g, nwet3d_g           ! Global sums of wet grid point
     real(pwp) :: lim_coords(2,2)          ! Limiting coordinates of sub-domain
 
+
+! *** Get index dimensions from step or stpmfl
+
+    ! This is in a subroutine to avoid cyclic dependency of nemo_pdaf and assimilation_pdaf
+    CALL get_nemo_indices(Nbb, Nnn, Nrhs)
+
 ! *** set dimension of 2d and 3d fields in state vector ***
 
+    ! Store generic names (following NEMO 4.0 naming)
+    nlei = Nie0
+    nlej = Nje0
+    nldi = Nis0
+    nldj = Njs0
+
     ! Local dimensions
-    ni_p = Nie0 - Nis0 + 1
-    nj_p = Nje0 - Njs0 + 1
+    ni_p = nlei - nldi + 1
+    nj_p = nlej - nldj + 1
     nk_p = jpk
 
     ! Compute halo offset
-    i0 = Nis0 - nn_hls
-    j0 = Njs0 - nn_hls
+    i0 = nldi - nn_hls
+    j0 = nldj - nn_hls
 
     ! Size of 2d/3d boxes without halo
     dim_2d_p = ni_p * nj_p
     dim_3d_p = ni_p * nj_p * nk_p
 
     ! Start indices for sub-domain without halo
-    istart = nimpp+nldi-1
-    jstart = njmpp+nldj-1
+    istart = nimpp + nldi - 1
+    jstart = njmpp + nldj - 1
+
 
 #ifndef PDAF_OFFLINE
     ! Set coordinate vectors for rectangular grids

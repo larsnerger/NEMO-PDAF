@@ -20,7 +20,7 @@ subroutine collect_state_init_pdaf(dim_p, state_p)
        only: sfields, id
   use nemo_pdaf, &
        only: ni_p, nj_p, nk_p, i0, j0, &
-       jp_tem, jp_sal, ssh, ts, uu, vv
+       jp_tem, jp_sal, ssh, ts, uu, vv, Nnn
 #if defined key_top
   use statevector_pdaf, &
        only: n_trc, sv_trc

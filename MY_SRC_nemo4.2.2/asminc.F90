@@ -87,7 +87,7 @@ MODULE asminc
    !                                 !: = 1   Linear hat-like, centred in middle of IAU interval
    REAL(wp), PUBLIC ::   salfixmin   !: Ensure that the salinity is larger than this  value if (ln_salfix)
 
-   REAL(wp), DIMENSION(:,:), ALLOCATABLE ::   ssh_bkg, ssh_bkginc   ! Background sea surface height and its increment
+   REAL(wp), PUBLIC, DIMENSION(:,:), ALLOCATABLE ::   ssh_bkg, ssh_bkginc   ! Background sea surface height and its increment
    REAL(wp), DIMENSION(:,:), ALLOCATABLE ::   seaice_bkginc         ! Increment to the background sea ice conc
 #if defined key_cice && defined key_asminc
    REAL(wp), DIMENSION(:,:), ALLOCATABLE ::   ndaice_da             ! ice increment tendency into CICE

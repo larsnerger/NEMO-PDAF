@@ -19,7 +19,7 @@ subroutine distribute_state_init_pdaf(dim_p, state_p)
        only: sfields, id
   use nemo_pdaf, &
        only: ni_p, nj_p, nk_p, i0, j0, &
-       jp_tem, jp_sal, neuler, lbc_lnk, &
+       jp_tem, jp_sal, l_1st_euler, lbc_lnk, &
        ssh, ts, uu, vv, Nnn, Nbb
   use assimilation_pdaf, &
        only: ens_restart
@@ -73,10 +73,10 @@ subroutine distribute_state_init_pdaf(dim_p, state_p)
              sfields(id%ssh)%off, sfields(id%ssh)%ndims)
 
         ! Fill halo regions
-        call lbc_lnk('distribute_state_pdaf', ssh(:,:,:,Nnn), 'T', 1.)
+        call lbc_lnk('distribute_state_pdaf', ssh(:,:,Nnn), 'T', 1.)
 
         ! Update before field
-        sshb = sshn
+        ssh(:,:,Nbb) = ssh(:,:,Nnn)
      endif
 
 
@@ -104,8 +104,8 @@ subroutine distribute_state_init_pdaf(dim_p, state_p)
              1., ts(:, :, :, jp_sal, Nnn), 'T', 1.)
 
         ! Update before fields
-        ts(:,:,:,jp_tem, Nbb) = tsn(:,:,:,jp_tem, Nnn)
-        ts(:,:,:,jp_sal, Nbb) = tsn(:,:,:,jp_sal, Nnn)
+        ts(:,:,:,jp_tem, Nbb) = ts(:,:,:,jp_tem, Nnn)
+        ts(:,:,:,jp_sal, Nbb) = ts(:,:,:,jp_sal, Nnn)
      end if
 
      ! U
@@ -124,11 +124,11 @@ subroutine distribute_state_init_pdaf(dim_p, state_p)
 
      if (id%uvel>0 .or. id%vvel>0) then
         ! Fill halo regions
-        call lbc_lnk('distribute_state_pdaf', un(:,:,:,Nnn), 'U', -1., vn(:,:,:,Nnn), 'V', -1.)
+        call lbc_lnk('distribute_state_pdaf', uu(:,:,:,Nnn), 'U', -1., vv(:,:,:,Nnn), 'V', -1.)
 
         ! Update before fields
         uu(:,:,:,Nbb) = uu(:,:,:,Nnn)
-        vv(:,:,:,Nbb) = vv(:,:,:,Nnn
+        vv(:,:,:,Nbb) = vv(:,:,:,Nnn)
      end if
 
 #if defined key_top
@@ -148,7 +148,7 @@ subroutine distribute_state_init_pdaf(dim_p, state_p)
 #endif
 
      ! Set Euler step
-     neuler = 0
+     l_1st_euler = 0
 
   else coldstart
 

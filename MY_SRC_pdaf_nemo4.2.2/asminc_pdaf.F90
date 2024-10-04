@@ -23,8 +23,13 @@ module asminc_pdaf
        only: jpi, jpj, jpk, jp_tem, jp_sal
   use in_out_manager, &
        only: nit000, nitend
+#if defined key_qco   ||   defined key_linssh
+  use stpmlf, &
+       only: Nbb, Nnn, Nrhs
+#else
   use step, &
        only: Nbb, Nnn, Nrhs
+#endif
   use asminc, &
        only: ln_bkgwri, ln_trainc, ln_dyninc, ln_sshinc, &
        ln_asmdin, ln_asmiau, nitbkg, nitdin, nitiaustr, &
@@ -52,7 +57,7 @@ module asminc_pdaf
   real(pwp), allocatable :: iauweight(:)   ! Weights for IAU
   integer :: iter_divdmp = 0          ! Number of iterations of divergence damping operator
 
-#if defined key_top_asm
+#if defined key_top
   logical :: do_bgciau = .false.      ! Whether to apply IAU for BGC; if FALSE, DIN is used
   integer :: steps_bgciau = 1         ! Number of steps for BGC IAU
   integer :: shape_bgciau = 0         ! Shape of BGC IAU function: (0) constant; (1) hat (NEMO: niaufnbgc)
@@ -534,7 +539,7 @@ contains
           t_bkg = ts(:,:,:,jp_tem, Nnn)
           s_bkg = ts(:,:,:,jp_sal, Nnn)
           u_bkg = uu(:,:,:,Nnn)
-          v_bkg = vn(:,:,:,Nnn)
+          v_bkg = vv(:,:,:,Nnn)
           ssh_bkg(:,:) = ssh_bkg(:,:) * tmask(:,:,1)
           t_bkg(:,:,:) = t_bkg(:,:,:) * tmask(:,:,:)
           s_bkg(:,:,:) = s_bkg(:,:,:) * tmask(:,:,:)
@@ -604,10 +609,13 @@ contains
     use asminc, &
          only: u_bkginc, v_bkginc
     use par_oce, &
-         only: jpkm1, jpjm1, jpim1
+         only: jpkm1, Nis0, Nie0, Njs0, Nje0, nn_hls
+#if defined key_qco || defined key_linssh
+#else
     use dom_oce, &
-         only: e1v, e3v_n, e2u, e3u_n, e3t_n, &
+         only: e1v, e2u, e3u, e3v, e3t, &
          r1_e1u, r1_e2v, umask, vmask
+#endif
     use lbclnk, &
          only: lbc_lnk
 
@@ -615,16 +623,27 @@ contains
 
 ! *** Arguments
     integer, intent(in) :: Kmm
+
 ! *** Local variables ***
     integer :: ji, jj, jt, jk                ! Counters
     real(pwp), allocatable ::   zhdiv(:,:)   ! 2D workspace
-
+    integer :: i0, j0, ni_p, nj_p
 
 ! ***************************************
 ! *** Apply divergence damping filter ***
 ! ***************************************
 
+#if defined key_qco || defined key_linssh
+#else
     divdmp: if ( ln_dyninc .and. nn_divdmp > 0 ) then    ! Apply divergence damping filter
+
+       ! Compute halo offset
+       i0 = Nis0 - nn_hls
+       j0 = Njs0 - nn_hls
+
+       ! Local dimensions
+       ni_p = Nie0 - Nis0 + 1
+       nj_p = Nje0 - Njs0 + 1
 
        if (mype_ens==0) &
             write (*,'(a,4x,a,i4)') 'NEMO-PDAF', '--- apply divergence damping: nn_divdmp', nn_divdmp
@@ -637,10 +656,11 @@ contains
              zhdiv(:,:) = 0.0
              do jj = j0+1, nj_p+j0
                 do ji = i0+1, ni_p+i0
-                   zhdiv(ji,jj) = (  e2u(ji  ,jj) * e3u(ji  ,jj,jk, Kmm) * u_bkginc(ji  ,jj,jk)    &
-                        - e2u(ji-1,jj) * e3u(ji-1,jj,jk, Kmm) * u_bkginc(ji-1,jj,jk)    &
-                        + e1v(ji,jj  ) * e3v(ji,jj  ,jk, Kmm) * v_bkginc(ji,jj  ,jk)    &
-                        - e1v(ji,jj-1) * e3v(ji,jj-1,jk, Kmm) * v_bkginc(ji,jj-1,jk)  ) / e3t_n(ji,jj,jk)
+                   zhdiv(ji,jj) = (  e2u(ji  ,jj) * e3u(ji  ,jj,jk,Kmm) * u_bkginc(ji  ,jj,jk)    &
+                        &            - e2u(ji-1,jj) * e3u(ji-1,jj,jk,Kmm) * u_bkginc(ji-1,jj,jk)    &
+                        &            + e1v(ji,jj  ) * e3v(ji,jj  ,jk,Kmm) * v_bkginc(ji,jj  ,jk)    &
+                        &            - e1v(ji,jj-1) * e3v(ji,jj-1,jk,Kmm) * v_bkginc(ji,jj-1,jk)  ) &
+                        &            / e3t(ji,jj,jk,Kmm)
                 end do
              end do
              call lbc_lnk( 'asminc', zhdiv, 'T', 1. )   ! lateral boundary cond. (no sign change)
@@ -660,7 +680,7 @@ contains
        deallocate( zhdiv ) 
 
     endif divdmp
-
+#endif
   end subroutine div_damping_filter
 
 !-------------------------------------------------------------------------------
