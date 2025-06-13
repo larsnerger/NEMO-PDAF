@@ -207,8 +207,8 @@ contains
   !! 
   subroutine assimilate_pdaf(kt)
 
-    use pdaf_interfaces_module, &
-         only: PDAFomi_assimilate_local, PDAFomi_assimilate_global, PDAF_get_localfilter
+    use PDAF, &
+         only: PDAF3_assimilate, PDAF_get_assim_flag
     use parallel_pdaf, &
          only: mype_ens, abort_parallel, COMM_ensemble, MPIerr
     use nemo_pdaf, &
@@ -239,9 +239,7 @@ contains
 
     ! Localization of state vector
     external :: init_n_domains_pdaf, & ! Provide number of local analysis domains
-         init_dim_l_pdaf, &            ! Initialize state dimension for local analysis domain
-         g2l_state_pdaf, &             ! Get state on local analysis domain from global state
-         l2g_state_pdaf                ! Update global state from state on local analysis domain
+         init_dim_l_pdaf               ! Initialize state dimension for local analysis domain
 
     ! Interface to PDAF-OMI for local and global filters
     external :: &
@@ -254,22 +252,10 @@ contains
     ! *** Call assimilation routine ***
     ! *********************************
 
-    ! Check  whether the filter is domain-localized
-    call PDAF_get_localfilter(localfilter)
-
-    if (localfilter == 1) then
-       call PDAFomi_assimilate_local(collect_state_pdaf, &
-            distribute_state_pdaf, init_dim_obs_pdafomi, obs_op_pdafomi, &
-            prepoststep_pdaf, init_n_domains_pdaf, init_dim_l_pdaf, &
-            init_dim_obs_l_pdafomi, g2l_state_pdaf, l2g_state_pdaf, &
-            next_observation_pdaf, status_pdaf)
-    elseif (localfilter == 0) then
-       ! All global filters, except LEnKF
-       call PDAFomi_assimilate_global(collect_state_pdaf, &
-            distribute_state_pdaf, init_dim_obs_pdafomi, obs_op_pdafomi, &
-            prepoststep_pdaf, &
-            next_observation_pdaf, status_pdaf)
-    end if
+    call PDAF3_assimilate(collect_state_pdaf, distribute_state_pdaf, &
+         init_dim_obs_pdafomi, obs_op_pdafomi, &
+         init_n_domains_pdaf, init_dim_l_pdaf, init_dim_obs_l_pdafomi,  &
+         next_observation_pdaf, prepoststep_pdaf, status_pdaf)
 
 ! *** Query whether analysis step was performed
 ! *** This is also used to trigger the Euler time step for nemo_coupling='odir'
