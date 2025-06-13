@@ -15,8 +15,6 @@ subroutine l2g_state_pdaf(step, domain_p_all, dim_l, state_l, dim_p, state_p)
        only: id_lstate_in_pstate
   use statevector_pdaf, &
        only: n_fields, sfields, sfields_l
-  use nemo_pdaf, &
-       only: nwet
 
   implicit none
 

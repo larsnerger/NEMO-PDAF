@@ -131,7 +131,9 @@ contains
 
 ! *** Local variables ***
     integer :: cnt               ! Counter for fields in the state vector
+#if defined key_top
     integer :: id_trc            ! Index of BGC (tracer) variables
+#endif
 
 
 ! **********************

@@ -200,8 +200,9 @@ contains
 !! 
   subroutine assimilate_pdaf()
 
-    use pdaf_interfaces_module, &
-         only: PDAFomi_put_state_local, PDAFomi_put_state_global, PDAF_get_localfilter
+    use PDAF, &
+         only: PDAFomi_put_state_local, PDAFomi_put_state_global, PDAF_get_localfilter, &
+         PDAF_get_assim_flag
     use parallel_pdaf, &
          only: mype_ens, abort_parallel, COMM_ensemble, MPIerr
 

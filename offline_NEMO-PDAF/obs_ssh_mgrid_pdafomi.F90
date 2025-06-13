@@ -93,25 +93,21 @@ CONTAINS
       USE pdafomi, &
          ONLY: PDAFomi_gather_obs
       USE assimilation_pdaf, &
-         ONLY: filtertype, delt_obs, use_global_obs
+         ONLY: delt_obs, use_global_obs
       use statevector_pdaf, &
            only: id, sfields
-      USE parallel_pdaf, &
-         ONLY: COMM_filter
       use io_pdaf, &
            only: check
       USE nemo_pdaf, &
-         ONLY: ni_p, nj_p, jpiglo, jpjglo, glamt, gphit, nimpp, njmpp, ndastp
+         ONLY: ni_p, nj_p, jpiglo, jpjglo, glamt, gphit, ndastp
 
       INTEGER, INTENT(in)    :: step    !< Current time step
       INTEGER, INTENT(inout) :: dim_obs !< Dimension of full observation vector
 
-      INTEGER :: i, j, s       ! Counters
+      INTEGER :: i, j         ! Counters
 
       !> Step for observations in NetCDF file
       INTEGER :: nc_step = 0
-      !> Status array for NetCDF operations
-      INTEGER :: stat(50)
       !> ID for NetCDF file
       INTEGER :: ncid_in
       !> IDs for fields
