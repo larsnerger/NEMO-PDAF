@@ -34,15 +34,13 @@ contains
   subroutine init_pdaf()
 
     use mod_kind_pdaf
-    use PDAF, &
-         only: PDAF_init
     use parallel_pdaf, &
          only: n_modeltasks, task_id, COMM_model, COMM_filter, &
-         COMM_couple, mype_ens, filterpe, abort_parallel
+         COMM_couple, COMM_ensemble, mype_ens, filterpe, abort_parallel
     use assimilation_pdaf, &
          only: dim_state, dim_state_p, screen, step_null, filtertype, &
          subtype, dim_ens, incremental, type_forget, forget, &
-         type_trans, type_sqrt, locweight, type_ens_init, &
+         type_trans, type_sqrt, delt_obs, locweight, type_ens_init, &
          type_central_state, type_hyb, hyb_gamma, hyb_kappa
     use nemo_pdaf, &
          only: set_nemo_grid
@@ -51,8 +49,8 @@ contains
     use utils_pdaf, &
          only: init_info_pdaf, read_config_pdaf
     use obs_sst_cmems_pdafomi, &
-         only: assim_sst_cmems, rms_obs_sst_cmems, omit_sst_cmems, &
-         lradius_sst_cmems, sradius_sst_cmems, mode_sst_cmems
+         only: assim_sst_cmems, rms_obs_sst_cmems, &
+         lradius_sst_cmems, sradius_sst_cmems, mode_sst_cmems, dist_sst_cmems
     use obs_ssh_mgrid_pdafomi, &
          only: assim_ssh_mgrid, rms_ssh_mgrid, &
          lradius_ssh_mgrid, sradius_ssh_mgrid
@@ -61,9 +59,12 @@ contains
     implicit none
 
 ! *** Local variables ***
+    integer :: i                 ! Counter
     integer :: filter_param_i(7) ! Integer parameter array for filter
     real    :: filter_param_r(3) ! Real parameter array for filter
     integer :: status_pdaf       ! PDAF status flag
+    integer :: doexit, steps     ! Not used in this implementation
+    real(pwp) :: timenow         ! Not used in this implementation
 
 ! *** External subroutines ***      
     external :: init_ens_pdaf    ! Ensemble initialization
@@ -103,7 +104,7 @@ contains
       !  (12) PF
     dim_ens = n_modeltasks  ! Size of ensemble for all ensemble filters
       !   We use n_modeltasks here, initialized in init_parallel_pdaf
-    subtype = 0       ! (5) Offline mode
+    subtype = 5       ! (5) Offline mode
     type_trans = 0    ! Type of ensemble transformation
       !   SEIK/LSEIK and ESTKF/LESTKF:
       !     (0) use deterministic omega
@@ -173,7 +174,6 @@ contains
     lradius_sst_cmems = 10000.0_8 ! Radius in km for lon/lat (or in grid points)
     sradius_sst_cmems = lradius_sst_cmems  ! Support radius for 5th-order polynomial
                                   ! or distance for 1/e for exponential weighting
-    omit_sst_cmems = 0.0          ! Omit observations for too-large innovation (active for >0)
 
 
 ! ******************************************
@@ -196,6 +196,13 @@ contains
 
     ! Setup state vector
     call setup_statevector(dim_state, dim_state_p)
+
+
+! *****************************************************
+! *** Set communicator within which PDAF operates.  ***
+! *****************************************************
+
+    call PDAF_set_comm_pdaf(COMM_ensemble)
 
 
 ! *****************************************************

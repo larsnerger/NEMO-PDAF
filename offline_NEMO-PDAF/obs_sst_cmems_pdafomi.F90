@@ -41,7 +41,6 @@ module obs_sst_cmems_pdafomi
   real(pwp) :: rms_obs_sst_cmems = 0.8  !< Observation error standard deviation (for constant errors)
   real(pwp) :: lradius_sst_cmems = 1.0  !< Localization cut-off radius
   real(pwp) :: sradius_sst_cmems = 1.0  !< Support radius for weight function
-  real(pwp) :: omit_sst_cmems = 0.0     !< Omit obseratiob if deviation is too large
   integer :: mode_sst_cmems = 0         !< Observation mode: 
                                         !< (0) linear interpolation
                                         !< (1) super-obbing: average 4 observation values
@@ -105,7 +104,7 @@ contains
     use PDAFomi, &
          only: PDAFomi_gather_obs, PDAFomi_get_interp_coeff_lin
     use assimilation_pdaf, &
-         only: screen, use_global_obs
+         only: filtertype, screen, use_global_obs
     use statevector_pdaf, &
          only: id, sfields
     use parallel_pdaf, &
@@ -133,7 +132,9 @@ contains
     real(pwp), allocatable :: ivar_obs_p(:)  ! PE-local inverse observation error variance
     real(pwp), allocatable :: ocoord_p(:,:)  ! PE-local observation coordinates 
     logical :: doassim_now=.true.            ! Whether we assimilate the observation at the current time
+    integer(4) :: status                     ! Status flag for availability of observations
     character(len=100) :: file_full          ! filename including path
+    character(len=2) :: strday               ! day as string
     integer(4) :: ncid, dimid, lonid, latid, varid       ! nc file IDs
     integer(4) :: startv(3), cntv(3)                     ! Index arrays for reading from nc file
     integer(4) :: dim_olat, dim_olon                     ! Grid dimensions read from file
@@ -210,8 +211,6 @@ contains
     ! In case of MPI parallelization restrict observations to sub-domains
     if (npes_filter>1) thisobs%use_global_obs = use_global_obs
 
-    ! Omit observation with too large innovation
-    if (omit_sst_cmems > 0.0) thisobs%inno_omit = omit_sst_cmems
 
 ! **********************************
 ! *** Read PE-local observations ***
@@ -945,7 +944,7 @@ contains
     use PDAFomi, &
          only: PDAFomi_init_dim_obs_l
     use nemo_pdaf, &
-         only: wet_pts
+         only: wet_pts, nwet
     use assimilation_pdaf, &
          only: domain_coords, locweight
 
