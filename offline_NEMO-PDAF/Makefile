@@ -42,7 +42,6 @@ MODULES =	timer.o \
 
 # Objects specific for offline mode
 OBJ_OFFLINE = 	assimilation_pdaf_offline.o \
-		collect_state_pdaf_offline.o \
 		initialize_offline.o \
 		initialize_pdaf_offline.o \
 		main_offline.o \
@@ -50,11 +49,9 @@ OBJ_OFFLINE = 	assimilation_pdaf_offline.o \
 
 # Files that are identical in online and offline mode
 OBJ_PDAF_USER =	callback_obs_pdafomi.o \
-		g2l_state_pdaf.o \
 		init_dim_l_pdaf.o \
 		init_n_domains_pdaf.o \
 		io_pdaf.o \
-		l2g_state_pdaf.o \
 		sample_ens_pdaf.o \
 		statevector_pdaf.o \
 		transforms_pdaf.o \
