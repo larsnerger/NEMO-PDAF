@@ -35,13 +35,13 @@ contains
 
     use mod_kind_pdaf
     use PDAF, &
-         only: PDAF_init
+         only: PDAF_init, PDAF_set_iparam, PDAF_set_rparam
     use parallel_pdaf, &
          only: n_modeltasks, task_id, COMM_model, COMM_filter, &
          COMM_couple, mype_ens, filterpe, abort_parallel
     use assimilation_pdaf, &
          only: dim_state, dim_state_p, screen, step_null, filtertype, &
-         subtype, dim_ens, incremental, type_forget, forget, &
+         subtype, dim_ens, type_forget, forget, &
          type_trans, type_sqrt, locweight, type_ens_init, &
          type_central_state, type_hyb, hyb_gamma, hyb_kappa
     use nemo_pdaf, &
@@ -61,8 +61,8 @@ contains
     implicit none
 
 ! *** Local variables ***
-    integer :: filter_param_i(7) ! Integer parameter array for filter
-    real    :: filter_param_r(3) ! Real parameter array for filter
+    integer :: filter_param_i(2) ! Integer parameter array for filter
+    real    :: filter_param_r(1) ! Real parameter array for filter
     integer :: status_pdaf       ! PDAF status flag
 
 ! *** External subroutines ***      
@@ -206,38 +206,37 @@ contains
        ! *** All filters except LKNETF/EnKF/LEnKF ***
        filter_param_i(1) = dim_state_p ! State dimension
        filter_param_i(2) = dim_ens     ! Size of ensemble
-       filter_param_i(3) = 0           ! Smoother lag (not implemented here)
-       filter_param_i(4) = incremental ! Whether to perform incremental analysis
-       filter_param_i(5) = type_forget ! Type of forgetting factor
-       filter_param_i(6) = type_trans  ! Type of ensemble transformation
-       filter_param_i(7) = type_sqrt   ! Type of transform square-root (SEIK-sub4/ESTKF)
        filter_param_r(1) = forget      ! Forgetting factor
 
        call PDAF_init(filtertype, subtype, step_null, &
-            filter_param_i, 7, &
-            filter_param_r, 2, &
+            filter_param_i, 2, &
+            filter_param_r, 1, &
             COMM_model, COMM_filter, COMM_couple, &
             task_id, 1, filterpe, init_ens_pdaf, &
             screen, status_pdaf)
+
+       call PDAF_set_iparam(5, type_forget, status_pdaf) ! Type of forgetting factor
+       call PDAF_set_iparam(6, type_trans, status_pdaf)  ! Type of ensemble transformation
+       call PDAF_set_iparam(7, type_sqrt, status_pdaf)   ! Type of transform square-root (SEIK-sub2/ESTKF)
+
     else
        ! *** LKNETF ***
        filter_param_i(1) = dim_state_p ! State dimension
        filter_param_i(2) = dim_ens     ! Size of ensemble
-       filter_param_i(3) = 0           ! Size of lag in smoother
-       filter_param_i(4) = 0           ! Not used for NETF (Whether to perform incremental analysis)
-       filter_param_i(5) = type_forget ! Type of forgetting factor
-       filter_param_i(6) = type_trans  ! Type of ensemble transformation
-       filter_param_i(7) = type_hyb    ! Type of hybrid weight
-       filter_param_r(1) = forget      ! Forgetting factor
-       filter_param_r(2) = hyb_gamma   ! Hybrid filter weight for state
-       filter_param_r(3) = hyb_kappa   ! Normalization factor for hybrid weight 
      
        call PDAF_init(filtertype, subtype, step_null, &
-            filter_param_i, 7, &
-            filter_param_r, 3, &
+            filter_param_i, 2, &
+            filter_param_r, 1, &
             COMM_model, COMM_filter, COMM_couple, &
             task_id, 1, filterpe, init_ens_pdaf, &
             screen, status_pdaf)
+
+       call PDAF_set_iparam(5, type_forget, status_pdaf) ! Type of forgetting factor
+       call PDAF_set_iparam(6, type_trans, status_pdaf)  ! Type of ensemble transformation
+       call PDAF_set_iparam(7, type_hyb, status_pdaf)    ! Hybrid filter weight for state
+       call PDAF_set_rparam(2, hyb_gamma, status_pdaf)   ! Hybrid filter weight for state
+       call PDAF_set_rparam(3, hyb_kappa, status_pdaf)   ! Normalization factor for hybrid weight 
+
     end if whichinit
 
     ! *** Check whether initialization of PDAF was successful ***
