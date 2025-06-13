@@ -127,7 +127,7 @@ contains
     use parallel_pdaf, &
          only: mype_model, npes_model, task_id, comm_model, &
          MPI_INT, MPI_SUM, MPIerr
-    use PDAFomi, &
+    use PDAF, &
          only: PDAFomi_set_domain_limits
 
     implicit none
