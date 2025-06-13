@@ -35,10 +35,10 @@ contains
 
     use mod_kind_pdaf
     use PDAF, &
-         only: PDAF_init, PDAF_set_comm_pdaf, PDAF_set_offline_mode
+         only: PDAF_init
     use parallel_pdaf, &
          only: n_modeltasks, task_id, COMM_model, COMM_filter, &
-         COMM_couple, COMM_ensemble, mype_ens, filterpe, abort_parallel
+         COMM_couple, mype_ens, filterpe, abort_parallel
     use assimilation_pdaf, &
          only: dim_state, dim_state_p, screen, step_null, filtertype, &
          subtype, dim_ens, incremental, type_forget, forget, &
@@ -199,13 +199,6 @@ contains
 
 
 ! *****************************************************
-! *** Set communicator within which PDAF operates.  ***
-! *****************************************************
-
-    call PDAF_set_comm_pdaf(COMM_ensemble)
-
-
-! *****************************************************
 ! *** Call PDAF initialization routine on all PEs.  ***
 ! *****************************************************
 
@@ -254,8 +247,6 @@ contains
             ' in initialization of PDAF - stopping! (PE ', mype_ens, ')'
        call abort_parallel()
     end if
-
-    call PDAF_set_offline_mode(1)
 
     call timeit(3,'old')
     call timeit(4,'new')
