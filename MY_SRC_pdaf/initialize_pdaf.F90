@@ -220,13 +220,6 @@ contains
 
 
 ! *****************************************************
-! *** Set communicator within which PDAF operates.  ***
-! *****************************************************
-
-    call PDAF_set_comm_pdaf(COMM_ensemble)
-
-
-! *****************************************************
 ! *** Call PDAF initialization routine on all PEs.  ***
 ! *****************************************************
 

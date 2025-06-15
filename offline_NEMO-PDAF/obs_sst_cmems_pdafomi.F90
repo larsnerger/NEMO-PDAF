@@ -27,10 +27,10 @@
 !!
 module obs_sst_cmems_pdafomi
 
-  USE mod_kind_pdaf
+  use mod_kind_pdaf
   use parallel_pdaf, &
        only: mype_filter    ! Rank of filter process
-  use PDAFomi, &
+  use PDAF, &
        only: obs_f, obs_l   ! Declaration of observation data types
  
   implicit none
@@ -102,10 +102,10 @@ contains
   subroutine init_dim_obs_sst_cmems(step, dim_obs)
 
     use netcdf
-    use PDAFomi, &
+    use PDAF, &
          only: PDAFomi_gather_obs, PDAFomi_get_interp_coeff_lin
     use assimilation_pdaf, &
-         only: screen, use_global_obs
+         only: filtertype, screen, use_global_obs
     use statevector_pdaf, &
          only: id, sfields
     use parallel_pdaf, &
@@ -212,6 +212,7 @@ contains
 
     ! Omit observation with too large innovation
     if (omit_sst_cmems > 0.0) thisobs%inno_omit = omit_sst_cmems
+
 
 ! **********************************
 ! *** Read PE-local observations ***
@@ -888,7 +889,7 @@ contains
 !!
   subroutine obs_op_sst_cmems(dim_p, dim_obs, state_p, ostate)
 
-    use PDAFomi, &
+    use PDAF, &
          only: PDAFomi_obs_op_interp_lin, PDAFomi_obs_op_gridpoint
 
     implicit none
@@ -942,7 +943,7 @@ contains
 !!
   subroutine init_dim_obs_l_sst_cmems(domain_p, step, dim_obs, dim_obs_l)
 
-    use PDAFomi, &
+    use PDAF, &
          only: PDAFomi_init_dim_obs_l
     use nemo_pdaf, &
          only: wet_pts
@@ -1002,7 +1003,7 @@ contains
   subroutine localize_covar_sst_cmems(dim_p, dim_obs, HP_p, HPH, coords_p)
 
     ! Include PDAFomi function
-    use PDAFomi, only: PDAFomi_localize_covar
+    use PDAF, only: PDAFomi_localize_covar
 
     ! Include localization radius and local coordinates
     use assimilation_pdaf, &   
