@@ -192,19 +192,12 @@ module assimilation_pdaf
 !$OMP THREADPRIVATE(domain_coords, id_lstate_in_pstate)
 
 contains
-
-  !> Performing the Assimilation Step
-  !!
-  !! This routine is called during the model integrations at each timestep.
-  !! It calls PDAF to check whether the forecast phase is completed and if
-  !! so, PDAF will perform the analysis step.
-  !! 
-  !! **Calling Sequence**
-  !! 
-  !!  - Called from: `step.F90'
-  !! 
-  !!  - Calls: `PDAFomi_assimilate_local`
-  !! 
+!> Performing the Assimilation Step
+!!
+!! This routine is called during the model integrations at each timestep.
+!! It calls PDAF to check whether the forecast phase is completed and if
+!! so, PDAF will perform the analysis step.
+!!
   subroutine assimilate_pdaf(kt)
 
     use PDAF, &
@@ -221,15 +214,9 @@ contains
 
 ! *** Local variables ***
     integer :: status_pdaf         ! PDAF status flag
-    integer :: localfilter         ! Flag for domain-localized filter (1=true)
     integer :: assim_flag          ! Flag whether assimilation step was just done
 
-    !! External subroutines 
-    !!  (subroutine names are passed over to PDAF in the calls to 
-    !!  PDAF_get_state and PDAF_assimilate_X. This allows the user 
-    !!  to specify the actual name of a routine. However, the 
-    !!  PDAF-internal name of a subroutine might be different from
-    !!  the external name!)
+! *** External subroutines ***
 
     ! Interface between model and PDAF, and prepoststep
     external :: collect_state_pdaf, &  ! Collect a state vector from model fields
@@ -248,9 +235,9 @@ contains
          init_dim_obs_l_pdafomi        ! Get dimension of obs. vector for local analysis domain
 
 
-    ! *********************************
-    ! *** Call assimilation routine ***
-    ! *********************************
+! *********************************
+! *** Call assimilation routine ***
+! *********************************
 
     call PDAF3_assimilate(collect_state_pdaf, distribute_state_pdaf, &
          init_dim_obs_pdafomi, obs_op_pdafomi, &
@@ -275,7 +262,7 @@ contains
     if (status_pdaf /= 0) then
        write (*, '(/1x,a6,i3,a43,i4,a1/)') &
             'ERROR ', status_pdaf, &
-            ' in PDAF_put_state - stopping! (PE ', mype_ens, ')'
+            ' in PDAF3_assimilate - stopping! (PE ', mype_ens, ')'
        call abort_parallel()
     end if
 
