@@ -63,7 +63,8 @@ use mod_parallel_pdaf, only: mype_filter
               ! Get weight for vertical localization
               CALL vertweight(depths_l(i), sfields(ifield)%vloc_limit, vweight)
 
-              state_p(id_lstate_in_pstate(i)) = vweight * state_l(i)
+              state_p(id_lstate_in_pstate(i)) = state_p(id_lstate_in_pstate(i)) &
+                   + vweight * (state_l(i) - state_p(id_lstate_in_pstate(i)))
            end do
         else
            do i = sfields_l(ifield)%off+1, sfields_l(ifield)%off + sfields_l(ifield)%dim
